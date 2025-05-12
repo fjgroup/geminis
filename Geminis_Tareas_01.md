@@ -9,9 +9,11 @@ Este documento detalla el paso a paso para la construcción del sistema Geminis.
 *   `[ ]` **Inicializar Repositorio Git (si no existe):**
     *   Dentro del directorio raíz de tu proyecto (`hostgemini`), ejecuta:
         ```bash
-        git init
-        git add .
-        git commit -m "Initial project setup"
+        git status
+        git add
+        git status
+        git comit - m segunda version
+        git push
         ```
 *   `[ ]` **Crear Repositorio en GitHub (o similar):**
     *   Ve a GitHub (o tu plataforma de preferencia) y crea un nuevo repositorio (puede ser privado o público).

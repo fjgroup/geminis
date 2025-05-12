@@ -45,10 +45,10 @@ Este documento continúa el plan de tareas para el sistema Geminis, enfocándose
       city: '',
       state_province: '',
       postal_code: '',
-      country_code: 'ES', // Default country (ej. España)
+      country_code: '+58', // Default country (ej. +58 es Venezuela, agregar los codigo de todos los paises)
       status: 'active', // Default status
       language_code: 'es', // Default language
-      currency_code: 'EUR', // Default currency
+      currency_code: 'USD', // Default currency
     });
 
     const submit = () => {
@@ -83,74 +83,74 @@ Este documento continúa el plan de tareas para el sistema Geminis, enfocándose
 
         <div class="py-12">
           <div class="max-w-3xl mx-auto sm:px-6 lg:px-8">
-            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-              <div class="p-6 md:p-8 bg-white border-b border-gray-200">
-                <h1 class="text-2xl font-semibold mb-6">Create New User</h1>
+            <div class="overflow-hidden bg-white shadow-sm sm:rounded-lg">
+              <div class="p-6 bg-white border-b border-gray-200 md:p-8">
+                <h1 class="mb-6 text-2xl font-semibold">Create New User</h1>
                 <form @submit.prevent="submit">
                   <!-- Name -->
                   <div class="mb-4">
-                    <label for="name" class="block text-sm font-medium text-gray-700 mb-1">Name <span class="text-red-500">*</span></label>
-                    <input type="text" v-model="form.name" id="name" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
-                    <div v-if="form.errors.name" class="text-sm text-red-600 mt-1">{{ form.errors.name }}</div>
+                    <label for="name" class="block mb-1 text-sm font-medium text-gray-700">Name <span class="text-red-500">*</span></label>
+                    <input type="text" v-model="form.name" id="name" class="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+                    <div v-if="form.errors.name" class="mt-1 text-sm text-red-600">{{ form.errors.name }}</div>
                   </div>
 
                   <!-- Email -->
                   <div class="mb-4">
-                    <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email <span class="text-red-500">*</span></label>
-                    <input type="email" v-model="form.email" id="email" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
-                    <div v-if="form.errors.email" class="text-sm text-red-600 mt-1">{{ form.errors.email }}</div>
+                    <label for="email" class="block mb-1 text-sm font-medium text-gray-700">Email <span class="text-red-500">*</span></label>
+                    <input type="email" v-model="form.email" id="email" class="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+                    <div v-if="form.errors.email" class="mt-1 text-sm text-red-600">{{ form.errors.email }}</div>
                   </div>
 
                   <!-- Password -->
-                  <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
+                  <div class="grid grid-cols-1 gap-6 mb-4 md:grid-cols-2">
                     <div>
-                      <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Password <span class="text-red-500">*</span></label>
-                      <input type="password" v-model="form.password" id="password" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
-                      <div v-if="form.errors.password" class="text-sm text-red-600 mt-1">{{ form.errors.password }}</div>
+                      <label for="password" class="block mb-1 text-sm font-medium text-gray-700">Password <span class="text-red-500">*</span></label>
+                      <input type="password" v-model="form.password" id="password" class="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+                      <div v-if="form.errors.password" class="mt-1 text-sm text-red-600">{{ form.errors.password }}</div>
                     </div>
                     <div>
-                      <label for="password_confirmation" class="block text-sm font-medium text-gray-700 mb-1">Confirm Password <span class="text-red-500">*</span></label>
-                      <input type="password" v-model="form.password_confirmation" id="password_confirmation" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+                      <label for="password_confirmation" class="block mb-1 text-sm font-medium text-gray-700">Confirm Password <span class="text-red-500">*</span></label>
+                      <input type="password" v-model="form.password_confirmation" id="password_confirmation" class="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
                     </div>
                   </div>
 
                   <!-- Role -->
                   <div class="mb-4">
-                    <label for="role" class="block text-sm font-medium text-gray-700 mb-1">Role <span class="text-red-500">*</span></label>
-                    <select v-model="form.role" id="role" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                    <label for="role" class="block mb-1 text-sm font-medium text-gray-700">Role <span class="text-red-500">*</span></label>
+                    <select v-model="form.role" id="role" class="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
                       <option v-for="option in roleOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
                     </select>
-                    <div v-if="form.errors.role" class="text-sm text-red-600 mt-1">{{ form.errors.role }}</div>
+                    <div v-if="form.errors.role" class="mt-1 text-sm text-red-600">{{ form.errors.role }}</div>
                   </div>
                   
                   <!-- Reseller ID (Conditional) -->
                   <div class="mb-4" v-if="form.role === 'client'">
-                    <label for="reseller_id" class="block text-sm font-medium text-gray-700 mb-1">Reseller ID (if client of a reseller)</label>
-                    <input type="number" v-model="form.reseller_id" id="reseller_id" placeholder="Leave empty if direct client" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
-                    <div v-if="form.errors.reseller_id" class="text-sm text-red-600 mt-1">{{ form.errors.reseller_id }}</div>
+                    <label for="reseller_id" class="block mb-1 text-sm font-medium text-gray-700">Reseller ID (if client of a reseller)</label>
+                    <input type="number" v-model="form.reseller_id" id="reseller_id" placeholder="Leave empty if direct client" class="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+                    <div v-if="form.errors.reseller_id" class="mt-1 text-sm text-red-600">{{ form.errors.reseller_id }}</div>
                   </div>
 
                   <!-- Company Name -->
                   <div class="mb-4">
-                    <label for="company_name" class="block text-sm font-medium text-gray-700 mb-1">Company Name</label>
-                    <input type="text" v-model="form.company_name" id="company_name" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
-                    <div v-if="form.errors.company_name" class="text-sm text-red-600 mt-1">{{ form.errors.company_name }}</div>
+                    <label for="company_name" class="block mb-1 text-sm font-medium text-gray-700">Company Name</label>
+                    <input type="text" v-model="form.company_name" id="company_name" class="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+                    <div v-if="form.errors.company_name" class="mt-1 text-sm text-red-600">{{ form.errors.company_name }}</div>
                   </div>
                   
                   {/* TODO: Add other fields: phone_number, address_line1, address_line2, city, state_province, postal_code, country_code, language_code, currency_code, siguiendo el mismo patrón */}
 
                   <!-- Status -->
                   <div class="mb-4">
-                    <label for="status" class="block text-sm font-medium text-gray-700 mb-1">Status <span class="text-red-500">*</span></label>
-                    <select v-model="form.status" id="status" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                    <label for="status" class="block mb-1 text-sm font-medium text-gray-700">Status <span class="text-red-500">*</span></label>
+                    <select v-model="form.status" id="status" class="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
                       <option v-for="option in statusOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
                     </select>
-                    <div v-if="form.errors.status" class="text-sm text-red-600 mt-1">{{ form.errors.status }}</div>
+                    <div v-if="form.errors.status" class="mt-1 text-sm text-red-600">{{ form.errors.status }}</div>
                   </div>
 
-                  <div class="flex items-center justify-end mt-6 pt-4 border-t border-gray-200">
-                    <Link :href="route('admin.users.index')" class="text-sm text-gray-600 hover:text-gray-900 mr-4 px-4 py-2 rounded-md border border-gray-300 hover:bg-gray-50">Cancel</Link>
-                    <button type="submit" :disabled="form.processing" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50">
+                  <div class="flex items-center justify-end pt-4 mt-6 border-t border-gray-200">
+                    <Link :href="route('admin.users.index')" class="px-4 py-2 mr-4 text-sm text-gray-600 border border-gray-300 rounded-md hover:text-gray-900 hover:bg-gray-50">Cancel</Link>
+                    <button type="submit" :disabled="form.processing" class="px-4 py-2 text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50">
                       {{ form.processing ? 'Creating...' : 'Create User' }}
                     </button>
                   </div>
@@ -279,7 +279,7 @@ Este documento continúa el plan de tareas para el sistema Geminis, enfocándose
             ```
             Y en el `<template>`:
             ```html
-            <div v-if="successMessage" class="mb-4 p-4 bg-green-100 border border-green-400 text-green-700 rounded">
+            <div v-if="successMessage" class="p-4 mb-4 text-green-700 bg-green-100 border border-green-400 rounded">
               {{ successMessage }}
             </div>
             ```
@@ -369,74 +369,74 @@ Este documento continúa el plan de tareas para el sistema Geminis, enfocándose
 
         <div class="py-12">
           <div class="max-w-3xl mx-auto sm:px-6 lg:px-8">
-            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-              <div class="p-6 md:p-8 bg-white border-b border-gray-200">
-                <h1 class="text-2xl font-semibold mb-6">Edit User: {{ user.name }}</h1>
+            <div class="overflow-hidden bg-white shadow-sm sm:rounded-lg">
+              <div class="p-6 bg-white border-b border-gray-200 md:p-8">
+                <h1 class="mb-6 text-2xl font-semibold">Edit User: {{ user.name }}</h1>
                 <form @submit.prevent="submit">
                   <!-- Name -->
                   <div class="mb-4">
-                    <label for="name" class="block text-sm font-medium text-gray-700 mb-1">Name <span class="text-red-500">*</span></label>
-                    <input type="text" v-model="form.name" id="name" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
-                    <div v-if="form.errors.name" class="text-sm text-red-600 mt-1">{{ form.errors.name }}</div>
+                    <label for="name" class="block mb-1 text-sm font-medium text-gray-700">Name <span class="text-red-500">*</span></label>
+                    <input type="text" v-model="form.name" id="name" class="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+                    <div v-if="form.errors.name" class="mt-1 text-sm text-red-600">{{ form.errors.name }}</div>
                   </div>
 
                   <!-- Email -->
                   <div class="mb-4">
-                    <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email <span class="text-red-500">*</span></label>
-                    <input type="email" v-model="form.email" id="email" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
-                    <div v-if="form.errors.email" class="text-sm text-red-600 mt-1">{{ form.errors.email }}</div>
+                    <label for="email" class="block mb-1 text-sm font-medium text-gray-700">Email <span class="text-red-500">*</span></label>
+                    <input type="email" v-model="form.email" id="email" class="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+                    <div v-if="form.errors.email" class="mt-1 text-sm text-red-600">{{ form.errors.email }}</div>
                   </div>
 
                   <!-- Password (Optional) -->
-                  <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
+                  <div class="grid grid-cols-1 gap-6 mb-4 md:grid-cols-2">
                     <div>
-                      <label for="password" class="block text-sm font-medium text-gray-700 mb-1">New Password (leave blank to keep current)</label>
-                      <input type="password" v-model="form.password" id="password" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
-                      <div v-if="form.errors.password" class="text-sm text-red-600 mt-1">{{ form.errors.password }}</div>
+                      <label for="password" class="block mb-1 text-sm font-medium text-gray-700">New Password (leave blank to keep current)</label>
+                      <input type="password" v-model="form.password" id="password" class="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+                      <div v-if="form.errors.password" class="mt-1 text-sm text-red-600">{{ form.errors.password }}</div>
                     </div>
                     <div>
-                      <label for="password_confirmation" class="block text-sm font-medium text-gray-700 mb-1">Confirm New Password</label>
-                      <input type="password" v-model="form.password_confirmation" id="password_confirmation" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+                      <label for="password_confirmation" class="block mb-1 text-sm font-medium text-gray-700">Confirm New Password</label>
+                      <input type="password" v-model="form.password_confirmation" id="password_confirmation" class="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
                     </div>
                   </div>
 
                   <!-- Role -->
                   <div class="mb-4">
-                    <label for="role" class="block text-sm font-medium text-gray-700 mb-1">Role <span class="text-red-500">*</span></label>
-                    <select v-model="form.role" id="role" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                    <label for="role" class="block mb-1 text-sm font-medium text-gray-700">Role <span class="text-red-500">*</span></label>
+                    <select v-model="form.role" id="role" class="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
                       <option v-for="option in roleOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
                     </select>
-                    <div v-if="form.errors.role" class="text-sm text-red-600 mt-1">{{ form.errors.role }}</div>
+                    <div v-if="form.errors.role" class="mt-1 text-sm text-red-600">{{ form.errors.role }}</div>
                   </div>
                   
                   <!-- Reseller ID (Conditional) -->
                   <div class="mb-4" v-if="form.role === 'client'">
-                    <label for="reseller_id" class="block text-sm font-medium text-gray-700 mb-1">Reseller ID (if client of a reseller)</label>
-                    <input type="number" v-model="form.reseller_id" id="reseller_id" placeholder="Leave empty if direct client" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
-                    <div v-if="form.errors.reseller_id" class="text-sm text-red-600 mt-1">{{ form.errors.reseller_id }}</div>
+                    <label for="reseller_id" class="block mb-1 text-sm font-medium text-gray-700">Reseller ID (if client of a reseller)</label>
+                    <input type="number" v-model="form.reseller_id" id="reseller_id" placeholder="Leave empty if direct client" class="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+                    <div v-if="form.errors.reseller_id" class="mt-1 text-sm text-red-600">{{ form.errors.reseller_id }}</div>
                   </div>
 
                   <!-- Company Name -->
                   <div class="mb-4">
-                    <label for="company_name" class="block text-sm font-medium text-gray-700 mb-1">Company Name</label>
-                    <input type="text" v-model="form.company_name" id="company_name" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
-                    <div v-if="form.errors.company_name" class="text-sm text-red-600 mt-1">{{ form.errors.company_name }}</div>
+                    <label for="company_name" class="block mb-1 text-sm font-medium text-gray-700">Company Name</label>
+                    <input type="text" v-model="form.company_name" id="company_name" class="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+                    <div v-if="form.errors.company_name" class="mt-1 text-sm text-red-600">{{ form.errors.company_name }}</div>
                   </div>
 
-                  {/* TODO: Add other fields: phone_number, address_line1, address_line2, city, state_province, postal_code, country_code, language_code, currency_code, siguiendo el mismo patrón que en Create.vue pero inicializados con props.user */}
+                  {/* TODO: Add other fields: phone_number, address_line1, address_line2, city, state_province, postal_code, country, language_code, currency_code, siguiendo el mismo patrón que en Create.vue pero inicializados con props.user */}
 
                   <!-- Status -->
                   <div class="mb-4">
-                    <label for="status" class="block text-sm font-medium text-gray-700 mb-1">Status <span class="text-red-500">*</span></label>
-                    <select v-model="form.status" id="status" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                    <label for="status" class="block mb-1 text-sm font-medium text-gray-700">Status <span class="text-red-500">*</span></label>
+                    <select v-model="form.status" id="status" class="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
                       <option v-for="option in statusOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
                     </select>
-                    <div v-if="form.errors.status" class="text-sm text-red-600 mt-1">{{ form.errors.status }}</div>
+                    <div v-if="form.errors.status" class="mt-1 text-sm text-red-600">{{ form.errors.status }}</div>
                   </div>
 
-                  <div class="flex items-center justify-end mt-6 pt-4 border-t border-gray-200">
-                    <Link :href="route('admin.users.index')" class="text-sm text-gray-600 hover:text-gray-900 mr-4 px-4 py-2 rounded-md border border-gray-300 hover:bg-gray-50">Cancel</Link>
-                    <button type="submit" :disabled="form.processing" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50">
+                  <div class="flex items-center justify-end pt-4 mt-6 border-t border-gray-200">
+                    <Link :href="route('admin.users.index')" class="px-4 py-2 mr-4 text-sm text-gray-600 border border-gray-300 rounded-md hover:text-gray-900 hover:bg-gray-50">Cancel</Link>
+                    <button type="submit" :disabled="form.processing" class="px-4 py-2 text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50">
                       {{ form.processing ? 'Updating...' : 'Update User' }}
                     </button>
                   </div>

@@ -26,7 +26,7 @@ Para un 'client', si no es NULL, indica que este cliente pertenece al revendedor
 Para un 'reseller', puede ser NULL o su propio id para identificar su "espacio" o "tenant".
 Los 'admin' siempre tendrán reseller_id = NULL.
 status: Controla si la cuenta del usuario está activa, inactiva o suspendida.
-language_code, currency_code: Preferencias del usuario para la interfaz y transacciones.
+language_code, currency_code, country: Preferencias del usuario para la interfaz, transacciones y país.
 
 Tabla: reseller_profiles
 Propósito: Extiende la tabla users para almacenar configuraciones y personalizaciones específicas de los revendedores, como su marca, dominio personalizado (si se ofrece), y permisos especiales.
