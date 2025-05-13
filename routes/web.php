@@ -7,14 +7,21 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 use App\Http\Controllers\Admin\UserController as AdminUserController;
+use App\Http\Controllers\Admin\AdminProductController;
 
 
 // Rutas para la administración
-// El middleware 'admin' se añadirá en una tarea posterior (Tarea 04)
-Route::prefix('admin')->name('admin.')->middleware(['auth', 'verified'])->group(function () {
+// Aplicamos el middleware 'admin' para proteger estas rutas
+Route::prefix('admin')->name('admin.')->middleware(['auth', 'verified', 'admin'])->group(function () {
     Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
 
     Route::resource('users', AdminUserController::class);
+
+    Route::resource('products', AdminProductController::class);
+
+    Route::post('products/{product}/pricing', [AdminProductController::class, 'storePricing'])->name('products.pricing.store');
+    Route::put('products/{product}/pricing/{pricing}', [AdminProductController::class, 'updatePricing'])->name('products.pricing.update');
+    Route::delete('products/{product}/pricing/{pricing}', [AdminProductController::class, 'destroyPricing'])->name('products.pricing.destroy');
 });
 
 Route::get('/', function () {

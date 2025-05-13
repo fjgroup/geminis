@@ -178,10 +178,13 @@
 
                         <!-- Código de Idioma -->
                         <div class="mb-4">
-                            <label for="language_code" class="block text-sm font-medium text-gray-700">Código de
-                                Idioma</label>
-                            <input type="text" v-model="form.language_code" id="language_code"
-                                class="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+                            <label for="language_code" class="block text-sm font-medium text-gray-700">Idioma</label>
+                            <select v-model="form.language_code" id="language_code"
+                                class="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                                <option v-for="option in languageOptions" :key="option.value" :value="option.value">
+                                    {{ option.label }}
+                                </option>
+                            </select>
                             <div v-if="form.errors.language_code" class="mt-1 text-sm text-red-600">{{
                                 form.errors.language_code
                                 }}
@@ -190,10 +193,13 @@
 
                         <!-- Código de Moneda -->
                         <div class="mb-4">
-                            <label for="currency_code" class="block text-sm font-medium text-gray-700">Código de
-                                Moneda</label>
-                            <input type="text" v-model="form.currency_code" id="currency_code"
-                                class="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+                            <label for="currency_code" class="block text-sm font-medium text-gray-700">Moneda</label>
+                            <select v-model="form.currency_code" id="currency_code"
+                                class="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                                <option v-for="option in currencyOptions" :key="option.value" :value="option.value">
+                                    {{ option.label }}
+                                </option>
+                            </select>
                             <div v-if="form.errors.currency_code" class="mt-1 text-sm text-red-600">{{
                                 form.errors.currency_code
                                 }}
@@ -278,6 +284,16 @@ const countryOptions = [
     { value: 'PE', label: 'Perú' },
     { value: 'UY', label: 'Uruguay' },
     { value: 'VE', label: 'Venezuela' },
+];
+
+const languageOptions = [
+    { value: 'es', label: 'Español' },
+    { value: 'en', label: 'Inglés' },
+];
+
+const currencyOptions = [
+    { value: 'USD', label: 'USD - Dólar estadounidense' },
+    { value: 'EUR', label: 'EUR - Euro' },
 ];
 
 const submit = () => {

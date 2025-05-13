@@ -72,11 +72,21 @@ const countryOptions = [
     { value: 'UY', label: 'Uruguay' },
     { value: 'VE', label: 'Venezuela' },
 ];
+
+const languageOptions = [
+    { value: 'es', label: 'Español' },
+    { value: 'en', label: 'Inglés' },
+];
+
+const currencyOptions = [
+    { value: 'USD', label: 'USD - Dólar estadounidense' },
+    { value: 'EUR', label: 'EUR - Euro' },
+    // Puedes añadir más monedas aquí si es necesario
+];
 </script>
 
 <template>
     <AdminLayout :title="'Editar Usuario - ' + user.name">
-
         <Head :title="'Editar Usuario - ' + user.name" />
         <template #header>
             <h2 class="text-xl font-semibold leading-tight text-gray-800 dark:text-gray-200">Editar Usuario: {{
@@ -87,11 +97,11 @@ const countryOptions = [
             <div class="max-w-3xl mx-auto sm:px-6 lg:px-8">
                 <div class="overflow-hidden bg-white shadow-sm sm:rounded-lg">
                     <div class="p-6 bg-white border-b border-gray-200 md:p-8">
-                        <h1 class="mb-6 text-2xl font-semibold">Editar Usuario: {{ user.name }}</h1>
+                        <!-- <h1 class="mb-6 text-2xl font-semibold">Editar Usuario: {{ user.name }}</h1> -->
                         <form @submit.prevent="submit">
 
                             <div class="mb-4">
-                                <label for="name" class="block mb-1 text-sm font-medium text-gray-700">Name <span
+                                <label for="name" class="block mb-1 text-sm font-medium text-gray-700">Nombre <span
                                         class="text-red-500">*</span></label>
                                 <input type="text" v-model="form.name" id="name"
                                     class="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
@@ -101,7 +111,7 @@ const countryOptions = [
 
 
                             <div class="mb-4">
-                                <label for="email" class="block mb-1 text-sm font-medium text-gray-700">Email <span
+                                <label for="email" class="block mb-1 text-sm font-medium text-gray-700">Correo Electrónico <span
                                         class="text-red-500">*</span></label>
                                 <input type="email" v-model="form.email" id="email"
                                     class="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
@@ -112,17 +122,14 @@ const countryOptions = [
 
                             <div class="grid grid-cols-1 gap-6 mb-4 md:grid-cols-2">
                                 <div>
-                                    <label for="password" class="block mb-1 text-sm font-medium text-gray-700">New
-                                        Password (leave blank to keep current)</label>
+                                    <label for="password" class="block mb-1 text-sm font-medium text-gray-700">Nueva Contraseña (dejar en blanco para mantener actual)</label>
                                     <input type="password" v-model="form.password" id="password"
                                         class="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" autocomplete="new-password" />
                                     <div v-if="form.errors.password" class="mt-1 text-sm text-red-600">{{
                                         form.errors.password }}</div>
                                 </div>
                                 <div>
-                                    <label for="password_confirmation"
-                                        class="block mb-1 text-sm font-medium text-gray-700">Confirm New
-                                        Password</label>
+                                    <label for="password_confirmation" class="block mb-1 text-sm font-medium text-gray-700">Confirmar Nueva Contraseña</label>
                                     <input type="password" v-model="form.password_confirmation"
                                         id="password_confirmation" autocomplete="new-password"
                                         class="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
@@ -131,7 +138,7 @@ const countryOptions = [
 
 
                             <div class="mb-4">
-                                <label for="role" class="block mb-1 text-sm font-medium text-gray-700">Role <span
+                                <label for="role" class="block mb-1 text-sm font-medium text-gray-700">Rol <span
                                         class="text-red-500">*</span></label>
                                 <select v-model="form.role" id="role"
                                     class="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
@@ -144,8 +151,7 @@ const countryOptions = [
 
 
                             <div class="mb-4" v-if="form.role === 'client'">
-                                <label for="reseller_id" class="block mb-1 text-sm font-medium text-gray-700">Reseller
-                                    ID (if client of a reseller)</label>
+                                <label for="reseller_id" class="block mb-1 text-sm font-medium text-gray-700">ID del Revendedor (si es cliente de un revendedor)</label>
                                 <input type="number" v-model="form.reseller_id" id="reseller_id"
                                     placeholder="Leave empty if direct client"
                                     class="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
@@ -155,8 +161,7 @@ const countryOptions = [
 
 
                             <div class="mb-4">
-                                <label for="company_name" class="block mb-1 text-sm font-medium text-gray-700">Company
-                                    Name</label>
+                                <label for="company_name" class="block mb-1 text-sm font-medium text-gray-700">Nombre de la Compañía</label>
                                 <input type="text" v-model="form.company_name" id="company_name"
                                     class="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
                                 <div v-if="form.errors.company_name" class="mt-1 text-sm text-red-600">{{
@@ -165,8 +170,7 @@ const countryOptions = [
 
 
                             <div class="mb-4">
-                                <label for="phone_number" class="block text-sm font-medium text-gray-700">Phone
-                                    Number</label>
+                                <label for="phone_number" class="block text-sm font-medium text-gray-700">Teléfono</label>
                                 <input type="text" v-model="form.phone_number" id="phone_number"
                                     class="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
                                 <div v-if="form.errors.phone_number" class="mt-1 text-sm text-red-600">{{
@@ -175,8 +179,7 @@ const countryOptions = [
 
 
                             <div class="mb-4">
-                                <label for="address_line1" class="block text-sm font-medium text-gray-700">Address Line
-                                    1</label>
+                                <label for="address_line1" class="block text-sm font-medium text-gray-700">Dirección Línea 1</label>
                                 <input type="text" v-model="form.address_line1" id="address_line1"
                                     class="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
                                 <div v-if="form.errors.address_line1" class="mt-1 text-sm text-red-600">{{
@@ -185,8 +188,7 @@ const countryOptions = [
 
 
                             <div class="mb-4">
-                                <label for="address_line2" class="block text-sm font-medium text-gray-700">Address Line
-                                    2</label>
+                                <label for="address_line2" class="block text-sm font-medium text-gray-700">Dirección Línea 2</label>
                                 <input type="text" v-model="form.address_line2" id="address_line2"
                                     class="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
                                 <div v-if="form.errors.address_line2" class="mt-1 text-sm text-red-600">{{
@@ -195,7 +197,7 @@ const countryOptions = [
 
 
                             <div class="mb-4">
-                                <label for="city" class="block text-sm font-medium text-gray-700">City</label>
+                                <label for="city" class="block text-sm font-medium text-gray-700">Ciudad</label>
                                 <input type="text" v-model="form.city" id="city"
                                     class="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
                                 <div v-if="form.errors.city" class="mt-1 text-sm text-red-600">{{ form.errors.city }}
@@ -204,8 +206,7 @@ const countryOptions = [
 
 
                             <div class="mb-4">
-                                <label for="state_province" class="block text-sm font-medium text-gray-700">State /
-                                    Province</label>
+                                <label for="state_province" class="block text-sm font-medium text-gray-700">Estado / Provincia</label>
                                 <input type="text" v-model="form.state_province" id="state_province"
                                     class="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
                                 <div v-if="form.errors.state_province" class="mt-1 text-sm text-red-600">{{
@@ -214,8 +215,7 @@ const countryOptions = [
 
 
                             <div class="mb-4">
-                                <label for="postal_code" class="block text-sm font-medium text-gray-700">Postal
-                                    Code</label>
+                                <label for="postal_code" class="block text-sm font-medium text-gray-700">Código Postal</label>
                                 <input type="text" v-model="form.postal_code" id="postal_code"
                                     class="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
                                 <div v-if="form.errors.postal_code" class="mt-1 text-sm text-red-600">{{
@@ -238,7 +238,7 @@ const countryOptions = [
 
 
                             <div class="mb-4">
-                                <label for="status" class="block text-sm font-medium text-gray-700">Status <span
+                                <label for="status" class="block text-sm font-medium text-gray-700">Estado <span
                                         class="text-red-500">*</span></label>
                                 <select v-model="form.status" id="status"
                                     class="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
@@ -251,20 +251,26 @@ const countryOptions = [
 
 
                             <div class="mb-4">
-                                <label for="language_code" class="block text-sm font-medium text-gray-700">Language
-                                    Code</label>
-                                <input type="text" v-model="form.language_code" id="language_code"
-                                    class="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+                                <label for="language_code" class="block text-sm font-medium text-gray-700">Idioma</label>
+                                <select v-model="form.language_code" id="language_code"
+                                    class="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                                    <option v-for="option in languageOptions" :key="option.value" :value="option.value">
+                                        {{ option.label }}
+                                    </option>
+                                </select>
                                 <div v-if="form.errors.language_code" class="mt-1 text-sm text-red-600">{{
                                     form.errors.language_code }}</div>
                             </div>
 
 
                             <div class="mb-4">
-                                <label for="currency_code" class="block text-sm font-medium text-gray-700">Currency
-                                    Code</label>
-                                <input type="text" v-model="form.currency_code" id="currency_code"
-                                    class="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+                                <label for="currency_code" class="block text-sm font-medium text-gray-700">Moneda</label>
+                                <select v-model="form.currency_code" id="currency_code"
+                                    class="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                                    <option v-for="option in currencyOptions" :key="option.value" :value="option.value">
+                                        {{ option.label }}
+                                    </option>
+                                </select>
                                 <div v-if="form.errors.currency_code" class="mt-1 text-sm text-red-600">{{
                                     form.errors.currency_code }}</div>
                             </div>

@@ -17,6 +17,8 @@ class UserController extends Controller
      */
     public function index()
     {
+        $this->authorize('viewAny', User::class);
+
         // $this->authorize('viewAny', User::class); // Descomentar cuando UserPolicy esté lista
 
         $users = User::latest()
@@ -44,6 +46,8 @@ class UserController extends Controller
      */
     public function create()
     {
+        $this->authorize('create', User::class);
+
         // Aquí podríamos pasar datos adicionales si fueran necesarios (ej: listas para selects)
         // $roles = [['value' => 'admin', 'label' => 'Admin'], ...];
         return Inertia::render('Admin/Users/Create');
@@ -54,6 +58,8 @@ class UserController extends Controller
      */
     public function store(StoreUserRequest $request): RedirectResponse
     {
+        // La autorización principal se maneja en StoreUserRequest
+        // Si no, se podría añadir aquí: $this->authorize('create', User::class);
         $validatedData = $request->validated();
 
         User::create([
@@ -91,6 +97,8 @@ class UserController extends Controller
      */
     public function update(UpdateUserRequest $request, User $user): RedirectResponse
     {
+        // La autorización principal se maneja en UpdateUserRequest
+        // Si no, se podría añadir aquí: $this->authorize('update', $user);
         $validatedData = $request->validated();
 
         $updateData = collect($validatedData)->except('password')->toArray();
@@ -108,7 +116,7 @@ class UserController extends Controller
             'city' => $validatedData['city'] ?? null,
             'state_province' => $validatedData['state_province'] ?? null,
             'postal_code' => $validatedData['postal_code'] ?? null,
-            'country_code' => $validatedData['country_code'] ?? null,
+            'country' => $validatedData['country'] ?? null, // Corregido de country_code a country si es el caso
             'status' => $validatedData['status'],
             'language_code' => $validatedData['language_code'] ?? 'es',
             'currency_code' => $validatedData['currency_code'] ?? 'USD',
@@ -122,18 +130,19 @@ class UserController extends Controller
      */
     public function edit(User $user)
     {
+        $this->authorize('update', $user); // O 'view', $user si tienes un método view en la policy
+
         return Inertia::render('Admin/Users/Edit', [
             'user' => $user,
         ]);
     }
 
-    /**
-
-    /**
-     * Remove the specified resource from storage.
+    /** Remove the specified resource from storage.
      */
     public function destroy(User $user)
     {
+        $this->authorize('delete', $user);
+
         $user->delete();
 
         return redirect()->route('admin.users.index')->with('success', 'User deleted successfully.');
