@@ -3,26 +3,20 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\Product;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
 
-class ProductController extends Controller
+class RegisteredUserController extends Controller
 {
     /**
      * Display a listing of the resource.
      */
     public function index()
     {
-        
-        // $this->authorize('viewAny', Product::class); // Descomentar cuando se cree ProductPolicy
-        $products = Product::with('owner')->latest()->paginate(10); // Cargar relación owner si se quiere mostrar el nombre del revendedor
-        return Inertia::render('Admin/Products/Index', [
-            'products' => $products,
-        ]);
-
+        //
     }
 
     /**
@@ -44,7 +38,7 @@ class ProductController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(Product $product)
+    public function show(Request $request)
     {
         //
     }
@@ -52,7 +46,7 @@ class ProductController extends Controller
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(Product $product)
+    public function edit(Request $request)
     {
         //
     }
@@ -60,7 +54,7 @@ class ProductController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Product $product)
+    public function update(Request $request)
     {
         //
     }
@@ -68,7 +62,7 @@ class ProductController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Product $product)
+    public function destroy(Request $request)
     {
         //
     }

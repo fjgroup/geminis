@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -79,14 +81,14 @@ class User extends Authenticatable implements MustVerifyEmail
      *
      * @return \Illuminate\Database\Eloquent\Relations\BelongsTo<User, User>
      */
-    public function reseller()
+        public function reseller(): BelongsTo
     {
         return $this->belongsTo(User::class, 'reseller_id');
     }
 
-    // Example for a future relationship (ResellerProfile)
-    // public function resellerProfile()
-    // {
-    //     return $this->hasOne(ResellerProfile::class, 'user_id');
-    // }
+    //Example for a future relationship (ResellerProfile)
+        public function resellerProfile():HasOne
+    {
+        return $this->hasOne(ResellerProfile::class, 'user_id');
+    }
 }

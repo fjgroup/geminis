@@ -40,6 +40,11 @@ class RegisteredUserController extends Controller
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
+            'role' => 'client', // Por defecto los registros públicos son clientes
+            'reseller_id' => 1, // Asignar al admin por defecto
+            'status' => 'active', // Estado por defecto
+            'language_code' => config('app.locale', 'es'), // Idioma por defecto de la app
+            'currency_code' => 'USD', // Moneda por defecto
         ]);
 
         event(new Registered($user));

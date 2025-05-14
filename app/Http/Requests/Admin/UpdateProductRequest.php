@@ -17,7 +17,7 @@ class UpdateProductRequest extends FormRequest
         // Asumiendo que tu parámetro de ruta es 'product' (ej. Route::resource('products', ...))
         $product = $this->route('product');
         return $this->user()->can('update', $product);
-    
+
     }
 
     /**
@@ -33,9 +33,6 @@ class UpdateProductRequest extends FormRequest
             // Si se enviara un slug desde el form (actualmente no se hace), esta regla lo validaría.
             'slug' => ['nullable', 'string', 'max:255', Rule::unique('products', 'slug')->ignore($this->route('product')?->id)],
             'description' => ['nullable', 'string'],
-            
-            
-
             'type' => ['required', 'string', Rule::in(['shared_hosting', 'vps', 'dedicated_server', 'domain_registration', 'ssl_certificate', 'other'])],
             'module_name' => ['nullable', 'string', 'max:255'],
             'owner_id' => ['nullable', 'integer', 'exists:users,id'],
@@ -45,6 +42,6 @@ class UpdateProductRequest extends FormRequest
             // 'welcome_email_template_id' => ['nullable', 'integer', 'exists:email_templates,id'], // Si tienes esta tabla
             // 'display_order' => ['nullable', 'integer'],
         ];
-    
+
     }
 }

@@ -1,14 +1,18 @@
 <?php
 
 namespace App\Http\Controllers\Admin;
-
 use App\Http\Controllers\Controller;
+
 use App\Models\User;
-use Inertia\Inertia;
-use App\Http\Requests\Admin\StoreUserRequest;
-use App\Http\Requests\Admin\UpdateUserRequest;
+use App\Models\ResellerProfile;
+
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Http\RedirectResponse;
+
+use App\Http\Requests\Admin\StoreUserRequest;
+use App\Http\Requests\Admin\UpdateUserRequest;
+
+use Inertia\Inertia;
 
 class UserController extends Controller
 {
@@ -19,7 +23,6 @@ class UserController extends Controller
     {
         $this->authorize('viewAny', User::class);
 
-        // $this->authorize('viewAny', User::class); // Descomentar cuando UserPolicy esté lista
 
         $users = User::latest()
             // ->with('reseller') // Opcional: si necesitas mostrar el nombre del revendedor
@@ -48,9 +51,16 @@ class UserController extends Controller
     {
         $this->authorize('create', User::class);
 
+        $resellers = User::where('role', 'reseller')->orderBy('name')->get(['id', 'name', 'company_name']);
+
         // Aquí podríamos pasar datos adicionales si fueran necesarios (ej: listas para selects)
         // $roles = [['value' => 'admin', 'label' => 'Admin'], ...];
-        return Inertia::render('Admin/Users/Create');
+        return Inertia::render('Admin/Users/Create', [
+            'resellers' => $resellers->map(fn ($reseller) => [
+                'value' => $reseller->id,
+                'label' => $reseller->name . ($reseller->company_name ? " ({$reseller->company_name})" : "")
+            ]),
+        ]);
     }
 
     /**
@@ -59,10 +69,10 @@ class UserController extends Controller
     public function store(StoreUserRequest $request): RedirectResponse
     {
         // La autorización principal se maneja en StoreUserRequest
-        // Si no, se podría añadir aquí: $this->authorize('create', User::class);
+        $this->authorize('create', User::class); // Es bueno tenerlo aquí también por claridad
         $validatedData = $request->validated();
-
-        User::create([
+        // Asignar el usuario creado a la variable $user
+        $user = User::create([
             'name' => $validatedData['name'],
             'email' => $validatedData['email'],
             'password' => Hash::make($validatedData['password']),
@@ -81,6 +91,13 @@ class UserController extends Controller
             'currency_code' => $validatedData['currency_code'] ?? 'USD',
         ]);
 
+        // Crear ResellerProfile si el rol es reseller y se proporcionan datos
+        if ($user->role === 'reseller' && $request->has('reseller_profile')) {
+            $profileData = $request->input('reseller_profile');
+            // La validación de $profileData debería estar en StoreUserRequest
+            $user->resellerProfile()->create($profileData);
+        }
+
         return redirect()->route('admin.users.index')->with('success', 'Usuario creado exitosamente.');
     }
 
@@ -98,7 +115,7 @@ class UserController extends Controller
     public function update(UpdateUserRequest $request, User $user): RedirectResponse
     {
         // La autorización principal se maneja en UpdateUserRequest
-        // Si no, se podría añadir aquí: $this->authorize('update', $user);
+        $this->authorize('update', $user); // Es bueno tenerlo aquí también por claridad
         $validatedData = $request->validated();
 
         $updateData = collect($validatedData)->except('password')->toArray();
@@ -107,8 +124,8 @@ class UserController extends Controller
             $updateData['password'] = Hash::make($validatedData['password']);
         }
 
-        $user->update($updateData + [
-            'reseller_id' => $validatedData['reseller_id'] ?? null,
+        // Preparamos los datos base para la actualización
+        $finalUpdateData = array_merge($updateData, [
             'company_name' => $validatedData['company_name'] ?? null,
             'phone_number' => $validatedData['phone_number'] ?? null,
             'address_line1' => $validatedData['address_line1'] ?? null,
@@ -116,11 +133,34 @@ class UserController extends Controller
             'city' => $validatedData['city'] ?? null,
             'state_province' => $validatedData['state_province'] ?? null,
             'postal_code' => $validatedData['postal_code'] ?? null,
-            'country' => $validatedData['country'] ?? null, // Corregido de country_code a country si es el caso
+            'country' => $validatedData['country'] ?? null,
             'status' => $validatedData['status'],
             'language_code' => $validatedData['language_code'] ?? 'es',
             'currency_code' => $validatedData['currency_code'] ?? 'USD',
         ]);
+
+        // Lógica para reseller_id al actualizar
+        if ($validatedData['role'] === 'client') {
+            $finalUpdateData['reseller_id'] = $validatedData['reseller_id'] ?? $user->reseller_id; // Mantener si no se envía, o permitir cambiar
+        } elseif ($validatedData['role'] === 'reseller') {
+            $finalUpdateData['reseller_id'] = null; // Un revendedor no tiene un reseller_id padre
+        } else { // admin
+            $finalUpdateData['reseller_id'] = null;
+        }
+        $user->update($finalUpdateData);
+
+        // Gestionar ResellerProfile
+        if ($user->role === 'reseller' && $request->has('reseller_profile')) {
+            $profileData = $request->input('reseller_profile');
+            // La validación de $profileData debería estar en UpdateUserRequest
+            $user->resellerProfile()->updateOrCreate(
+                ['user_id' => $user->id],
+                $profileData
+            );
+        } elseif ($user->role !== 'reseller' && $user->resellerProfile) {
+            // Opcional: Si el rol cambia de reseller a otro, eliminar el perfil.
+            // $user->resellerProfile->delete();
+        }
 
         return redirect()->route('admin.users.index')->with('success', 'User updated successfully.');
     }
@@ -132,8 +172,17 @@ class UserController extends Controller
     {
         $this->authorize('update', $user); // O 'view', $user si tienes un método view en la policy
 
+        if ($user->role === 'reseller') {
+            $user->load('resellerProfile');
+        }
+        $resellers = User::where('role', 'reseller')->orderBy('name')->get(['id', 'name', 'company_name']);
+
         return Inertia::render('Admin/Users/Edit', [
             'user' => $user,
+            'resellers' => $resellers->map(fn ($reseller) => [
+                'value' => $reseller->id,
+                'label' => $reseller->name . ($reseller->company_name ? " ({$reseller->company_name})" : "")
+            ]),
         ]);
     }
 

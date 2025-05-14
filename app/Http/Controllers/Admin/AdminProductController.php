@@ -22,7 +22,7 @@ class AdminProductController extends Controller
      */
     public function index(): Response
     {
-        $this->authorize('viewAny', Product::class); 
+        $this->authorize('viewAny', Product::class);
 
     $products = Product::latest()
         ->with('owner') // Carga la relación 'owner' si la tienes definida en el modelo Product
@@ -70,10 +70,7 @@ class AdminProductController extends Controller
             $validatedData['slug'] = Str::slug($validatedData['name']);
         }
         // Considerar verificar unicidad del slug si se genera aquí y no se valida como unique en el FormRequest
-
-
         Product::create($validatedData);
-
         return redirect()->route('admin.products.index')->with('success', 'Producto creado exitosamente.');
     }
 
@@ -95,12 +92,12 @@ class AdminProductController extends Controller
     {
         $this->authorize('update', $product);
         $resellers = User::where('role', 'reseller')
-            ->select('id', 'name', 'company_name') 
+            ->select('id', 'name', 'company_name')
             ->orderBy('name')
             ->get();
 
             $product->load('pricings'); // ¡IMPORTANTE! Cargar los precios asociados al producto
-        
+
         return Inertia::render('Admin/Products/Edit', [
             'product' => $product,
             'resellers' => $resellers,
@@ -114,7 +111,6 @@ class AdminProductController extends Controller
 {
         // La autorización y validación son manejadas por UpdateProductRequest
         $validatedData = $request->validated();
-
         $updatePayload = $validatedData;
 
         // Si el nombre cambia, actualiza el slug
@@ -123,9 +119,11 @@ class AdminProductController extends Controller
         // Por ahora, si el nombre cambia, el slug se regenera basado en el nuevo nombre.
         if (isset($validatedData['name']) && $validatedData['name'] !== $product->name) {
             $updatePayload['slug'] = Str::slug($validatedData['name']);
-        } elseif (isset($validatedData['name']) && !isset($updatePayload['slug'])) { // Si el slug no vino del form pero el nombre sí
+        }
+        elseif (isset($validatedData['name']) && !isset($updatePayload['slug'])) { // Si el slug no vino del form pero el nombre sí
             $updatePayload['slug'] = Str::slug($validatedData['name']);
         }
+
         $product->update($updatePayload);
         return redirect()->route('admin.products.index')->with('success', 'Producto actualizado exitosamente.');
     }
@@ -146,9 +144,7 @@ class AdminProductController extends Controller
         // Asumiendo que si puede crear el producto, puede añadirle precios, o usar ProductPricingPolicy directamente
         // La autorización y validación ahora son manejadas por StoreProductPricingRequest
         $validated = $request->validated();
-
         $product->pricings()->create($validated);
-
         return redirect()->back()->with('success', 'Precio añadido correctamente.');
     }
 
@@ -157,20 +153,14 @@ class AdminProductController extends Controller
         // La autorización y validación ahora son manejadas por UpdateProductPricingRequest
         // $this->authorize('update', $pricing); // Ya no es necesario aquí
         $validated = $request->validated();
-
         $pricing->update($validated);
-
         return redirect()->back()->with('success', 'Precio actualizado correctamente.');
     }
 
     public function destroyPricing(Product $product, ProductPricing $pricing): RedirectResponse
     {
-
         $this->authorize('delete', $pricing); // Usar la instancia de ProductPricing
-
-        
         $pricing->delete();
-
         return redirect()->back()->with('success', 'Precio eliminado correctamente.');
     }
 }

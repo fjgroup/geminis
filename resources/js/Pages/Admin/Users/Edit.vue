@@ -1,10 +1,12 @@
 <script setup>
 import AdminLayout from '@/Layouts/AdminLayout.vue'; // Importar AdminLayout
 import { Head, Link, useForm } from '@inertiajs/vue3';
+import Checkbox from '@/Components/Checkbox.vue'; // Asumiendo que tienes un componente Checkbox
 
 
 const props = defineProps({
   user: Object,
+  resellers: Array, // Lista de revendedores para el select
 });
 
 const form = useForm({
@@ -14,7 +16,7 @@ const form = useForm({
   password: '',
   password_confirmation: '',
   role: props.user.role,
-  reseller_id: props.user.reseller_id,
+  reseller_id: props.user.reseller_id || null, // Asegurar que sea null si no está definido
   company_name: props.user.company_name,
   phone_number: props.user.phone_number,
   address_line1: props.user.address_line1,
@@ -26,6 +28,15 @@ const form = useForm({
   status: props.user.status,
   language_code: props.user.language_code,
   currency_code: props.user.currency_code,
+  // Campos para ResellerProfile, inicializar si existen
+  reseller_profile: {
+    brand_name: props.user.reseller_profile?.brand_name || '',
+    custom_domain: props.user.reseller_profile?.custom_domain || '',
+    logo_url: props.user.reseller_profile?.logo_url || '',
+    support_email: props.user.reseller_profile?.support_email || '',
+    terms_url: props.user.reseller_profile?.terms_url || '',
+    allow_custom_products: props.user.reseller_profile?.allow_custom_products || false,
+  }
 });
 
 const submit = () => {
@@ -151,12 +162,65 @@ const currencyOptions = [
 
 
                             <div class="mb-4" v-if="form.role === 'client'">
-                                <label for="reseller_id" class="block mb-1 text-sm font-medium text-gray-700">ID del Revendedor (si es cliente de un revendedor)</label>
-                                <input type="number" v-model="form.reseller_id" id="reseller_id"
-                                    placeholder="Leave empty if direct client"
-                                    class="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+                                <label for="reseller_id" class="block mb-1 text-sm font-medium text-gray-700">Asignado al Revendedor</label>
+                                <select v-model="form.reseller_id" id="reseller_id"
+                                    class="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                                    <option :value="null">Cliente directo de la plataforma (Admin)</option>
+                                     <!-- Asumiendo que el admin principal también puede ser un "revendedor" para sus propios clientes -->
+                                    <option v-for="reseller in props.resellers" :key="reseller.value" :value="reseller.value">
+                                        {{ reseller.label }}
+                                    </option>
+                                </select>
                                 <div v-if="form.errors.reseller_id" class="mt-1 text-sm text-red-600">{{
                                     form.errors.reseller_id }}</div>
+                            </div>
+
+                            <!-- Sección para Reseller Profile -->
+                            <div v-if="form.role === 'reseller'" class="pt-6 mt-6 border-t">
+                                <h3 class="mb-4 text-lg font-medium text-gray-900">Perfil de Revendedor</h3>
+
+                                <div class="mb-4">
+                                    <label for="reseller_brand_name" class="block text-sm font-medium text-gray-700">Nombre de Marca</label>
+                                    <input type="text" v-model="form.reseller_profile.brand_name" id="reseller_brand_name"
+                                        class="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+                                    <div v-if="form.errors['reseller_profile.brand_name']" class="mt-1 text-sm text-red-600">{{ form.errors['reseller_profile.brand_name'] }}</div>
+                                </div>
+
+                                <div class="mb-4">
+                                    <label for="reseller_custom_domain" class="block text-sm font-medium text-gray-700">Dominio Personalizado</label>
+                                    <input type="text" v-model="form.reseller_profile.custom_domain" id="reseller_custom_domain"
+                                        class="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+                                    <div v-if="form.errors['reseller_profile.custom_domain']" class="mt-1 text-sm text-red-600">{{ form.errors['reseller_profile.custom_domain'] }}</div>
+                                </div>
+
+                                <div class="mb-4">
+                                    <label for="reseller_logo_url" class="block text-sm font-medium text-gray-700">URL del Logo</label>
+                                    <input type="url" v-model="form.reseller_profile.logo_url" id="reseller_logo_url"
+                                        class="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+                                    <div v-if="form.errors['reseller_profile.logo_url']" class="mt-1 text-sm text-red-600">{{ form.errors['reseller_profile.logo_url'] }}</div>
+                                </div>
+
+                                <div class="mb-4">
+                                    <label for="reseller_support_email" class="block text-sm font-medium text-gray-700">Email de Soporte</label>
+                                    <input type="email" v-model="form.reseller_profile.support_email" id="reseller_support_email"
+                                        class="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+                                    <div v-if="form.errors['reseller_profile.support_email']" class="mt-1 text-sm text-red-600">{{ form.errors['reseller_profile.support_email'] }}</div>
+                                </div>
+
+                                <div class="mb-4">
+                                    <label for="reseller_terms_url" class="block text-sm font-medium text-gray-700">URL de Términos y Condiciones</label>
+                                    <input type="url" v-model="form.reseller_profile.terms_url" id="reseller_terms_url"
+                                        class="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+                                    <div v-if="form.errors['reseller_profile.terms_url']" class="mt-1 text-sm text-red-600">{{ form.errors['reseller_profile.terms_url'] }}</div>
+                                </div>
+
+                                <div class="block mb-4">
+                                    <label class="flex items-center">
+                                        <Checkbox v-model:checked="form.reseller_profile.allow_custom_products" />
+                                        <span class="ml-2 text-sm text-gray-600">Permitir productos personalizados</span>
+                                    </label>
+                                    <div v-if="form.errors['reseller_profile.allow_custom_products']" class="mt-1 text-sm text-red-600">{{ form.errors['reseller_profile.allow_custom_products'] }}</div>
+                                </div>
                             </div>
 
 

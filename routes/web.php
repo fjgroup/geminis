@@ -8,6 +8,7 @@ use Inertia\Inertia;
 
 use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Admin\AdminProductController;
+use App\Http\Controllers\Reseller\ResellerClientController;
 
 
 // Rutas para la administración
@@ -23,6 +24,19 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'verified', 'admin']
     Route::put('products/{product}/pricing/{pricing}', [AdminProductController::class, 'updatePricing'])->name('products.pricing.update');
     Route::delete('products/{product}/pricing/{pricing}', [AdminProductController::class, 'destroyPricing'])->name('products.pricing.destroy');
 });
+
+// Rutas para el Panel de Revendedor
+Route::middleware(['auth', 'verified', 'role.reseller'])->prefix('reseller-panel')->name('reseller.')->group(function () {
+    // Dashboard del revendedor (ejemplo, necesitarás crear este controlador)
+    // Route::get('/dashboard', [ResellerDashboardController::class, 'index'])->name('dashboard');
+
+    // CRUD de Clientes para el revendedor
+    Route::get('/clients', [ResellerClientController::class, 'index'])->name('clients.index');
+    Route::get('/clients/create', [ResellerClientController::class, 'create'])->name('clients.create');
+    Route::post('/clients', [ResellerClientController::class, 'store'])->name('clients.store');
+    // Aquí añadirías las rutas para edit, update, show, destroy de clientes por el revendedor
+});
+
 
 Route::get('/', function () {
     return Inertia::render('Welcome', [
