@@ -1,9 +1,16 @@
 <script setup>
 import { ref } from 'vue';
 import { Head, Link, router } from '@inertiajs/vue3'; // router es necesario para logout
+import NavLink from '@/Components/NavLink.vue';
+import {
+    HomeIcon,
+    UsersIcon,
+    CubeIcon,
+    CogIcon, // O WrenchScrewdriverIcon si prefieres para "Configurable"
+    // Añade más iconos según necesites
+} from '@heroicons/vue/24/outline';
 import Dropdown from '@/Components/Dropdown.vue';
 import DropdownLink from '@/Components/DropdownLink.vue';
-import NavLink from '@/Components/NavLink.vue';
 import ResponsiveNavLink from '@/Components/ResponsiveNavLink.vue';
 // import ApplicationLogo from '@/Components/ApplicationLogo.vue'; // Descomenta si tienes y quieres usar un logo SVG
 
@@ -34,23 +41,25 @@ const showingNavigationDropdown = ref(false);
                             </div>
 
                             <!-- Navigation Links -->
-                            <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
+                            <div class="hidden space-x-8 sm:-my-px sm:ml-10 sm:flex">
                                 <NavLink :href="route('admin.dashboard')" :active="route().current('admin.dashboard')">
                                     Dashboard
+                                    <HomeIcon class="inline-block w-5 h-5 ml-2" />
                                 </NavLink>
                                 <NavLink :href="route('admin.users.index')" :active="route().current('admin.users.*')">
                                     Usuarios
+                                    <UsersIcon class="inline-block w-5 h-5 ml-2" />
                                 </NavLink>
                                 <NavLink :href="route('admin.products.index')"
                                     :active="route().current('admin.products.*')">
                                     Productos
+                                    <CubeIcon class="inline-block w-5 h-5 ml-2" />
                                 </NavLink>
                                 <NavLink :href="route('admin.configurable-option-groups.index')"
                                     :active="route().current('admin.configurable-option-groups.*')">
                                     Grupos Opciones
+                                    <CogIcon class="inline-block w-5 h-5 ml-2" />
                                 </NavLink>
-
-                                <!-- Agrega más NavLinks para otras secciones del admin aquí -->
                             </div>
                         </div>
 

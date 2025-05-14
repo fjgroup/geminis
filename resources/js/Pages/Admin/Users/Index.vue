@@ -1,7 +1,16 @@
 <script setup>
+import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
-import AdminLayout from '@/Layouts/AdminLayout.vue'; // Asegúrate que la ruta a tu layout es correcta
-import Pagination from '@/Components/Pagination.vue'; // Un componente de paginación reutilizable
+import PrimaryButton from '@/Components/PrimaryButton.vue'; // Asumiendo nueva ruta
+import SecondaryButton from '@/Components/SecondaryButton.vue'; // Asumiendo nueva ruta
+import DangerButton from '@/Components/DangerButton.vue'; // Asumiendo nueva ruta
+import Pagination from '@/Components/Pagination.vue';
+import { ref, computed } from 'vue';
+import ConfirmationModal from '@/Components/ConfirmationModal.vue';
+import Alert from '@/Components/Alert.vue';
+import { usePage } from '@inertiajs/vue3';
+import { PlusIcon, PencilSquareIcon, TrashIcon, EyeIcon } from '@heroicons/vue/24/outline';
+
 
 const props = defineProps({
     users: Object, // El objeto paginado de Laravel
@@ -33,22 +42,24 @@ const deleteUser = (userId) => {
 
         <Head title="Gestionar Usuarios" />
         <template #header>
-            <h2 class="text-xl font-semibold leading-tight text-gray-800">
-                Lista de Usuarios
-            </h2>
+            <div class="flex items-center justify-between">
+                <h2 class="text-xl font-semibold leading-tight text-gray-800">
+                    Lista de Usuarios
+                </h2>
+                <Link :href="route('admin.users.create')">
+                    <PrimaryButton class="flex items-center">
+                        <PlusIcon class="w-5 h-5 mr-2" />
+                        Crear Usuario
+                    </PrimaryButton>
+                </Link>
+            </div>
         </template>
 
         <div class="py-12">
             <div class="mx-auto max-w-7xl sm:px-6 lg:px-8">
                 <div class="overflow-hidden bg-white shadow-sm sm:rounded-lg">
                     <div class="p-6 bg-white border-b border-gray-200">
-                        <div class="flex items-center justify-end mb-4">
-                            <!-- <h1 class="text-2xl font-semibold">Usuarios</h1> -->
-                            <Link :href="route('admin.users.create')"
-                                class="px-4 py-2 font-bold text-white bg-blue-500 rounded hover:bg-blue-700">
-                            Crear Usuario
-                            </Link>
-                        </div>
+                        <!-- El botón de crear usuario se movió al header -->
 
                         <div class="overflow-x-auto">
                             <table class="min-w-full divide-y divide-gray-200">
@@ -65,7 +76,7 @@ const deleteUser = (userId) => {
                                             Rol</th>
                                         <th
                                             class="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
-                                            Estado</th>
+                                            Estado</th> <!-- Corregido: Estado -->
                                         <th
                                             class="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
                                             Creado el</th>
@@ -91,13 +102,13 @@ const deleteUser = (userId) => {
                                             </span>
                                         </td>
                                         <td class="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">
-                                            <span class="inline-flex px-2 text-xs font-semibold leading-5 rounded-full"
+                                            <span class="inline-block w-3 h-3 rounded-full"
                                                 :class="{
-                                                    'bg-green-100 text-green-800': user.status === 'active',
-                                                    'bg-yellow-100 text-yellow-800': user.status === 'inactive',
-                                                    'bg-red-100 text-red-800': user.status === 'suspended',
-                                                }">
-                                                {{ user.status }}
+                                                    'bg-green-500': user.status === 'active',
+                                                    'bg-red-500': user.status === 'inactive',
+                                                    'bg-yellow-500': user.status === 'suspended',
+                                                }"
+                                                :title="user.status">
                                             </span>
                                         </td>
                                         <td class="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">
@@ -105,9 +116,19 @@ const deleteUser = (userId) => {
                                         </td>
                                         <td class="px-6 py-4 text-sm font-medium text-right whitespace-nowrap">
                                             <Link :href="route('admin.users.edit', user.id)"
-                                                class="text-indigo-600 hover:text-indigo-900">Editar</Link>
-                                            <button @click="deleteUser(user.id)"
-                                                class="ml-2 text-red-600 hover:text-red-900">Eliminar</button>
+                                                class="text-indigo-600 hover:text-indigo-900">
+                                            <SecondaryButton class="flex items-center">
+                                                <PencilSquareIcon class="w-4 h-4 mr-1" />
+                                                Editar
+                                            </SecondaryButton>
+                                            </Link>
+                                            <DangerButton @click="deleteUser(user.id)" class="ml-2">
+
+                                                <span class="flex items-center">
+                                                    <TrashIcon class="w-4 h-4 mr-1" />
+                                                    Eliminar
+                                                </span>
+                                            </DangerButton>
                                         </td>
                                     </tr>
                                 </tbody>

@@ -6,7 +6,8 @@ import SelectInput from '@/Components/SelectInput.vue';
 import InputError from '@/Components/InputError.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import { Link } from '@inertiajs/vue3';
-import { computed } from 'vue'; // <-- AÑADIR ESTA LÍNEA
+import { computed } from 'vue';
+import { ArrowDownTrayIcon, XMarkIcon } from '@heroicons/vue/24/outline';
 
 const props = defineProps({
     form: Object, // El objeto useForm de Inertia
@@ -67,10 +68,12 @@ const displayOrderModel = computed({
 
         <div class="flex items-center justify-end mt-6">
             <Link :href="route('admin.configurable-option-groups.index')"
-                class="px-4 py-2 mr-4 text-sm text-gray-600 border border-gray-300 rounded-md hover:text-gray-900 hover:bg-gray-50">
-            Cancelar
+                class="flex items-center px-4 py-2 mr-4 text-sm text-gray-600 border border-gray-300 rounded-md hover:text-gray-900 hover:bg-gray-50">
+                <XMarkIcon class="w-5 h-5 mr-1" />
+                Cancelar
             </Link>
-            <PrimaryButton :class="{ 'opacity-25': form.processing }" :disabled="form.processing">
+            <PrimaryButton :class="{ 'opacity-25': form.processing }" :disabled="form.processing" class="flex items-center">
+                <ArrowDownTrayIcon class="w-5 h-5 mr-2" />
                 {{ isEdit ? 'Actualizar Grupo' : 'Crear Grupo' }}
             </PrimaryButton>
         </div>

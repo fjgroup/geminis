@@ -2,17 +2,23 @@
 import AdminLayout from '@/Layouts/AdminLayout.vue'; // Ajusta tu layout
 import { Head, Link, router } from '@inertiajs/vue3';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
-import SecondaryButton from '@/Components/SecondaryButton.vue'; // Asumiendo que tienes este componente
-import DangerButton from '@/Components/DangerButton.vue';   // Asumiendo que tienes este componente
+import SecondaryButton from '@/Components/SecondaryButton.vue';
+import DangerButton from '@/Components/DangerButton.vue';
 import Pagination from '@/Components/Pagination.vue';
 import { ref, computed } from 'vue'; // Importar computed
-import ConfirmationModal from '@/Components/ConfirmationModal.vue'; // Asumiendo que tienes este componente
+import ConfirmationModal from '@/Components/ConfirmationModal.vue';
 import Alert from '@/Components/Alert.vue'; // Importar el componente Alert
 import { usePage } from '@inertiajs/vue3'; // Importar usePage
 
 const props = defineProps({
     groups: Object, // Objeto de paginación de Inertia
 });
+
+import {
+    PlusIcon,
+    PencilSquareIcon,
+    TrashIcon
+} from '@heroicons/vue/24/outline';
 
 const page = usePage(); // Obtener el objeto page
 const showConfirmDeleteModal = ref(false);
@@ -58,7 +64,10 @@ const closeModal = () => {
                     Grupos de Opciones Configurables
                 </h2>
                 <Link :href="route('admin.configurable-option-groups.create')">
-                <PrimaryButton>Crear Nuevo Grupo</PrimaryButton>
+                <PrimaryButton class="flex items-center">
+                    <PlusIcon class="w-5 h-5 mr-2" />
+                    Crear Nuevo Grupo
+                </PrimaryButton>
                 </Link>
             </div>
         </template>
@@ -66,7 +75,8 @@ const closeModal = () => {
         <div class="py-12">
             <div class="mx-auto max-w-7xl sm:px-6 lg:px-8">
                 <div class="overflow-hidden bg-white shadow-sm sm:rounded-lg">
-                    <div class="p-6 text-gray-900 bg-white border-b border-gray-200 dark:bg-gray-800 dark:text-gray-100 md:p-8">
+                    <div
+                        class="p-6 text-gray-900 bg-white border-b border-gray-200 dark:bg-gray-800 dark:text-gray-100 md:p-8">
                         <Alert :message="flashSuccess" type="success" class="mb-4" />
                         <Alert :message="flashError" type="error" class="mb-4" />
 
@@ -109,10 +119,17 @@ const closeModal = () => {
                                         <td class="px-6 py-4 text-sm font-medium text-right whitespace-nowrap">
                                             <Link :href="route('admin.configurable-option-groups.edit', group.id)"
                                                 class="text-indigo-600 hover:text-indigo-900">
-                                            <SecondaryButton>Editar</SecondaryButton>
+                                            <SecondaryButton class="flex items-center">
+                                                <PencilSquareIcon class="w-4 h-4 mr-1" />
+                                                Editar
+                                            </SecondaryButton>
                                             </Link>
                                             <DangerButton @click="confirmDeleteGroup(group)" class="ml-2">
-                                                Eliminar
+                                                <span class="flex items-center">
+                                                    
+                                                    <TrashIcon class="w-4 h-4 mr-1" />
+                                                    Eliminar
+                                                </span>
                                             </DangerButton>
                                         </td>
                                     </tr>

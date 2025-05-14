@@ -142,7 +142,10 @@ const groupOptions = computed(() => props.group.options || []);
                     <div class="pt-6 mt-8 border-t border-gray-200 dark:border-gray-700">
                         <div class="flex items-center justify-between mb-4">
                             <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Opciones Configurables</h3>
-                            <PrimaryButton @click="openAddOptionModal">Añadir Opción</PrimaryButton>
+                            <PrimaryButton @click="openAddOptionModal" class="flex items-center">
+                                <PlusCircleIcon class="w-5 h-5 mr-2" />
+                                Añadir Opción
+                            </PrimaryButton>
                         </div>
 
                         <div v-if="groupOptions.length === 0" class="py-4 text-center text-gray-500 dark:text-gray-400">
@@ -180,9 +183,16 @@ const groupOptions = computed(() => props.group.options || []);
                                             class="px-6 py-4 text-sm text-gray-500 whitespace-nowrap dark:text-gray-400">
                                             {{ option.display_order }}</td>
                                         <td class="px-6 py-4 text-sm font-medium whitespace-nowrap">
-                                            <SecondaryButton @click="openEditOptionModal(option)" class="mr-2">Editar
+                                            <SecondaryButton @click="openEditOptionModal(option)"
+                                                class="flex items-center mr-2">
+                                                <PencilSquareIcon class="w-4 h-4 mr-1" />
+                                                Editar
                                             </SecondaryButton>
-                                            <DangerButton @click="confirmDeleteOption(option)">Eliminar</DangerButton>
+                                            <DangerButton @click="confirmDeleteOption(option)"
+                                                class="flex items-center">
+                                                <TrashIcon class="w-4 h-4 mr-1" />
+                                                Eliminar
+                                            </DangerButton>
                                         </td>
                                     </tr>
                                 </tbody>

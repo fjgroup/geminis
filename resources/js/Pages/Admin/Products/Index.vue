@@ -1,12 +1,15 @@
 <script setup>
 import AdminLayout from '@/Layouts/AdminLayout.vue';
-
 import { Head, Link, router } from '@inertiajs/vue3';
 import Pagination from '@/Components/Pagination.vue'; //
+import PrimaryButton from '@/Components/PrimaryButton.vue'; // Ruta actualizada para consistencia
+import { PlusIcon, PencilSquareIcon, TrashIcon } from '@heroicons/vue/24/outline'; // Añadido para el icono
+
 
 const props = defineProps({
     products: Object, // El objeto paginado de Laravel con los productos
 });
+
 
 const deleteProduct = (productId, productName) => {
     if (confirm(`¿Estás seguro de que deseas eliminar el producto "${productName}"?`)) {
@@ -38,9 +41,11 @@ const deleteProduct = (productId, productName) => {
                     Gestionar Productos
                 </h2>
 
-                <Link :href="route('admin.products.create')"
-                    class="px-4 py-2 text-white bg-blue-500 rounded hover:bg-blue-700">
-                Crear Producto
+                <Link :href="route('admin.products.create')">
+                <PrimaryButton class="flex items-center">
+                    <PlusIcon class="w-5 h-5 mr-2" />
+                    Crear Producto
+                </PrimaryButton>
                 </Link>
             </div>
         </template>
@@ -108,22 +113,24 @@ const deleteProduct = (productId, productName) => {
                                             product.owner_name || 'N/A' }}</td>
                                         <td
                                             class="px-6 py-4 text-sm text-gray-500 whitespace-nowrap dark:text-gray-400">
-                                            <span class="inline-flex px-2 text-xs font-semibold leading-5 rounded-full"
+                                            <span class="inline-block w-3 h-3 rounded-full"
                                                 :class="{
-                                                    'bg-green-100 text-green-800 dark:bg-green-700 dark:text-green-100': product.status === 'active',
-                                                    'bg-yellow-100 text-yellow-800 dark:bg-yellow-700 dark:text-yellow-100': product.status === 'inactive',
-                                                    'bg-red-100 text-red-800 dark:bg-red-700 dark:text-red-100': product.status === 'hidden',
-                                                }">
-                                                {{ product.status }}
+                                                    'bg-green-500': product.status === 'active',
+                                                    'bg-red-500': product.status === 'inactive',
+                                                    'bg-blue-500': product.status === 'hidden',
+                                                }" :title="product.status">
                                             </span>
                                         </td>
                                         <td class="px-6 py-4 text-sm font-medium text-right whitespace-nowrap">
                                             <!-- <Link :href="route('admin.products.show', product.id)" class="mr-2 text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300">Ver</Link> -->
-                                            <Link :href="route('admin.products.edit', product.id)"
-                                                class="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300">
-                                            Editar</Link>
-                                            <button @click="deleteProduct(product.id, product.name)"
-                                                class="ml-2 text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300">Eliminar</button>
+                                            <Link :href="route('admin.products.edit', product.id)" class="inline-flex items-center px-2 py-1 text-sm font-medium text-indigo-600 rounded-md hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                                <PencilSquareIcon class="w-4 h-4 mr-1" />
+                                                Editar
+                                            </Link>
+                                            <button @click="deleteProduct(product.id, product.name)" class="inline-flex items-center px-2 py-1 ml-2 text-sm font-medium text-red-600 rounded-md hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+                                                <TrashIcon class="w-4 h-4 mr-1" />
+                                                Eliminar
+                                            </button>
                                         </td>
                                     </tr>
                                 </tbody>
