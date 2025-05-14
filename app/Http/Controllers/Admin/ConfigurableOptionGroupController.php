@@ -19,7 +19,7 @@ class ConfigurableOptionGroupController extends Controller
     {
         // TODO: Add authorization check, e.g., $this->authorize('viewAny', ConfigurableOptionGroup::class);
 
-        $groups = ConfigurableOptionGroup::with('product:id,name') // Carga el producto asociado
+        $groups = ConfigurableOptionGroup::with('productOwner:id,name') // Cambiar 'product' a 'productOwner' si esa es la relación
             ->orderBy('display_order')
             ->orderBy('name')
             ->paginate(10)
@@ -27,7 +27,7 @@ class ConfigurableOptionGroupController extends Controller
                 'id' => $group->id,
                 'name' => $group->name,
                 'description' => $group->description,
-                'product_name' => $group->product ? $group->product->name : 'Global',
+                'product_name' => $group->productOwner ? $group->productOwner->name : 'Global', // Usar productOwner
                 'product_id' => $group->product_id,
                 'display_order' => $group->display_order,
             ]);
@@ -79,8 +79,8 @@ class ConfigurableOptionGroupController extends Controller
         // TODO: Add authorization check, e.g., $this->authorize('update', $configurableOptionGroup);
 
         $products = Product::orderBy('name')->get(['id', 'name']);
-        // Cargar producto si existe y también las opciones configurables asociadas
-        $configurableOptionGroup->load(['product:id,name', 'configurableOptions' => function ($query) {
+        // Cargar el producto propietario (si existe) y también las opciones configurables asociadas
+        $configurableOptionGroup->load(['productOwner:id,name', 'configurableOptions' => function ($query) {
             $query->orderBy('display_order')->orderBy('name');
         }]);
 

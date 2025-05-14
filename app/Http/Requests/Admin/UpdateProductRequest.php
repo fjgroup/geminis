@@ -39,6 +39,14 @@ class UpdateProductRequest extends FormRequest
             'status' => ['required', 'string', Rule::in(['active', 'inactive', 'hidden'])],
             'is_publicly_available' => ['required', 'boolean'],
             'is_resellable_by_default' => ['required', 'boolean'],
+
+            // Validación para los grupos de opciones configurables
+            'configurable_option_groups' => ['nullable', 'array'],
+
+            // Validar que cada clave en configurable_option_groups sea un ID de grupo existente
+            'configurable_option_groups.*' => ['sometimes', 'array'], // Cada elemento del array es un objeto/array
+            'configurable_option_groups.*.display_order' => ['required_with:configurable_option_groups.*', 'integer', 'min:0'],
+            
             // 'welcome_email_template_id' => ['nullable', 'integer', 'exists:email_templates,id'], // Si tienes esta tabla
             // 'display_order' => ['nullable', 'integer'],
         ];

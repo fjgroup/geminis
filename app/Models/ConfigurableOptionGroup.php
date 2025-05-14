@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+
 
 class ConfigurableOptionGroup extends Model
 {
@@ -19,11 +21,21 @@ class ConfigurableOptionGroup extends Model
     ];
 
     /**
-     * Get the product that owns the configurable option group.
+     * Get the product that this group is specifically assigned to (if any).
      */
-    public function product(): BelongsTo
+    public function productOwner(): BelongsTo // Nombre de relación más descriptivo
     {
-        return $this->belongsTo(Product::class);
+        return $this->belongsTo(Product::class, 'product_id');
+    }
+
+    /**
+     * The products that belong to the configurable option group.
+     */
+    public function products(): BelongsToMany
+    {
+        return $this->belongsToMany(Product::class, 'product_configurable_option_group')
+            ->withPivot('display_order')
+            ->withTimestamps();
     }
 
     /**
@@ -34,4 +46,3 @@ class ConfigurableOptionGroup extends Model
         return $this->hasMany(ConfigurableOption::class, 'group_id'); // Ajusta 'group_id' si es necesario
     }
 }
-

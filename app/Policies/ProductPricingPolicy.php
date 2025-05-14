@@ -48,7 +48,7 @@ class ProductPricingPolicy
      */
     public function delete(User $user, ProductPricing $productPricing): bool
     {
-        return false;
+        return $user->role === 'admin';
     }
 
     /**
@@ -56,7 +56,7 @@ class ProductPricingPolicy
      */
     public function restore(User $user, ProductPricing $productPricing): bool
     {
-        return false;
+        return $user->role === 'admin';
     }
 
     /**
@@ -64,6 +64,6 @@ class ProductPricingPolicy
      */
     public function forceDelete(User $user, ProductPricing $productPricing): bool
     {
-        return false;
+        return $user->role === 'admin';
     }
 }

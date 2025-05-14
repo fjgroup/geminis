@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+
 
 
 class Product extends Model
@@ -43,11 +45,16 @@ class Product extends Model
          return $this->hasMany(ProductPricing::class); // Cuando se cree ProductPricing
      }
 
-     /**
-     * Get the configurable option groups for the product.
+    /**
+     * The configurable option groups that belong to the product.
      */
-    public function configurableOptionGroups(): HasMany
+    public function configurableOptionGroups(): BelongsToMany
     {
-        return $this->hasMany(ConfigurableOptionGroup::class);
+        return $this->belongsToMany(ConfigurableOptionGroup::class, 'product_configurable_option_group')
+            ->withPivot('display_order')
+            ->withTimestamps();
     }
+
+    // Ejemplo de otras relaciones que podrías tener:
+
 }

@@ -3,17 +3,20 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use Inertia\Inertia;
-use Inertia\Response;
-use App\Models\Product;
 use App\Http\Requests\Admin\StoreProductRequest; // Para el CRUD del producto principal
-use App\Models\User; // Para cargar revendedores si es necesario
 use App\Http\Requests\Admin\UpdateProductRequest; // Para el CRUD del producto principal
 use App\Http\Requests\Admin\StoreProductPricingRequest; // ¡IMPORTANTE! Añadir esta importación
 use App\Http\Requests\Admin\UpdateProductPricingRequest; // ¡IMPORTANTE! Añadir esta importación
+use Inertia\Inertia;
+use Inertia\Response;
+
+use App\Models\Product;
+use App\Models\ProductPricing; // Asegúrate que el namespace y nombre de clase son correctos
+use App\Models\ConfigurableOptionGroup; // Añadir
+use App\Models\User; // Para cargar revendedores si es necesario
+
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Str; // Para el slug
-use App\Models\ProductPricing; // Asegúrate que el namespace y nombre de clase son correctos
 
 class AdminProductController extends Controller
 {
@@ -88,43 +91,72 @@ class AdminProductController extends Controller
     /**
      * Show the form for editing the specified resource.
      */
+    // ... en AdminProductController@edit ...
     public function edit(Product $product): Response
     {
         $this->authorize('update', $product);
-        $resellers = User::where('role', 'reseller')
-            ->select('id', 'name', 'company_name')
-            ->orderBy('name')
-            ->get();
-
-            $product->load('pricings'); // ¡IMPORTANTE! Cargar los precios asociados al producto
-
+        $product->load('pricings', 'configurableOptionGroups');
+    
+        $resellers = User::where('role', 'reseller')->orderBy('name')->get(['id', 'name', 'company_name']);
+        $allOptionGroups = ConfigurableOptionGroup::orderBy('name')->get(['id', 'name']);
+    
+        $allOptionGroupsData = $allOptionGroups->map(fn ($group) => [
+            'id' => $group->id,
+            'name' => $group->name,
+        ])->toArray();
+    
+        // Añade esta línea para depurar:
+        // dd($allOptionGroupsData, $allOptionGroups->count());
+    
         return Inertia::render('Admin/Products/Edit', [
-            'product' => $product,
-            'resellers' => $resellers,
+            'product' => $product->toArray() + [
+                'pricings' => $product->pricings ? $product->pricings->toArray() : [],
+                'associated_option_groups' => $product->configurableOptionGroups->mapWithKeys(function ($group) {
+                    return [$group->id => ['display_order' => $group->pivot->display_order ?? 0]];
+                })->toArray(),
+            ],
+            'resellers' => $resellers->map(fn ($reseller) => [
+                'id' => $reseller->id,
+                'label' => $reseller->name . ($reseller->company_name ? " ({$reseller->company_name})" : "")
+            ])->toArray(),
+            'all_option_groups' => $allOptionGroupsData, // Usar la variable depurada
         ]);
     }
+    
 
     /**
      * Update the specified resource in storage.
      */
     public function update(UpdateProductRequest $request, Product $product): RedirectResponse
-{
+    {
         // La autorización y validación son manejadas por UpdateProductRequest
         $validatedData = $request->validated();
-        $updatePayload = $validatedData;
+        // Excluir configurable_option_groups de $validatedData para el update del producto principal
+        $productData = collect($validatedData)->except('configurable_option_groups')->toArray();
 
         // Si el nombre cambia, actualiza el slug
         // Si el slug fue enviado explícitamente y es diferente al generado por el nuevo nombre,
         // se podría dar prioridad al slug enviado (si esa es la lógica deseada y el form lo permite).
         // Por ahora, si el nombre cambia, el slug se regenera basado en el nuevo nombre.
-        if (isset($validatedData['name']) && $validatedData['name'] !== $product->name) {
-            $updatePayload['slug'] = Str::slug($validatedData['name']);
+        if (isset($productData['name']) && $productData['name'] !== $product->name) {
+            $productData['slug'] = Str::slug($productData['name']);
         }
-        elseif (isset($validatedData['name']) && !isset($updatePayload['slug'])) { // Si el slug no vino del form pero el nombre sí
-            $updatePayload['slug'] = Str::slug($validatedData['name']);
+        elseif (isset($productData['name']) && empty($productData['slug'])) { // Si el slug no vino del form o vino vacío pero el nombre sí
+            $productData['slug'] = Str::slug($productData['name']);
         }
 
-        $product->update($updatePayload);
+        $product->update($productData);
+
+        // Sincronizar grupos de opciones configurables
+        if ($request->has('configurable_option_groups')) {
+            $groupsToSync = [];
+            foreach ($request->input('configurable_option_groups', []) as $groupId => $pivotData) {
+                $groupsToSync[$groupId] = ['display_order' => isset($pivotData['display_order']) ? (int)$pivotData['display_order'] : 0];
+            }
+            $product->configurableOptionGroups()->sync($groupsToSync);
+        } else {
+            $product->configurableOptionGroups()->detach(); // Si no se envía nada, desasociar todos
+        }
         return redirect()->route('admin.products.index')->with('success', 'Producto actualizado exitosamente.');
     }
 
