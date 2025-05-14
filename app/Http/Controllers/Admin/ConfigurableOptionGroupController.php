@@ -79,7 +79,10 @@ class ConfigurableOptionGroupController extends Controller
         // TODO: Add authorization check, e.g., $this->authorize('update', $configurableOptionGroup);
 
         $products = Product::orderBy('name')->get(['id', 'name']);
-        $configurableOptionGroup->load('product:id,name'); // Cargar producto si existe
+        // Cargar producto si existe y también las opciones configurables asociadas
+        $configurableOptionGroup->load(['product:id,name', 'configurableOptions' => function ($query) {
+            $query->orderBy('display_order')->orderBy('name');
+        }]);
 
         return Inertia::render('Admin/ConfigurableOptionGroups/Edit', [
             'group' => [
@@ -88,8 +91,17 @@ class ConfigurableOptionGroupController extends Controller
                 'description' => $configurableOptionGroup->description,
                 'product_id' => $configurableOptionGroup->product_id,
                 'display_order' => $configurableOptionGroup->display_order,
+                // Mapear las opciones para pasarlas a la vista
+                'options' => $configurableOptionGroup->configurableOptions->map(fn ($option) => [
+                    'id' => $option->id,
+                    'name' => $option->name,
+                    'value' => $option->value,
+                    'display_order' => $option->display_order,
+                    'group_id' => $option->group_id, // Incluir el group_id
+                ])->all(), // Asegúrate de usar ->all() o ->toArray() si es una colección
             ],
             'products' => $products,
+            // 'errors' => session('errors') ? session('errors')->getBag('default')->getMessages() : (object) [], // Para pasar errores de validación de opciones
         ]);
     }
 

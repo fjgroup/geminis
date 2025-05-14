@@ -23,6 +23,7 @@ class ConfigurableOption extends Model
     /**
      * Get the group that owns the configurable option.
      */
+
     public function group(): BelongsTo
     {
         return $this->belongsTo(ConfigurableOptionGroup::class, 'group_id');

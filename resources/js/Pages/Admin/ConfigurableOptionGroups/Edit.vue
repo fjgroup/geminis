@@ -1,6 +1,6 @@
 <script setup>
 import AdminLayout from '@/Layouts/AdminLayout.vue'; // Ajusta tu layout
-import { Head, useForm, router, Link } from '@inertiajs/vue3';
+import { Head, useForm, router, Link, usePage } from '@inertiajs/vue3'; //
 import ConfigurableOptionGroupForm from './_Form.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
@@ -18,8 +18,14 @@ const props = defineProps({
     errors: Object, // Para errores de validación de las opciones
 });
 
-const form = useForm({
+const page = usePage(); // Obtener el objeto page
+// Para manejar los mensajes flash de forma segura
+const flashSuccess = computed(() => page.props.flash?.success);
+const flashError = computed(() => page.props.flash?.error);
 
+
+const form = useForm({
+    _method: 'PUT', // This is correct
     name: props.group.name,
     description: props.group.description || '',
     product_id: props.group.product_id || null,
@@ -27,7 +33,7 @@ const form = useForm({
 });
 
 const submit = () => {
-    form.post(route('admin.configurable-option-groups.update', props.group.id));
+    form.put(route('admin.configurable-option-groups.update', props.group.id)); // Change from form.post to form.put
 };
 
 // --- Lógica para Configurable Options ---
@@ -84,6 +90,11 @@ const deleteOption = () => {
     }
 };
 
+const closeModal = () => { // Añadir esta función
+    showConfirmDeleteOptionModal.value = false;
+    optionToDelete.value = null;
+};
+
 const openEditOptionModal = (option) => {
     optionToEdit.value = option;
     editOptionForm.id = option.id;
@@ -121,10 +132,9 @@ const groupOptions = computed(() => props.group.options || []);
         <div class="py-12">
             <div class="mx-auto max-w-7xl sm:px-6 lg:px-8">
                 <div class="p-6 overflow-hidden bg-white shadow-xl dark:bg-gray-800 sm:rounded-lg">
-                    <Alert :message="$page.props.flash.success" type="success" v-if="$page.props.flash.success"
-                        class="mb-4" />
-                    <Alert :message="$page.props.flash.error" type="error" v-if="$page.props.flash.error"
-                        class="mb-4" />
+                    <Alert :message="flashSuccess" type="success" class="mb-4" />
+                    <Alert :message="flashError" type="error" class="mb-4" />
+
 
                     <ConfigurableOptionGroupForm :form="form" :products="products" :isEdit="true" @submit="submit" />
 

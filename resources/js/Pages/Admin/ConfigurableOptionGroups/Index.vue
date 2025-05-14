@@ -4,16 +4,24 @@ import { Head, Link, router } from '@inertiajs/vue3';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue'; // Asumiendo que tienes este componente
 import DangerButton from '@/Components/DangerButton.vue';   // Asumiendo que tienes este componente
-import Pagination from '@/Components/Pagination.vue'; // Asumiendo que tienes este componente
-import { ref } from 'vue';
+import Pagination from '@/Components/Pagination.vue';
+import { ref, computed } from 'vue'; // Importar computed
 import ConfirmationModal from '@/Components/ConfirmationModal.vue'; // Asumiendo que tienes este componente
+import Alert from '@/Components/Alert.vue'; // Importar el componente Alert
+import { usePage } from '@inertiajs/vue3'; // Importar usePage
 
 const props = defineProps({
     groups: Object, // Objeto de paginación de Inertia
 });
 
+const page = usePage(); // Obtener el objeto page
 const showConfirmDeleteModal = ref(false);
 const groupToDelete = ref(null);
+
+// Para manejar los mensajes flash de forma segura
+const flashSuccess = computed(() => page.props.flash?.success);
+const flashError = computed(() => page.props.flash?.error);
+
 
 const confirmDeleteGroup = (group) => {
     groupToDelete.value = group;
@@ -46,7 +54,7 @@ const closeModal = () => {
         <Head title="Gestionar Grupos de Opciones Configurables" />
         <template #header>
             <div class="flex items-center justify-between">
-                <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+                <h2 class="text-xl font-semibold leading-tight text-gray-800">
                     Grupos de Opciones Configurables
                 </h2>
                 <Link :href="route('admin.configurable-option-groups.create')">
@@ -56,13 +64,11 @@ const closeModal = () => {
         </template>
 
         <div class="py-12">
-            <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                    <div class="p-6 bg-white border-b border-gray-200 md:p-8">
-                        <div v-if="$page.props.flash.success"
-                            class="p-4 mb-4 text-sm text-green-700 bg-green-100 rounded-lg" role="alert">
-                            {{ $page.props.flash.success }}
-                        </div>
+            <div class="mx-auto max-w-7xl sm:px-6 lg:px-8">
+                <div class="overflow-hidden bg-white shadow-sm sm:rounded-lg">
+                    <div class="p-6 text-gray-900 bg-white border-b border-gray-200 dark:bg-gray-800 dark:text-gray-100 md:p-8">
+                        <Alert :message="flashSuccess" type="success" class="mb-4" />
+                        <Alert :message="flashError" type="error" class="mb-4" />
 
                         <div class="overflow-x-auto">
                             <table class="min-w-full divide-y divide-gray-200">
