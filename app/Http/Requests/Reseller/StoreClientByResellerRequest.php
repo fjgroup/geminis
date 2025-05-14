@@ -15,7 +15,7 @@ class StoreClientByResellerRequest extends FormRequest
     public function authorize(): bool
     {
         // Asegurarse de que el usuario autenticado sea un revendedor
-        return Auth::check() && auth::user()->role === 'reseller';
+        return Auth::check() && Auth::user()->role === 'reseller';
     }
 
     /**

@@ -42,4 +42,12 @@ class Product extends Model
      {
          return $this->hasMany(ProductPricing::class); // Cuando se cree ProductPricing
      }
+
+     /**
+     * Get the configurable option groups for the product.
+     */
+    public function configurableOptionGroups(): HasMany
+    {
+        return $this->hasMany(ConfigurableOptionGroup::class);
+    }
 }
