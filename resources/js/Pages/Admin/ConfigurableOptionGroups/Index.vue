@@ -9,16 +9,13 @@ import { ref, computed } from 'vue'; // Importar computed
 import ConfirmationModal from '@/Components/ConfirmationModal.vue';
 import Alert from '@/Components/Alert.vue'; // Importar el componente Alert
 import { usePage } from '@inertiajs/vue3'; // Importar usePage
+import { PlusIcon, PencilSquareIcon, TrashIcon } from '@heroicons/vue/24/outline';
+
 
 const props = defineProps({
     groups: Object, // Objeto de paginación de Inertia
 });
 
-import {
-    PlusIcon,
-    PencilSquareIcon,
-    TrashIcon
-} from '@heroicons/vue/24/outline';
 
 const page = usePage(); // Obtener el objeto page
 const showConfirmDeleteModal = ref(false);
@@ -126,7 +123,7 @@ const closeModal = () => {
                                             </Link>
                                             <DangerButton @click="confirmDeleteGroup(group)" class="ml-2">
                                                 <span class="flex items-center">
-                                                    
+
                                                     <TrashIcon class="w-4 h-4 mr-1" />
                                                     Eliminar
                                                 </span>

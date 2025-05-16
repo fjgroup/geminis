@@ -11,6 +11,7 @@ import InputError from '@/Components/InputError.vue';
 import ConfirmationModal from '@/Components/ConfirmationModal.vue';
 import Alert from '@/Components/Alert.vue';
 import { ref, computed } from 'vue';
+import { PlusCircleIcon, PencilSquareIcon, TrashIcon } from '@heroicons/vue/24/outline'; // Asegúrate de tener estos iconos instalados
 
 const props = defineProps({
     group: Object,
