@@ -10,6 +10,7 @@ use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Admin\ConfigurableOptionGroupController;
 use App\Http\Controllers\Reseller\ResellerClientController;
 use App\Http\Controllers\Admin\ConfigurableOptionController;
+use App\Http\Controllers\Admin\ClientServiceController; // Añadir esta línea
 use App\Http\Controllers\ProfileController;
 
 
@@ -23,14 +24,18 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'verified', 'admin']
 
     Route::resource('products', AdminProductController::class);
 
-Route::resource('configurable-option-groups', ConfigurableOptionGroupController::class)->except(['show']); // Show no se usa
+    Route::resource('configurable-option-groups', ConfigurableOptionGroupController::class)->except(['show']); // Show no se usa
     // Rutas anidadas para las opciones dentro de un grupo
-Route::resource('configurable-option-groups.options', ConfigurableOptionController::class)->shallow()->except(['index', 'show', 'create', 'edit']);
+    Route::resource('configurable-option-groups.options', ConfigurableOptionController::class)->shallow()->except(['index', 'show', 'create', 'edit']);
+
+    // Rutas para Client Services
+    Route::resource('client-services', ClientServiceController::class);
 
     Route::post('products/{product}/pricing', [AdminProductController::class, 'storePricing'])->name('products.pricing.store');
     Route::put('products/{product}/pricing/{pricing}', [AdminProductController::class, 'updatePricing'])->name('products.pricing.update');
     Route::delete('products/{product}/pricing/{pricing}', [AdminProductController::class, 'destroyPricing'])->name('products.pricing.destroy');
 });
+
 
 // Rutas para el Panel de Revendedor
 Route::middleware(['auth', 'verified', 'role.reseller'])->prefix('reseller-panel')->name('reseller.')->group(function () {

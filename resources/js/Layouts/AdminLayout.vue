@@ -7,6 +7,7 @@ import {
     UsersIcon,
     CubeIcon,
     CogIcon, // O WrenchScrewdriverIcon si prefieres para "Configurable"
+    BriefcaseIcon, // Para Client Services
     // Añade más iconos según necesites
 } from '@heroicons/vue/24/outline';
 import Dropdown from '@/Components/Dropdown.vue';
@@ -59,6 +60,11 @@ const showingNavigationDropdown = ref(false);
                                     :active="route().current('admin.configurable-option-groups.*')">
                                     Grupos Opciones
                                     <CogIcon class="inline-block w-5 h-5 ml-2" />
+                                </NavLink>
+                                <NavLink :href="route('admin.client-services.index')"
+                                    :active="route().current('admin.client-services.*')">
+                                    Servicios Clientes
+                                    <BriefcaseIcon class="inline-block w-5 h-5 ml-2" />
                                 </NavLink>
                             </div>
                         </div>
@@ -129,6 +135,10 @@ const showingNavigationDropdown = ref(false);
                         <ResponsiveNavLink :href="route('admin.products.index')"
                             :active="route().current('admin.products.*')">
                             Productos
+                        </ResponsiveNavLink>
+                        <ResponsiveNavLink :href="route('admin.client-services.index')"
+                            :active="route().current('admin.client-services.*')">
+                            Servicios Clientes
                         </ResponsiveNavLink>
                     </div>
 

@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('product_configurable_option_group', function (Blueprint $table) {
+        Schema::create('product_configurable_option_groups', function (Blueprint $table) {
             $table->id();
             // Constraint para product_id
             $table->foreignId('product_id')
@@ -32,6 +32,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('product_configurable_option_group');
+        Schema::dropIfExists('product_configurable_option_groups');
     }
 };

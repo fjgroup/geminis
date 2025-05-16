@@ -157,9 +157,9 @@ class UserController extends Controller
                 ['user_id' => $user->id],
                 $profileData
             );
-        } elseif ($user->role !== 'reseller' && $user->resellerProfile) {
-            // Opcional: Si el rol cambia de reseller a otro, eliminar el perfil.
-            // $user->resellerProfile->delete();
+        } elseif ($validatedData['role'] !== 'reseller' && $user->resellerProfile) {
+            // Si el rol cambia de reseller a otro y existe un perfil, eliminarlo.
+            $user->resellerProfile->delete();
         }
 
         return redirect()->route('admin.users.index')->with('success', 'User updated successfully.');

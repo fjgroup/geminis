@@ -1269,13 +1269,13 @@ const logout = () => {
     <!-- <Banner /> -->
     {/* Si usas Jetstream Banner */}
 
-    <div class="min-h-screen bg-gray-100 flex">
+    <div class="flex min-h-screen bg-gray-100">
       <!-- Sidebar -->
-      <aside class="w-64 bg-gray-800 text-white p-6 space-y-6 hidden md:block">
+      <aside class="hidden w-64 p-6 space-y-6 text-white bg-gray-800 md:block">
         <div class="text-2xl font-semibold text-center">
           <Link :href="route('admin.users.index')">
             {/* O a un dashboard de admin */} Admin Panel {/*
-            <ApplicationMark class="block h-9 w-auto" /> Si tienes un logo */}
+            <ApplicationMark class="block w-auto h-9" /> Si tienes un logo */}
           </Link>
         </div>
 
@@ -1308,27 +1308,27 @@ const logout = () => {
       </aside>
 
       <!-- Main content -->
-      <div class="flex-1 flex flex-col overflow-hidden">
+      <div class="flex flex-col flex-1 overflow-hidden">
         <header class="bg-white shadow">
           <div
-            class="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8 flex justify-between items-center"
+            class="flex items-center justify-between px-4 py-4 mx-auto max-w-7xl sm:px-6 lg:px-8"
           >
             <h2
               v-if="$slots.header"
-              class="font-semibold text-xl text-gray-800 leading-tight"
+              class="text-xl font-semibold leading-tight text-gray-800"
             >
               <slot name="header" />
             </h2>
             <div
               v-else
-              class="font-semibold text-xl text-gray-800 leading-tight"
+              class="text-xl font-semibold leading-tight text-gray-800"
             >
               {{ title }}
             </div>
 
             <!-- Settings Dropdown (adaptado de AuthenticatedLayout de Breeze/Jetstream) -->
             <div class="hidden sm:flex sm:items-center sm:ml-6">
-              <div class="ml-3 relative">
+              <div class="relative ml-3">
                 <!-- <Dropdown align="right" width="48"> -->
                 {/* Si usas el componente Dropdown */}
                 <button
@@ -1337,7 +1337,7 @@ const logout = () => {
                     $page.props.auth.user
                   "
                   type="button"
-                  class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-500 bg-white hover:text-gray-700 focus:outline-none focus:bg-gray-50 active:bg-gray-50 transition ease-in-out duration-150"
+                  class="inline-flex items-center px-3 py-2 text-sm font-medium leading-4 text-gray-500 transition duration-150 ease-in-out bg-white border border-transparent rounded-md hover:text-gray-700 focus:outline-none focus:bg-gray-50 active:bg-gray-50"
                 >
                   {{ $page.props.auth.user?.name }}
 
@@ -1372,7 +1372,7 @@ Manage Account
 -->
                 <button
                   @click="logout"
-                  class="ml-4 inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-500 bg-white hover:text-gray-700 focus:outline-none focus:bg-gray-50 active:bg-gray-50 transition ease-in-out duration-150"
+                  class="inline-flex items-center px-3 py-2 ml-4 text-sm font-medium leading-4 text-gray-500 transition duration-150 ease-in-out bg-white border border-transparent rounded-md hover:text-gray-700 focus:outline-none focus:bg-gray-50 active:bg-gray-50"
                 >
                   Log Out (Placeholder)
                 </button>
@@ -1382,7 +1382,7 @@ Manage Account
         </header>
 
         <!-- Page Content -->
-        <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-200 p-6">
+        <main class="flex-1 p-6 overflow-x-hidden overflow-y-auto bg-gray-200">
           <slot />
         </main>
       </div>
@@ -1421,7 +1421,7 @@ defineProps({
     Index.vue va aquí, dentro del slot por defecto de AdminLayout */}
     <div class="py-0">
       {/* Ajustar padding si el layout ya lo maneja */}
-      <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+      <div class="mx-auto max-w-7xl sm:px-6 lg:px-8">
         {/* ... (resto del contenido de la tabla de usuarios, etc.) ... */} {/*
         Asegúrate de que el botón "Create User" y la tabla estén dentro de este
         div o del slot del layout */}
@@ -1642,25 +1642,25 @@ import { Head } from "@inertiajs/vue3";
     <Head title="Admin Dashboard" />
 
     <template #header>
-      <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+      <h2 class="text-xl font-semibold leading-tight text-gray-800">
         Admin Dashboard
       </h2>
     </template>
 
     <div class="py-12">
-      <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-        <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+      <div class="mx-auto max-w-7xl sm:px-6 lg:px-8">
+        <div class="overflow-hidden bg-white shadow-sm sm:rounded-lg">
           <div class="p-6 text-gray-900">Welcome to the Admin Dashboard!</div>
         </div>
 
         <!-- Ejemplo de cómo mostrar estadísticas si las pasas desde el controlador -->
         <!--
-<div class="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-<div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
+<div class="grid grid-cols-1 gap-6 mt-6 md:grid-cols-2 lg:grid-cols-3">
+<div class="p-6 overflow-hidden bg-white shadow-sm sm:rounded-lg">
 <h3 class="text-lg font-medium text-gray-900">Total Users</h3>
 <p class="mt-1 text-3xl font-semibold text-indigo-600">{{ userCount }}</p>
 </div>
-<div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
+<div class="p-6 overflow-hidden bg-white shadow-sm sm:rounded-lg">
 <h3 class="text-lg font-medium text-gray-900">Active Services</h3>
 <p class="mt-1 text-3xl font-semibold text-indigo-600">{{ activeServicesCount }}</p>
 </div>
@@ -1678,12 +1678,12 @@ Actualizar el enlace principal del "Admin Panel" en `resources/js/Layouts/AdminL
 --- a/resources/js/Layouts/AdminLayout.vue
 b/resources/js/Layouts/AdminLayout.vue
 <!-- Sidebar -->
-<aside class="w-64 bg-gray-800 text-white p-6 space-y-6 hidden md:block">
+<aside class="hidden w-64 p-6 space-y-6 text-white bg-gray-800 md:block">
 <div class="text-2xl font-semibold text-center">
 -                        <Link :href="route('admin.users.index')"> {/* O a un dashboard de admin */}
 <Link :href="route('admin.dashboard')">
 Admin Panel
-{/* <ApplicationMark class="block h-9 w-auto" />  Si tienes un logo */}
+{/* <ApplicationMark class="block w-auto h-9" />  Si tienes un logo */}
 </Link>
 
 <nav class="mt-10">
@@ -1994,13 +1994,13 @@ const props = defineProps({
     <Head :title="'View User - ' + user.name" />
 
     <template #header>
-      <div class="flex justify-between items-center">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+      <div class="flex items-center justify-between">
+        <h2 class="text-xl font-semibold leading-tight text-gray-800">
           User Details: {{ user.name }}
         </h2>
         <Link
           :href="route('admin.users.edit', user.id)"
-          class="px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600"
+          class="px-4 py-2 text-white bg-yellow-500 rounded hover:bg-yellow-600"
         >
           Edit User
         </Link>
@@ -2009,8 +2009,8 @@ const props = defineProps({
 
     <div class="py-12">
       <div class="max-w-3xl mx-auto sm:px-6 lg:px-8">
-        <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-          <div class="p-6 md:p-8 bg-white border-b border-gray-200 space-y-6">
+        <div class="overflow-hidden bg-white shadow-sm sm:rounded-lg">
+          <div class="p-6 space-y-6 bg-white border-b border-gray-200 md:p-8">
             <div>
               <h3 class="text-lg font-medium text-gray-900">
                 User Information
@@ -2033,7 +2033,7 @@ const props = defineProps({
                 <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4">
                   <dt class="text-sm font-medium text-gray-500">Role</dt>
                   <dd
-                    class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2 capitalize"
+                    class="mt-1 text-sm text-gray-900 capitalize sm:mt-0 sm:col-span-2"
                   >
                     {{ user.role }}
                   </dd>
@@ -2041,7 +2041,7 @@ const props = defineProps({
                 <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4">
                   <dt class="text-sm font-medium text-gray-500">Status</dt>
                   <dd
-                    class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2 capitalize"
+                    class="mt-1 text-sm text-gray-900 capitalize sm:mt-0 sm:col-span-2"
                   >
                     {{ user.status }}
                   </dd>
@@ -2127,10 +2127,10 @@ const props = defineProps({
               </dl>
             </div>
 
-            <div class="mt-6 flex justify-end">
+            <div class="flex justify-end mt-6">
               <Link
                 :href="route('admin.users.index')"
-                class="text-sm text-gray-600 hover:text-gray-900 px-4 py-2 rounded-md border border-gray-300 hover:bg-gray-50"
+                class="px-4 py-2 text-sm text-gray-600 border border-gray-300 rounded-md hover:text-gray-900 hover:bg-gray-50"
               >
                 Back to Users List
               </Link>
@@ -2148,12 +2148,12 @@ En `resources/js/Pages/Admin/Users/Index.vue`, añadir un enlace "View" para cad
 ```diff
 --- a/resources/js/Pages/Admin/Users/Index.vue
 b/resources/js/Pages/Admin/Users/Index.vue
-<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ user.role }}</td>
-<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ user.status }}</td>
-<td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
--                        <Link :href="route('admin.users.edit', user.id)" class="text-indigo-600 hover:text-indigo-900 mr-3">Edit</Link>
-<Link :href="route('admin.users.show', user.id)" class="text-blue-600 hover:text-blue-900 mr-3">View</Link>
-<Link :href="route('admin.users.edit', user.id)" class="text-indigo-600 hover:text-indigo-900 mr-3">Edit</Link>
+<td class="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">{{ user.role }}</td>
+<td class="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">{{ user.status }}</td>
+<td class="px-6 py-4 text-sm font-medium text-right whitespace-nowrap">
+-                        <Link :href="route('admin.users.edit', user.id)" class="mr-3 text-indigo-600 hover:text-indigo-900">Edit</Link>
+<Link :href="route('admin.users.show', user.id)" class="mr-3 text-blue-600 hover:text-blue-900">View</Link>
+<Link :href="route('admin.users.edit', user.id)" class="mr-3 text-indigo-600 hover:text-indigo-900">Edit</Link>
 <!-- Botón de eliminar vendrá después -->
 <button @click="deleteUser(user.id, user.name)" class="text-red-600 hover:text-red-900">Delete</button>
 </td>
@@ -2392,13 +2392,13 @@ defineProps({
     <Head title="Manage Products" />
 
     <template #header>
-      <div class="flex justify-between items-center">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+      <div class="flex items-center justify-between">
+        <h2 class="text-xl font-semibold leading-tight text-gray-800">
           Manage Products
         </h2>
         <Link
           :href="route('admin.products.create')"
-          class="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+          class="px-4 py-2 text-white bg-green-500 rounded hover:bg-green-600"
         >
           Create Product
         </Link>
@@ -2406,8 +2406,8 @@ defineProps({
     </template>
 
     <div class="py-12">
-      <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-        <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+      <div class="mx-auto max-w-7xl sm:px-6 lg:px-8">
+        <div class="overflow-hidden bg-white shadow-sm sm:rounded-lg">
           <div class="p-6 bg-white border-b border-gray-200">
             <!-- TODO: Añadir tabla para listar productos -->
             <p>Product listing table will go here.</p>
@@ -3061,7 +3061,7 @@ Modificar el método `up()` de la migración según `Geminis_Estructura.md`.
 Schema::create('configurable_option_pricing', function (Blueprint $table) {
 $table->id();
 $table->foreignId('configurable_option_id')->constrained('configurable_options')->onDelete('cascade');
-$table->foreignId('product_pricing_id')->constrained('product_pricing')->onDelete('cascade'); // Vincula al ciclo de facturación del producto base
+$table->foreignId('product_pricing_id')->constrained('product_pricings')->onDelete('cascade'); // Vincula al ciclo de facturación del producto base
 $table->decimal('price', 10, 2); // Precio adicional de la opción para el ciclo vinculado
 $table->decimal('setup_fee', 10, 2)->default(0.00);
 $table->timestamps();
@@ -3137,59 +3137,6 @@ Ejecutar la migración: `php artisan migrate`.
 
 ¡Modelos y Migraciones Base para Opciones Configurables y sus Precios Implementados!\*\*
 La siguiente tarea se centrará en construir las interfaces de administración (CRUDs) para estos nuevos modelos y en cómo se asignan los grupos de opciones a los productos.
-
-````
-
----
-
-Ahora, sobre tu pregunta: **"Como cuantas tareas son necesarias para culminar este proyecto?"**
-
-Es una pregunta difícil de responder con exactitud porque depende de muchos factores: la complejidad detallada de cada módulo que aún no hemos explorado a fondo, tu velocidad de desarrollo, y si surgen nuevos requisitos o cambios.
-
-Sin embargo, basándonos en la estructura que hemos definido en `Geminis_Estructura.md` y `Geminis_Leeme.md`, y asumiendo que cada "Tarea" como las que hemos estado manejando cubre una porción significativa de funcionalidad (como un CRUD completo para una o dos entidades relacionadas, o la implementación de una característica principal), podemos hacer una estimación gruesa.
-
-Módulos/Características Principales Pendientes (a muy alto nivel):**
-
-1.  **Perfiles de Revendedor y Opciones Configurables (Tareas 07-08):** Estamos en ello.
-2.  **CRUD completo para Grupos de Opciones y Opciones individuales:** Incluyendo la asignación a productos y la gestión de sus precios. (Podría ser parte de Tarea 08-09)
-3.  **Servicios de Cliente (`client_services`):** CRUD, estados, vinculación con productos y opciones. (Tarea 09-10)
-4.  **Órdenes (`orders`, `order_items`):** Proceso de creación, listado, detalles. (Tarea 11-12)
-5.  **Facturas (`invoices`, `invoice_items`):** Generación, listado, detalles, PDF. (Tarea 13-14)
-6.  **Transacciones (`transactions`):** Registro de pagos. (Tarea 15)
-7.  **Sistema de Soporte (`support_departments`, `support_tickets`, `support_ticket_replies`, `support_ticket_attachments`):** Esto es un módulo grande. (Podría tomar 2-3 Tareas, ej. Tarea 16-18)
-8.  **Dominios (`domains`):** CRUD básico. (Tarea 19)
-9.  **Servidores (`servers`, `server_groups`):** CRUD básico. (Tarea 20)
-10. **Promociones (`promotions`):** CRUD básico. (Tarea 21)
-11. **Plantillas de Correo (`email_templates`):** CRUD básico. (Tarea 22)
-12. **Logs de Actividad y Configuración (`activity_logs`, `settings`):** Implementación básica. (Tarea 23)
-13. **Panel de Revendedor:** Dashboard, gestión de sus clientes, servicios, etc. Esto reutilizará mucha lógica pero necesita sus propias vistas y controladores. (Podría tomar 3-4 Tareas, ej. Tarea 24-27)
-14. **Panel de Cliente:** Dashboard, gestión de sus servicios, facturas, etc. (Podría tomar 2-3 Tareas, ej. Tarea 28-30)
-15. **Módulos de Aprovisionamiento (Platzhalter):** Estructura básica para la integración futura. (Tarea 31)
-16. **Refinamientos, Pruebas, Seguridad Avanzada, UX/UI:** Continuo, pero podría haber tareas dedicadas.
-
-Estimación Gruesa:**
-
-Si cada uno de estos bloques principales toma entre 1 y 3 "Tareas" como las que hemos estado manejando, podríamos estar hablando de unas **15 a 25 tareas adicionales** después de la Tarea 08 para tener una primera versión funcional completa con las características principales.
-
-Esto nos llevaría a un total aproximado de **23 a 33 tareas en total para el proyecto.**
-
-Es importante recordar:**
-
-Esto es una **estimación**. La realidad del desarrollo puede variar.
-Algunas tareas podrían ser más rápidas y otras más lentas.
-A medida que avanzamos, podemos refinar esta estimación.
-No incluye fases extensas de pruebas exhaustivas, despliegue complejo o mantenimiento post-lanzamiento.
-
-Mi recomendación es que sigamos enfocándonos tarea por tarea. Cada tarea completada es un gran avance. ¡Y ya hemos hecho un progreso excelente!
-
-¿Qué te parece esta perspectiva? ¿Listo para sumergirte en la Tarea 07 y luego la 08?
-
-
-# Geminis - Plan de Tareas Detallado - Parte 09
-
-Este documento continúa el plan de tareas para el sistema Geminis, enfocándose en la gestión administrativa (CRUD) de los Grupos de Opciones Configurables y las Opciones Configurables individuales, así como su asignación a productos.
-
-
 
 ### 4.11. CRUD para `ConfigurableOptionGroup` (Admin)
 Contexto:** Los administradores necesitan gestionar los grupos de opciones configurables (ej. "Sistema Operativo", "Ubicación del Servidor").
@@ -3356,7 +3303,7 @@ $table->foreignId('client_id')->constrained('users')->comment('FK a users.id del
 $table->foreignId('reseller_id')->nullable()->constrained('users')->comment('FK a users.id del revendedor, si aplica');
 $table->foreignId('order_id')->nullable()->constrained('orders')->comment('FK a la orden que originó este servicio');
 $table->foreignId('product_id')->constrained('products');
-$table->foreignId('product_pricing_id')->constrained('product_pricing')->comment('Ciclo de facturación elegido');
+$table->foreignId('product_pricing_id')->constrained('product_pricings')->comment('Ciclo de facturación elegido');
 $table->string('domain_name')->nullable()->index();
 $table->string('username')->nullable();
 $table->text('password_encrypted')->nullable(); // Considerar encriptación real
@@ -3588,7 +3535,7 @@ Schema::create('order_items', function (Blueprint $table) {
 $table->id();
 $table->foreignId('order_id')->constrained('orders')->onDelete('cascade');
 $table->foreignId('product_id')->constrained('products');
-$table->foreignId('product_pricing_id')->constrained('product_pricing'); // Ciclo de facturación elegido
+$table->foreignId('product_pricing_id')->constrained('product_pricings'); // Ciclo de facturación elegido
 $table->enum('item_type', ['product', 'addon', 'domain_registration', 'domain_renewal', 'domain_transfer', 'configurable_option'])->index();
 $table->string('description'); // Ej: "Web Hosting - Plan Básico (Mensual)"
 $table->integer('quantity')->default(1);

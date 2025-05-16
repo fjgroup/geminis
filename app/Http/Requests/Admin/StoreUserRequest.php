@@ -1,6 +1,7 @@
 <?php
 
 namespace App\Http\Requests\Admin;
+use App\Models\User; // Asegúrate de importar el modelo User
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rules;
@@ -13,7 +14,8 @@ class StoreUserRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return true; // Cambiar según la lógica de autorización si es necesario
+        // Verificar si el usuario autenticado puede crear nuevos usuarios
+        return $this->user()->can('create', User::class);
     }
 
     /**

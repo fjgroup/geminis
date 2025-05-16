@@ -156,7 +156,7 @@ Este es el corazón del sistema. La clave para la funcionalidad de revendedores 
 | `created_at`                | `TIMESTAMP DEFAULT CURRENT_TIMESTAMP`                                                                         | Fecha y hora de creación del registro.                                                                                                  |
 | `updated_at`                | `TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`                                             | Fecha y hora de la última actualización del registro.                                                                                   |
 
-**Tabla: `product_pricing`**
+**Tabla: `product_pricings`**
 **Propósito:** Define los diferentes ciclos de facturación y precios para cada producto.
 
 | Campo           | Tipo                                                                                                       | Descripción                                                     |
@@ -199,7 +199,7 @@ _Constraint: Índice único en (`product_id`, `billing_cycle`, `currency_code`)_
 | `created_at`    | `TIMESTAMP DEFAULT CURRENT_TIMESTAMP`                             | Fecha y hora de creación del registro.                             |
 | `updated_at`    | `TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP` | Fecha y hora de la última actualización del registro.              |
 
-**Tabla: `configurable_option_pricing`**
+**Tabla: `configurable_option_pricings`**
 **Propósito:** Define los precios para cada opción configurable, vinculados a un ciclo de facturación del producto base.
 
 | Campo                    | Tipo                                                              | Descripción                                                                            |

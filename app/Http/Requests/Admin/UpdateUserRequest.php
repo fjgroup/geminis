@@ -14,7 +14,9 @@ class UpdateUserRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return true;
+        // Obtener el usuario que se está intentando actualizar desde la ruta
+        $userToUpdate = $this->route('user');
+        return $this->user()->can('update', $userToUpdate);
     }
 
     /**
@@ -53,15 +55,18 @@ class UpdateUserRequest extends FormRequest
 
         // Reglas para ResellerProfile (aplicables si role es 'reseller')
         // (Asegúrate que esto ya esté en tu UpdateUserRequest.php como lo tenías)
-        if ($this->input('role') === 'reseller' || ($this->route('user') && $this->user->role === 'reseller')) { // $this->user es el modelo User
-            $resellerProfileId = $this->user->resellerProfile->id ?? null;
+        if ($this->input('role') === 'reseller') {
+            $userBeingUpdated = $this->route('user');
+            $resellerProfileIdToIgnore = $userBeingUpdated->resellerProfile?->id;
 
             $rules['reseller_profile.brand_name'] = ['nullable', 'string', 'max:255'];
             $rules['reseller_profile.custom_domain'] = [
                 'nullable',
                 'string',
                 'max:255',
-                Rule::unique('reseller_profiles', 'custom_domain')->ignore($resellerProfileId)
+                Rule::unique('reseller_profiles', 'custom_domain')->when($resellerProfileIdToIgnore, function ($rule) use ($resellerProfileIdToIgnore) {
+                    return $rule->ignore($resellerProfileIdToIgnore);
+                })
             ];
             $rules['reseller_profile.logo_url'] = ['nullable', 'url', 'max:255'];
             $rules['reseller_profile.support_email'] = ['nullable', 'email', 'max:255'];

@@ -65,6 +65,28 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
+     * The "booted" method of the model.
+     */
+    protected static function booted(): void
+    {
+        static::deleting(function (User $user) {
+            // Si el usuario tiene un perfil de revendedor, eliminarlo también.
+            // Esto funcionará tanto para soft deletes como para hard deletes del User,
+            // asumiendo que ResellerProfile no usa SoftDeletes.
+            // Si ResellerProfile usara SoftDeletes, $user->resellerProfile()->delete() lo haría soft delete.
+            if ($user->resellerProfile) {
+                $user->resellerProfile->delete(); // Hard delete para ResellerProfile
+            }
+
+            // Opcional: Si un revendedor es eliminado, ¿qué pasa con sus clientes?
+            // Podrías desasociarlos o reasignarlos. Ejemplo:
+         if ($user->role === 'reseller') {
+                 $user->clients()->update(['reseller_id' => null]); // Desasociar clientes
+             }
+        });
+    }
+
+    /**
      * Get the clients for the reseller.
      * (A user with role 'reseller' can have many client users)
      *
