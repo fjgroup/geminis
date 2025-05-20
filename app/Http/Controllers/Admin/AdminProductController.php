@@ -96,18 +96,20 @@ class AdminProductController extends Controller
     {
         $this->authorize('update', $product);
         $product->load('pricings', 'configurableOptionGroups');
-    
+
         $resellers = User::where('role', 'reseller')->orderBy('name')->get(['id', 'name', 'company_name']);
-        $allOptionGroups = ConfigurableOptionGroup::orderBy('name')->get(['id', 'name']);
-    
+        // Incluir product_id para saber si un grupo es global o específico de un producto
+        $allOptionGroups = ConfigurableOptionGroup::orderBy('name')->get(['id', 'name', 'product_id']);
+
         $allOptionGroupsData = $allOptionGroups->map(fn ($group) => [
             'id' => $group->id,
             'name' => $group->name,
+            'owner_product_id' => $group->product_id, // Este es el product_id de la tabla configurable_option_groups
         ])->toArray();
-    
+
         // Añade esta línea para depurar:
         // dd($allOptionGroupsData, $allOptionGroups->count());
-    
+
         return Inertia::render('Admin/Products/Edit', [
             'product' => $product->toArray() + [
                 'pricings' => $product->pricings ? $product->pricings->toArray() : [],
@@ -122,13 +124,15 @@ class AdminProductController extends Controller
             'all_option_groups' => $allOptionGroupsData, // Usar la variable depurada
         ]);
     }
-    
+
 
     /**
      * Update the specified resource in storage.
      */
     public function update(UpdateProductRequest $request, Product $product): RedirectResponse
     {
+        // dd($request->all()); // Descomenta esta línea para ver todo lo que llega
+
         // La autorización y validación son manejadas por UpdateProductRequest
         $validatedData = $request->validated();
         // Excluir configurable_option_groups de $validatedData para el update del producto principal
@@ -149,10 +153,16 @@ class AdminProductController extends Controller
 
         // Sincronizar grupos de opciones configurables
         if ($request->has('configurable_option_groups')) {
+            // DEBUG: Ver qué datos llegan para los grupos
+             dd($request->input('configurable_option_groups'));
+
             $groupsToSync = [];
             foreach ($request->input('configurable_option_groups', []) as $groupId => $pivotData) {
                 $groupsToSync[$groupId] = ['display_order' => isset($pivotData['display_order']) ? (int)$pivotData['display_order'] : 0];
             }
+            // DEBUG: Ver qué datos se van a sincronizar
+            // dd($groupsToSync);
+
             $product->configurableOptionGroups()->sync($groupsToSync);
         } else {
             $product->configurableOptionGroups()->detach(); // Si no se envía nada, desasociar todos

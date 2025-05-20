@@ -61,7 +61,7 @@ const displayOrderModel = computed({
         </div>
 
         <div class="mt-4">
-            <InputLabel for="display_order" value="Orden de Visualización" />
+            <InputLabel for="display_order" value="Prioridad" />
             <TextInput id="display_order" type="number" class="block w-full mt-1" v-model="displayOrderModel" />
             <InputError class="mt-2" :message="form.errors.display_order" />
         </div>

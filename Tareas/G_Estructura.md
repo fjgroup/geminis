@@ -174,7 +174,7 @@ Este es el corazón del sistema. La clave para la funcionalidad de revendedores 
 _Constraint: Índice único en (`product_id`, `billing_cycle`, `currency_code`)_
 
 **Tabla: `configurable_option_groups`**
-**Propósito:** Agrupa opciones configurables para los productos (Ej: "Sistema Operativo", "Ubicación del Servidor").
+**Propósito:** Crear los grupos u opciones generales para los productos (Ej: "Sistema Operativo", "Panel de Control").
 
 | Campo           | Tipo                                                              | Descripción                                                                               |
 | --------------- | ----------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
@@ -187,7 +187,7 @@ _Constraint: Índice único en (`product_id`, `billing_cycle`, `currency_code`)_
 | `updated_at`    | `TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP` | Fecha y hora de la última actualización del registro.                                     |
 
 **Tabla: `configurable_options`**
-**Propósito:** Define las opciones individuales dentro de un grupo configurable (Ej: "CentOS", "Ubuntu", "Dallas").
+**Propósito:** Define las opciones individuales dentro de un grupo configurable (Ej: "Ubuntu 22.04", "Windows Server 2022", "cPanel", "Plesk").
 
 | Campo           | Tipo                                                              | Descripción                                                        |
 | --------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------ |

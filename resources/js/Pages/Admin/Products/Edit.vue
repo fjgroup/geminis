@@ -1,7 +1,13 @@
 <script setup>
+// Mueve los console.log aquí, después de definir props, para que tengan acceso a ellas.
+// Es mejor loguear las props directamente después de que el componente las recibe.
+// El console.log original estaba antes de la definición de `props`, por lo que no funcionaría.
+
+
+
 import AdminLayout from "@/Layouts/AdminLayout.vue";
 import { Head, Link, useForm, router } from "@inertiajs/vue3";
-import { ref } from "vue";
+import { ref, computed } from "vue"; // Se importa computed desde 'vue'
 import {
     ArrowDownTrayIcon, // Para guardar/actualizar
     XMarkIcon,         // Para cancelar
@@ -9,7 +15,7 @@ import {
     PencilSquareIcon,
     TrashIcon,
     ListBulletIcon,    // Para listas o grupos
-    CurrencyDollarIcon // Para precios
+    CurrencyDollarIcon, // Para precios
 } from '@heroicons/vue/24/outline';
 
 const props = defineProps({
@@ -18,7 +24,8 @@ const props = defineProps({
     all_option_groups: Array, // Todos los grupos de opciones disponibles
 });
 
-console.log("All Option Groups Prop:", props.all_option_groups);
+// Los console.log de depuración se han eliminado
+
 
 const form = useForm({
     _method: "PUT",
@@ -90,6 +97,8 @@ const currencyOptions = [
 ];
 
 const submitProductForm = () => {
+    console.log('Datos del formulario que se intentan enviar:', JSON.parse(JSON.stringify(form.data())));
+    console.log('Detalle de configurable_option_groups a enviar:', JSON.parse(JSON.stringify(form.configurable_option_groups)));
     form.put(route("admin.products.update", props.product.id));
 };
 
@@ -154,6 +163,21 @@ const toggleGroupSelection = (groupId) => {
         form.configurable_option_groups[groupId] = { display_order: 0 }; // Default order
     }
 };
+
+// Propiedad computada para filtrar los grupos de opciones
+const filteredOptionGroups = computed(() => {
+    if (!props.all_option_groups) return [];
+    return props.all_option_groups.filter(group => {
+        // El grupo ya está asociado a este producto
+        const isAssociated = !!form.configurable_option_groups[group.id];
+        // El grupo es global (no tiene un owner_product_id)
+        const isGlobal = group.owner_product_id === null;
+        // El grupo es específico de ESTE producto
+        const isSpecificToThisProduct = group.owner_product_id === props.product.id;
+
+        return isAssociated || isGlobal || isSpecificToThisProduct;
+    });
+});
 </script>
 
 <template>
@@ -393,13 +417,13 @@ const toggleGroupSelection = (groupId) => {
                         Grupos de Opciones Configurables Asociados
                     </h3>
                     <div v-if="
-                            !all_option_groups || all_option_groups.length === 0
+                            !filteredOptionGroups || filteredOptionGroups.length === 0
                         " class="text-sm text-gray-500 dark:text-gray-400">
                         No hay grupos de opciones configurables definidos en el
-                        sistema.
+                        sistema o aplicables a este producto.
                     </div>
                     <div v-else class="space-y-3">
-                        <div v-for="group_opt in all_option_groups" :key="group_opt.id"
+                        <div v-for="group_opt in filteredOptionGroups" :key="group_opt.id"
                             class="flex items-center justify-between p-3 border rounded-md dark:border-gray-600">
                             <label :for="'group-' + group_opt.id" class="flex items-center cursor-pointer">
                                 <input type="checkbox" :id="'group-' + group_opt.id"
@@ -410,7 +434,7 @@ const toggleGroupSelection = (groupId) => {
                             </label>
                             <div v-if="isGroupSelected(group_opt.id)" class="flex items-center">
                                 <label :for="'group-order-' + group_opt.id"
-                                    class="mr-2 text-sm text-gray-500 dark:text-gray-400">Orden:</label>
+                                    class="mr-2 text-sm text-gray-500 dark:text-gray-400">Prioridad:</label>
                                 <input type="number" v-model.number="
                                         form.configurable_option_groups[
                                             group_opt.id

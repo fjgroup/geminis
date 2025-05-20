@@ -30,10 +30,14 @@ class Product extends Model
       //  'welcome_email_template_id',
     ];
 
-    // protected $casts = [
-    //     'is_publicly_available' => 'boolean',
-    //     'is_resellable_by_default' => 'boolean',
-    // ];
+     protected $casts = [
+         'is_publicly_available' => 'boolean',
+         'is_resellable_by_default' => 'boolean',
+        // 'status' => 'boolean',
+        // ... otros castings que ya tengas, por ejemplo:
+        // 'created_at' => 'datetime',
+        // 'updated_at' => 'datetime',
+    ];
 
     public function owner(): BelongsTo
     {
@@ -51,5 +55,7 @@ class Product extends Model
     {
         return $this->hasMany(ProductPricing::class);
     }
+
+    
     // Otros métodos y relaciones del modelo Product...
 }

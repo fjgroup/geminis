@@ -12,6 +12,7 @@ use App\Http\Controllers\Reseller\ResellerClientController;
 use App\Http\Controllers\Admin\ConfigurableOptionController;
 use App\Http\Controllers\Admin\ClientServiceController; // Añadir esta línea
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\Admin\SearchController;
 
 
 
@@ -30,6 +31,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'verified', 'admin']
 
     // Rutas para Client Services
     Route::resource('client-services', ClientServiceController::class);
+
+    Route::get('/products/{product}/pricings', [SearchController::class, 'getProductPricings'])->name('products.search.pricings');
 
     Route::post('products/{product}/pricing', [AdminProductController::class, 'storePricing'])->name('products.pricing.store');
     Route::put('products/{product}/pricing/{pricing}', [AdminProductController::class, 'updatePricing'])->name('products.pricing.update');

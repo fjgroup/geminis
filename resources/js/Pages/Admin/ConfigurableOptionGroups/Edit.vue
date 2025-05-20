@@ -162,7 +162,7 @@ const groupOptions = computed(() => props.group.options || []);
                                             Nombre</th>
                                         <th scope="col"
                                             class="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase dark:text-gray-300">
-                                            Valor</th>
+                                            Versión/Año (opcional)</th>
                                         <th scope="col"
                                             class="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase dark:text-gray-300">
                                             Orden</th>
@@ -216,13 +216,13 @@ const groupOptions = computed(() => props.group.options || []);
                         <InputError class="mt-2" :message="newOptionForm.errors.name || errors?.name" />
                     </div>
                     <div class="mb-4">
-                        <InputLabel for="new_option_value" value="Valor (Opcional)" />
+                        <InputLabel for="new_option_value" value="Versión/Año (opcional)" />
                         <TextInput id="new_option_value" type="text" class="block w-full mt-1"
                             v-model="newOptionForm.value" />
                         <InputError class="mt-2" :message="newOptionForm.errors.value || errors?.value" />
                     </div>
                     <div>
-                        <InputLabel for="new_option_display_order" value="Orden de Visualización" />
+                        <InputLabel for="new_option_display_order" value="Prioridad" />
                         <TextInput id="new_option_display_order" type="number" class="block w-full mt-1"
                             v-model="newOptionForm.display_order" />
                         <InputError class="mt-2"
@@ -251,13 +251,13 @@ const groupOptions = computed(() => props.group.options || []);
                         <InputError class="mt-2" :message="editOptionForm.errors.name || errors?.name" />
                     </div>
                     <div class="mb-4">
-                        <InputLabel for="edit_option_value" value="Valor (Opcional)" />
+                        <InputLabel for="edit_option_value" value="Versión/Año (opcional)" />
                         <TextInput id="edit_option_value" type="text" class="block w-full mt-1"
                             v-model="editOptionForm.value" />
                         <InputError class="mt-2" :message="editOptionForm.errors.value || errors?.value" />
                     </div>
                     <div>
-                        <InputLabel for="edit_option_display_order" value="Orden de Visualización" />
+                        <InputLabel for="edit_option_display_order" value="Prioridad" />
                         <TextInput id="edit_option_display_order" type="number" class="block w-full mt-1"
                             v-model="editOptionForm.display_order" />
                         <InputError class="mt-2"
