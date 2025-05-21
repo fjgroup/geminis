@@ -23,29 +23,103 @@ const props = defineProps({
 
 const emit = defineEmits(['submit']);
 
-const productPricingOptions = ref([]);
+const availablePricings = ref([]); // Almacenará los objetos de precio completos
 const isLoadingPricings = ref(false);
+
+// Computed para formatear los precios disponibles para el SelectInput
+const productPricingOptions = computed(() => {
+    return availablePricings.value.map(pricing => ({
+        value: pricing.id,
+        label: `${pricing.billing_cycle} (${parseFloat(pricing.price).toFixed(2)})` // Formato de etiqueta deseado, ajustando a 2 decimales
+    }));
+});
 
 // Observar cambios en form.product_id para cargar los precios
 watch(() => props.form.product_id, async (newProductId) => {
     props.form.product_pricing_id = null; // Resetear el pricing seleccionado
-    productPricingOptions.value = [];
+    availablePricings.value = []; // Resetear los precios disponibles
 
     if (newProductId) {
         isLoadingPricings.value = true;
         try {
-            const response = await fetch(route('admin.products.search.pricings', { product: newProductId }));
-            if (!response.ok) throw new Error('Network response was not ok for pricings');
+            // Usar la nueva ruta API
+            const response = await fetch(route('admin.products.getPricings', { product: newProductId }));
+            if (!response.ok) {
+                 // Limpiar precios y mostrar error si la respuesta no es OK (ej. 404 si no hay precios)
+                 availablePricings.value = [];
+                 throw new Error(`HTTP error! status: ${response.status}`);
+            }
             const data = await response.json();
-            productPricingOptions.value = data; // data debe ser [{ value: id, label: '...' }, ...]
+            availablePricings.value = data; // data debe ser el array de objetos de precio completos
         } catch (error) {
             console.error("Error fetching product pricings:", error);
             // Considerar mostrar un error al usuario
+            availablePricings.value = []; // Asegurarse de que la lista esté vacía en caso de error
         } finally {
             isLoadingPricings.value = false;
         }
     }
 }, { immediate: props.isEdit && props.form.product_id }); // immediate: true para cargar precios si es edición y ya hay un producto
+
+// Función para calcular la próxima fecha de vencimiento (copiada de Create.vue)
+function calculateNextDueDate(registrationDate, billingCycle) {
+    if (!registrationDate || !billingCycle) {
+        return '';
+    }
+
+    // Ajustar la fecha de registro para evitar problemas de zona horaria si es medianoche
+    const date = new Date(registrationDate);
+    // Clonar la fecha para evitar modificar la original
+    let nextDate = new Date(date.getTime());
+
+    switch (billingCycle) {
+        case 'monthly':
+            nextDate.setMonth(nextDate.getMonth() + 1);
+            break;
+        case 'quarterly':
+            nextDate.setMonth(nextDate.getMonth() + 3);
+            break;
+        case 'semiannually':
+            nextDate.setMonth(nextDate.getMonth() + 6);
+            break;
+        case 'annually':
+            nextDate.setFullYear(nextDate.getFullYear() + 1);
+            break;
+        default:
+            // Ciclo desconocido
+            console.warn(`Unknown billing cycle: ${billingCycle}`);
+            return '';
+    }
+
+    // Formato YYYY-MM-DD
+    const year = nextDate.getFullYear();
+    const month = String(nextDate.getMonth() + 1).padStart(2, '0');
+    const day = String(nextDate.getDate()).padStart(2, '0');
+
+    return `${year}-${month}-${day}`;
+}
+
+// Observar cambios en form.product_pricing_id para actualizar monto y fecha
+watch(() => props.form.product_pricing_id, (newPricingId) => {
+    if (newPricingId) {
+        const selectedPricing = availablePricings.value.find(p => p.id === parseInt(newPricingId));
+        if (selectedPricing) {
+            // Actualizar monto (asegurando formato de dos decimales)
+            props.form.billing_amount = parseFloat(selectedPricing.price).toFixed(2);
+
+            // Actualizar próxima fecha de vencimiento
+            props.form.next_due_date = calculateNextDueDate(props.form.registration_date, selectedPricing.billing_cycle);
+        } else {
+            // Si no se encuentra el pricing (podría pasar si availablePricings no se ha cargado aún o hay un problema)
+             props.form.billing_amount = '0.00';
+             props.form.next_due_date = '';
+        }
+    } else {
+        // Si se borra la selección, resetear monto y fecha
+        props.form.billing_amount = '0.00';
+        props.form.next_due_date = '';
+    }
+}, { immediate: true }); // Ejecutar inmediatamente si product_pricing_id ya tiene valor (en edición)
 
 const submitForm = () => {
     emit('submit');

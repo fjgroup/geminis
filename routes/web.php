@@ -23,21 +23,26 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'verified', 'admin']
 
     Route::resource('users', AdminUserController::class);
 
-    Route::resource('products', AdminProductController::class);
-
     Route::resource('configurable-option-groups', ConfigurableOptionGroupController::class)->except(['show']); // Show no se usa
+
     // Rutas anidadas para las opciones dentro de un grupo
     Route::resource('configurable-option-groups.options', ConfigurableOptionController::class)->shallow()->except(['index', 'show', 'create', 'edit']);
 
     // Rutas para Client Services
     Route::resource('client-services', ClientServiceController::class);
 
-    Route::get('/products/{product}/pricings', [SearchController::class, 'getProductPricings'])->name('products.search.pricings');
+    Route::resource('products', AdminProductController::class);
 
+    // Route::get('/products/{product}/pricings', [SearchController::class, 'getProductPricings'])->name('products.search.pricings');
     Route::post('products/{product}/pricing', [AdminProductController::class, 'storePricing'])->name('products.pricing.store');
+
     Route::put('products/{product}/pricing/{pricing}', [AdminProductController::class, 'updatePricing'])->name('products.pricing.update');
+
     Route::delete('products/{product}/pricing/{pricing}', [AdminProductController::class, 'destroyPricing'])->name('products.pricing.destroy');
+    
+    Route::get('/products/{product}/pricings', [ClientServiceController::class, 'getProductPricings'])->name('products.getPricings');
 });
+
 
 
 // Rutas para el Panel de Revendedor

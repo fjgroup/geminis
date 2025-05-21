@@ -112,7 +112,8 @@ class AdminProductController extends Controller
 
         return Inertia::render('Admin/Products/Edit', [
             'product' => $product->toArray() + [
-                'pricings' => $product->pricings ? $product->pricings->toArray() : [],
+                // pricings ya está en $product->toArray() si la relación está cargada
+                // 'pricings' => $product->pricings ? $product->pricings->toArray() : [],
                 'associated_option_groups' => $product->configurableOptionGroups->mapWithKeys(function ($group) {
                     return [$group->id => ['display_order' => $group->pivot->display_order ?? 0]];
                 })->toArray(),
@@ -153,15 +154,13 @@ class AdminProductController extends Controller
 
         // Sincronizar grupos de opciones configurables
         if ($request->has('configurable_option_groups')) {
-            // DEBUG: Ver qué datos llegan para los grupos
-             dd($request->input('configurable_option_groups'));
+
 
             $groupsToSync = [];
             foreach ($request->input('configurable_option_groups', []) as $groupId => $pivotData) {
                 $groupsToSync[$groupId] = ['display_order' => isset($pivotData['display_order']) ? (int)$pivotData['display_order'] : 0];
             }
-            // DEBUG: Ver qué datos se van a sincronizar
-            // dd($groupsToSync);
+
 
             $product->configurableOptionGroups()->sync($groupsToSync);
         } else {

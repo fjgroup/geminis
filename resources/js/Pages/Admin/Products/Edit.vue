@@ -98,7 +98,28 @@ const currencyOptions = [
 
 const submitProductForm = () => {
     console.log('Datos del formulario que se intentan enviar:', JSON.parse(JSON.stringify(form.data())));
-    console.log('Detalle de configurable_option_groups a enviar:', JSON.parse(JSON.stringify(form.configurable_option_groups)));
+    console.log('Detalle de configurable_option_groups a enviar (Antes de formatear):', JSON.parse(JSON.stringify(form.configurable_option_groups)));
+
+    // Reconstruir configurable_option_groups para asegurar el formato de objeto plano antes de enviar
+    const formattedOptionGroups = {};
+    for (const groupId in form.configurable_option_groups) {
+        if (Object.hasOwnProperty.call(form.configurable_option_groups, groupId)) {
+            const groupData = form.configurable_option_groups[groupId];
+            // Asegurarse de que groupData es un objeto válido con display_order
+            if (groupData !== null && typeof groupData === 'object' && groupData.hasOwnProperty('display_order')) {
+                // Convertir la clave groupId a string explícitamente si es numérico y asegurarse de que display_order es numérico
+                 formattedOptionGroups[String(groupId)] = { display_order: Number(groupData.display_order) };
+            } else {
+                 console.warn(`Unexpected data format for group ID ${groupId}:`, groupData);
+            }
+        }
+    }
+
+    // Reemplazar el objeto original en el formulario con el objeto formateado
+    form.configurable_option_groups = formattedOptionGroups;
+
+    console.log('Detalle de configurable_option_groups a enviar (Después de formatear):', JSON.parse(JSON.stringify(form.configurable_option_groups)));
+
     form.put(route("admin.products.update", props.product.id));
 };
 
