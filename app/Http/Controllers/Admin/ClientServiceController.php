@@ -69,7 +69,7 @@ class ClientServiceController extends Controller
         // TODO: Implementar autorización, ej: $this->authorize('create', ClientService::class);
 
         $clients = User::where('role', 'client')->orderBy('name')->get(['id', 'name']);
-        $products = Product::with('pricings')->where('status', 'active')->orderBy('name')->get(['id', 'name']); // Solo productos activos, con sus precios
+        $products = Product::with(['pricings.billingCycle'])->where('status', 'active')->orderBy('name')->get(['id', 'name']); // Solo productos activos, con sus precios, cargando pricings y su billingCycle
         // Nota: Los ProductPricings se cargarán dinámicamente en el formulario o se pasarán todos
         // y se filtrarán en el frontend, o se pasarán asociados al producto seleccionado.
         // Por simplicidad inicial, podríamos pasar todos los activos.
@@ -78,11 +78,11 @@ class ClientServiceController extends Controller
         $resellers = User::where('role', 'reseller')->orderBy('name')->get(['id', 'name']);
         // $servers = \App\Models\Server::orderBy('name')->get(['id', 'name']); // Cuando exista el modelo Server
 
-        $billingCycles = \App\Models\BillingCycle::all(); // Obtener todos los BillingCycle
+        $billingCycles = BillingCycle::all(); // Obtener todos los BillingCycle
 
         return Inertia::render('Admin/ClientServices/Create', [
             'clients' => $clients->map(fn($user) => ['value' => $user->id, 'label' => $user->name]),
-            'products' => $products->map(fn($product) => ['value' => $product->id, 'label' => $product->name]),
+            'products' => $products->map(fn($product) => ['id' => $product->id, 'name' => $product->name, 'pricings' => $product->pricings]),
             // 'productPricings' => $productPricings, // Considerar cómo manejar esto
             'resellers' => $resellers->map(fn($user) => ['value' => $user->id, 'label' => $user->name]),
             // 'servers' => $servers->map(fn($server) => ['value' => $server->id, 'label' => $server->name]),
@@ -139,7 +139,7 @@ class ClientServiceController extends Controller
 
         $clientService->load(['productPricing', 'product.pricings', 'billingCycle']); // Cargar billingCycle
 
-        $billingCycles = \App\Models\BillingCycle::all(); // Obtener todos los BillingCycle
+        $billingCycles = BillingCycle::all(); // Obtener todos los BillingCycle
 
         return Inertia::render('Admin/ClientServices/Edit', [
             'clientService' => $clientService,

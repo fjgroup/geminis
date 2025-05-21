@@ -1,7 +1,7 @@
 <script setup>
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { Head, useForm } from '@inertiajs/vue3';
-import { watch } from 'vue';
+import { watch, computed } from 'vue';
 import ClientServiceForm from './_Form.vue'; // Importar el componente de formulario
 
 const props = defineProps({
@@ -30,6 +30,18 @@ const form = useForm({
     notes: props.clientService.notes || '',
     // Añade aquí cualquier otro campo que esté en tu _Form.vue y modelo ClientService
     // termination_date: props.clientService.termination_date_formatted, // Si lo tienes en el form
+});
+
+// Propiedad computada para mapear products a la estructura esperada por _Form.vue
+const formattedProducts = computed(() => {
+    if (!props.products) {
+        return [];
+    }
+    return props.products.map(product => ({
+        value: product.id,
+        label: product.name,
+        pricings: product.pricings,
+    }));
 });
 
 // Observar cambios en product_pricing_id de props y actualizar form si es necesario
@@ -66,7 +78,7 @@ const submit = () => {
                 <div class="p-6 overflow-hidden bg-white shadow-xl dark:bg-gray-800 sm:rounded-lg md:p-8">
                     <ClientServiceForm
                         :form="form"
-                        :products="props.products"
+                        :products="formattedProducts"
                         :statusOptions="props.statusOptions"
                         :isEdit="true"
                         @submit="submit"

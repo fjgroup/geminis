@@ -144,11 +144,8 @@ const openEditPricingModal = (pricingId) => {
     pricingForm.id = pricing.id;
 
 
-    // Usar toRaw() y notación de corchetes para acceder de forma segura al billing_cycle_id
-    const rawPricing = toRaw(pricing);
-    const billingCycle = rawPricing["billing_cycle"];
-    const billingCycleId = billingCycle ? billingCycle.id : null;
-    pricingForm.billing_cycle_id = billingCycleId; // Establecer el billing_cycle_id en el formulario
+    // Acceder directamente al ID de la relación de ciclo de facturación cargada
+    pricingForm.billing_cycle_id = pricing.billing_cycle ? pricing.billing_cycle.id : null;
 
 
 
@@ -172,6 +169,10 @@ const submitPricingForm = () => {
         onSuccess: () => {
             showPricingModal.value = false;
             pricingForm.reset();
+        },
+        onError: (errors) => {
+            console.error("Error en el formulario de precios:", errors);
+            // Aquí podrías también mostrar los errores al usuario de forma más visible si es necesario.
         },
     });
 };

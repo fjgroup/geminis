@@ -11,8 +11,7 @@ import { ArrowDownTrayIcon, XMarkIcon } from '@heroicons/vue/24/outline';
 
 const props = defineProps({
     form: Object, // El objeto useForm de Inertia
-    products: Array, // [{ value: id, label: name }, ...]
-    billingCycles: Array, // [{ id: id, name: name, ... }, ...]
+    products: Array, // [{ id: id, name: name, pricings: [{ id: id, billing_cycle_id: id, price: price, billing_cycle: { id: id, name: name } }, ...] }, ...]
     statusOptions: Array, // [{ value: 'status_val', label: 'Status Label' }, ...]
     // clients: Array, // Para selectores con búsqueda asíncrona, no se pasarían todos
     // resellers: Array, // Para selectores con búsqueda asíncrona, no se pasarían todos
@@ -26,62 +25,46 @@ const props = defineProps({
 
 const emit = defineEmits(['submit']);
 
-const emit = defineEmits(['submit']);
+// Computed para obtener el producto seleccionado
+const selectedProduct = computed(() => {
+    return props.products?.find(product => product.value === parseInt(props.form.product_id));
+});
 
-// Computed para formatear los ciclos de facturación disponibles para el SelectInput
+// Computed para formatear los ciclos de facturación disponibles basados en el producto seleccionado
 const billingCycleOptions = computed(() => {
-    // Asume que billingCycles es un array de objetos { id: ..., name: ... }
-    return props.billingCycles.map(cycle => ({
-        value: cycle.id,
-        label: cycle.name // Usar el nombre del ciclo como etiqueta
-    }));
+    // Obtener los pricings del producto seleccionado
+    const productPricings = selectedProduct.value?.pricings || [];
+
+    // Mapear los pricings a opciones de ciclo de facturación, evitando duplicados por ciclo
+    const cyclesMap = new Map();
+    productPricings.forEach(pricing => {
+        if (pricing.billing_cycle) {
+            cyclesMap.set(pricing.billing_cycle.id, {
+                value: pricing.billing_cycle.id,
+                label: pricing.billing_cycle.name,
+                pricing_id: pricing.id, // Guardar el ID del pricing también
+                price: pricing.price,   // Guardar el precio también
+            });
+        }
+    });
+
+    return Array.from(cyclesMap.values());
 });
 
 // Función para calcular la próxima fecha de vencimiento
-function calculateNextDueDate(registrationDate, billingCycleName) {
-    if (!registrationDate || !billingCycleName) {
+function calculateNextDueDate(registrationDate, numberOfDays) {
+    if (!registrationDate || typeof numberOfDays !== 'number' || numberOfDays < 0) {
         return '';
     }
 
     const date = new Date(registrationDate);
-    let nextDate = new Date(date.getTime());
+    // Clonar la fecha para no modificar la original
+    const nextDate = new Date(date);
 
-    // Normalizar el nombre del ciclo para manejar variaciones
-    const normalizedBillingCycle = billingCycleName.toLowerCase().replace(/[-\s]/g, '_');
+    // Sumar los días al timestamp
+    nextDate.setDate(nextDate.getDate() + numberOfDays);
 
-    switch (normalizedBillingCycle) {
-        case 'monthly':
-        case 'mensual': // Añadir caso para nombre en español si aplica
-            nextDate.setMonth(nextDate.getMonth() + 1);
-            break;
-        case 'quarterly':
-        case 'trimestral': // Añadir caso para nombre en español si aplica
-            nextDate.setMonth(nextDate.getMonth() + 3);
-            break;
-        case 'semiannually':
-        case 'semi_annually':
-        case 'semestral':
-            nextDate.setMonth(nextDate.getMonth() + 6);
-            break;
-        case 'annually':
-        case 'anual':
-            nextDate.setFullYear(nextDate.getFullYear() + 1);
-            break;
-        case 'biennially':
-        case 'bienal':
-            nextDate.setFullYear(nextDate.getFullYear() + 2);
-            break;
-        case 'triennially':
-        case 'trienal':
-            nextDate.setFullYear(nextDate.getFullYear() + 3);
-            break;
-        case 'one_time':
-        case 'pago_unico':
-            return registrationDate; // Retorna la fecha original
-        default:
-            return '';
-    }
-
+    // Formatear la fecha en YYYY-MM-DD
     const year = nextDate.getFullYear();
     const month = String(nextDate.getMonth() + 1).padStart(2, '0');
     const day = String(nextDate.getDate()).padStart(2, '0');
@@ -90,21 +73,39 @@ function calculateNextDueDate(registrationDate, billingCycleName) {
 }
 
 
-// Observar cambios en form.billing_cycle_id para actualizar la próxima fecha de vencimiento
+// Observar cambios en form.product_id para resetear ciclo y pricing
+watch(() => props.form.product_id, (newProductId) => {
+    // Resetear billing_cycle_id y product_pricing_id cuando cambie el producto
+    props.form.billing_cycle_id = null;
+    props.form.product_pricing_id = null;
+    props.form.billing_amount = 0.00; // Resetear también el monto de facturación
+});
+
+// Observar cambios en form.billing_cycle_id para actualizar la próxima fecha de vencimiento, product_pricing_id y billing_amount
 watch(() => props.form.billing_cycle_id, (newBillingCycleId) => {
     if (newBillingCycleId) {
-        // Encontrar el objeto del ciclo de facturación seleccionado
-        const selectedCycle = props.billingCycles.find(cycle => cycle.id === parseInt(newBillingCycleId));
-        if (selectedCycle) {
-            // Actualizar próxima fecha de vencimiento usando el nombre del ciclo
-            props.form.next_due_date = calculateNextDueDate(props.form.registration_date, selectedCycle.name);
+        // Encontrar el pricing correspondiente al producto seleccionado y el ciclo de facturación
+        const selectedPricing = selectedProduct.value?.pricings?.find(pricing =>
+            pricing.billing_cycle_id === parseInt(newBillingCycleId)
+        );
+
+        if (selectedPricing) {
+            // Usar los días del ciclo de facturación relacionado para calcular la próxima fecha de vencimiento
+            props.form.next_due_date = calculateNextDueDate(props.form.registration_date, selectedPricing.billing_cycle?.days);
+            // Actualizar product_pricing_id y billing_amount basándose en el pricing encontrado
+            props.form.product_pricing_id = selectedPricing.id;
+            props.form.billing_amount = parseFloat(selectedPricing.price).toFixed(2);
         } else {
-             // Si no se encuentra el ciclo
-             props.form.next_due_date = '';
+            // Si no se encuentra el pricing (puede pasar si se carga un formulario de edición con valores inválidos)
+            props.form.next_due_date = '';
+            props.form.product_pricing_id = null;
+            props.form.billing_amount = 0.00;
         }
     } else {
-        // Si se borra la selección, resetear la fecha
+        // Si se borra la selección del ciclo, resetear la fecha, pricing_id y monto
         props.form.next_due_date = '';
+        props.form.product_pricing_id = null;
+        props.form.billing_amount = 0.00;
     }
 }, { immediate: true }); // Ejecutar inmediatamente si billing_cycle_id ya tiene valor (en edición)
 
