@@ -14,13 +14,13 @@ return new class extends Migration
         Schema::create('product_pricings', function (Blueprint $table) {
             $table->id();
             $table->foreignId('product_id')->constrained('products')->onDelete('cascade');
-            $table->enum('billing_cycle', ['monthly', 'quarterly', 'semi_annually', 'annually', 'biennially', 'triennially', 'one_time'])->index();
+            $table->foreignId('billing_cycle_id')->constrained('billing_cycles')->onDelete('cascade');
             $table->decimal('price', 10, 2);
             $table->decimal('setup_fee', 10, 2)->default(0.00);
             $table->string('currency_code', 3)->index();
             $table->boolean('is_active')->default(true);
             $table->timestamps();
-            $table->unique(['product_id', 'billing_cycle', 'currency_code'], 'product_cycle_currency_unique');
+            $table->unique(['product_id', 'billing_cycle_id', 'currency_code'], 'product_cycle_currency_unique');
         });
     }
 

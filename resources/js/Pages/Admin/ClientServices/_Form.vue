@@ -12,6 +12,7 @@ import { ArrowDownTrayIcon, XMarkIcon } from '@heroicons/vue/24/outline';
 const props = defineProps({
     form: Object, // El objeto useForm de Inertia
     products: Array, // [{ value: id, label: name }, ...]
+    billingCycles: Array, // [{ id: id, name: name, ... }, ...]
     statusOptions: Array, // [{ value: 'status_val', label: 'Status Label' }, ...]
     // clients: Array, // Para selectores con búsqueda asíncrona, no se pasarían todos
     // resellers: Array, // Para selectores con búsqueda asíncrona, no se pasarían todos
@@ -21,77 +22,66 @@ const props = defineProps({
     }
 });
 
+// 1. Log de props y products después de la definición de props
+
 const emit = defineEmits(['submit']);
 
-const availablePricings = ref([]); // Almacenará los objetos de precio completos
-const isLoadingPricings = ref(false);
+const emit = defineEmits(['submit']);
 
-// Computed para formatear los precios disponibles para el SelectInput
-const productPricingOptions = computed(() => {
-    return availablePricings.value.map(pricing => ({
-        value: pricing.id,
-        label: `${pricing.billing_cycle} (${parseFloat(pricing.price).toFixed(2)})` // Formato de etiqueta deseado, ajustando a 2 decimales
+// Computed para formatear los ciclos de facturación disponibles para el SelectInput
+const billingCycleOptions = computed(() => {
+    // Asume que billingCycles es un array de objetos { id: ..., name: ... }
+    return props.billingCycles.map(cycle => ({
+        value: cycle.id,
+        label: cycle.name // Usar el nombre del ciclo como etiqueta
     }));
 });
 
-// Observar cambios en form.product_id para cargar los precios
-watch(() => props.form.product_id, async (newProductId) => {
-    props.form.product_pricing_id = null; // Resetear el pricing seleccionado
-    availablePricings.value = []; // Resetear los precios disponibles
-
-    if (newProductId) {
-        isLoadingPricings.value = true;
-        try {
-            // Usar la nueva ruta API
-            const response = await fetch(route('admin.products.getPricings', { product: newProductId }));
-            if (!response.ok) {
-                 // Limpiar precios y mostrar error si la respuesta no es OK (ej. 404 si no hay precios)
-                 availablePricings.value = [];
-                 throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            const data = await response.json();
-            availablePricings.value = data; // data debe ser el array de objetos de precio completos
-        } catch (error) {
-            console.error("Error fetching product pricings:", error);
-            // Considerar mostrar un error al usuario
-            availablePricings.value = []; // Asegurarse de que la lista esté vacía en caso de error
-        } finally {
-            isLoadingPricings.value = false;
-        }
-    }
-}, { immediate: props.isEdit && props.form.product_id }); // immediate: true para cargar precios si es edición y ya hay un producto
-
-// Función para calcular la próxima fecha de vencimiento (copiada de Create.vue)
-function calculateNextDueDate(registrationDate, billingCycle) {
-    if (!registrationDate || !billingCycle) {
+// Función para calcular la próxima fecha de vencimiento
+function calculateNextDueDate(registrationDate, billingCycleName) {
+    if (!registrationDate || !billingCycleName) {
         return '';
     }
 
-    // Ajustar la fecha de registro para evitar problemas de zona horaria si es medianoche
     const date = new Date(registrationDate);
-    // Clonar la fecha para evitar modificar la original
     let nextDate = new Date(date.getTime());
 
-    switch (billingCycle) {
+    // Normalizar el nombre del ciclo para manejar variaciones
+    const normalizedBillingCycle = billingCycleName.toLowerCase().replace(/[-\s]/g, '_');
+
+    switch (normalizedBillingCycle) {
         case 'monthly':
+        case 'mensual': // Añadir caso para nombre en español si aplica
             nextDate.setMonth(nextDate.getMonth() + 1);
             break;
         case 'quarterly':
+        case 'trimestral': // Añadir caso para nombre en español si aplica
             nextDate.setMonth(nextDate.getMonth() + 3);
             break;
         case 'semiannually':
+        case 'semi_annually':
+        case 'semestral':
             nextDate.setMonth(nextDate.getMonth() + 6);
             break;
         case 'annually':
+        case 'anual':
             nextDate.setFullYear(nextDate.getFullYear() + 1);
             break;
+        case 'biennially':
+        case 'bienal':
+            nextDate.setFullYear(nextDate.getFullYear() + 2);
+            break;
+        case 'triennially':
+        case 'trienal':
+            nextDate.setFullYear(nextDate.getFullYear() + 3);
+            break;
+        case 'one_time':
+        case 'pago_unico':
+            return registrationDate; // Retorna la fecha original
         default:
-            // Ciclo desconocido
-            console.warn(`Unknown billing cycle: ${billingCycle}`);
             return '';
     }
 
-    // Formato YYYY-MM-DD
     const year = nextDate.getFullYear();
     const month = String(nextDate.getMonth() + 1).padStart(2, '0');
     const day = String(nextDate.getDate()).padStart(2, '0');
@@ -99,27 +89,25 @@ function calculateNextDueDate(registrationDate, billingCycle) {
     return `${year}-${month}-${day}`;
 }
 
-// Observar cambios en form.product_pricing_id para actualizar monto y fecha
-watch(() => props.form.product_pricing_id, (newPricingId) => {
-    if (newPricingId) {
-        const selectedPricing = availablePricings.value.find(p => p.id === parseInt(newPricingId));
-        if (selectedPricing) {
-            // Actualizar monto (asegurando formato de dos decimales)
-            props.form.billing_amount = parseFloat(selectedPricing.price).toFixed(2);
 
-            // Actualizar próxima fecha de vencimiento
-            props.form.next_due_date = calculateNextDueDate(props.form.registration_date, selectedPricing.billing_cycle);
+// Observar cambios en form.billing_cycle_id para actualizar la próxima fecha de vencimiento
+watch(() => props.form.billing_cycle_id, (newBillingCycleId) => {
+    if (newBillingCycleId) {
+        // Encontrar el objeto del ciclo de facturación seleccionado
+        const selectedCycle = props.billingCycles.find(cycle => cycle.id === parseInt(newBillingCycleId));
+        if (selectedCycle) {
+            // Actualizar próxima fecha de vencimiento usando el nombre del ciclo
+            props.form.next_due_date = calculateNextDueDate(props.form.registration_date, selectedCycle.name);
         } else {
-            // Si no se encuentra el pricing (podría pasar si availablePricings no se ha cargado aún o hay un problema)
-             props.form.billing_amount = '0.00';
+             // Si no se encuentra el ciclo
              props.form.next_due_date = '';
         }
     } else {
-        // Si se borra la selección, resetear monto y fecha
-        props.form.billing_amount = '0.00';
+        // Si se borra la selección, resetear la fecha
         props.form.next_due_date = '';
     }
-}, { immediate: true }); // Ejecutar inmediatamente si product_pricing_id ya tiene valor (en edición)
+}, { immediate: true }); // Ejecutar inmediatamente si billing_cycle_id ya tiene valor (en edición)
+
 
 const submitForm = () => {
     emit('submit');
@@ -148,12 +136,11 @@ const submitForm = () => {
             </div>
 
             <div>
-                <InputLabel for="product_pricing_id" value="Ciclo de Facturación" required />
-                <SelectInput id="product_pricing_id" class="block w-full mt-1" v-model="form.product_pricing_id"
-                    :options="productPricingOptions" :disabled="!form.product_id || isLoadingPricings"
+                <InputLabel for="billing_cycle_id" value="Ciclo de Facturación" required />
+                <SelectInput id="billing_cycle_id" class="block w-full mt-1" v-model="form.billing_cycle_id"
+                    :options="billingCycleOptions"
                     placeholder="Seleccione un ciclo" />
-                <div v-if="isLoadingPricings" class="mt-1 text-sm text-gray-500">Cargando precios...</div>
-                <InputError class="mt-2" :message="form.errors.product_pricing_id" />
+                <InputError class="mt-2" :message="form.errors.billing_cycle_id" />
             </div>
 
             <div>
@@ -188,7 +175,7 @@ const submitForm = () => {
 
             <div>
                 <InputLabel for="username" value="Nombre de Usuario (Servicio, Opcional)" />
-                <TextInput id="username" type="text" class="block w-full mt-1" v-model="form.username" />
+                <TextInput id="username" type="text" class="block w-full mt-1" v-model="form.username" autocomplete="username" />
                 <InputError class="mt-2" :message="form.errors.username" />
             </div>
 

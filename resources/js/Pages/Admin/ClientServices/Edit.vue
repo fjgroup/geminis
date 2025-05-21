@@ -1,6 +1,7 @@
 <script setup>
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { Head, useForm } from '@inertiajs/vue3';
+import { watch } from 'vue';
 import ClientServiceForm from './_Form.vue'; // Importar el componente de formulario
 
 const props = defineProps({
@@ -30,6 +31,13 @@ const form = useForm({
     // Añade aquí cualquier otro campo que esté en tu _Form.vue y modelo ClientService
     // termination_date: props.clientService.termination_date_formatted, // Si lo tienes en el form
 });
+
+// Observar cambios en product_pricing_id de props y actualizar form si es necesario
+watch(() => props.clientService.product_pricing_id, (newValue) => {
+    if (newValue !== null && newValue !== undefined) {
+        form.product_pricing_id = newValue;
+    }
+}, { immediate: true }); // Ejecutar inmediatamente si el valor ya está disponible
 
 const submit = () => {
     form.post(route('admin.client-services.update', props.clientService.id), {

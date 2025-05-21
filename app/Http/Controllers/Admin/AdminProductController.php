@@ -15,8 +15,10 @@ use App\Models\ProductPricing; // Asegúrate que el namespace y nombre de clase 
 use App\Models\ConfigurableOptionGroup; // Añadir
 use App\Models\User; // Para cargar revendedores si es necesario
 
+use App\Models\BillingCycle; // Añadir importación para BillingCycle
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Str; // Para el slug
+use Illuminate\Support\Facades\Log; // Añadir importación para Log
 
 class AdminProductController extends Controller
 {
@@ -95,7 +97,11 @@ class AdminProductController extends Controller
     public function edit(Product $product): Response
     {
         $this->authorize('update', $product);
-        $product->load('pricings', 'configurableOptionGroups');
+        // Cargar product.pricings con la relación billingCycle
+        $product->load('pricings.billingCycle', 'configurableOptionGroups');
+
+        // Obtener todos los ciclos de facturación
+        $billingCycles = BillingCycle::all();
 
         $resellers = User::where('role', 'reseller')->orderBy('name')->get(['id', 'name', 'company_name']);
         // Incluir product_id para saber si un grupo es global o específico de un producto
@@ -108,7 +114,6 @@ class AdminProductController extends Controller
         ])->toArray();
 
         // Añade esta línea para depurar:
-        // dd($allOptionGroupsData, $allOptionGroups->count());
 
         return Inertia::render('Admin/Products/Edit', [
             'product' => $product->toArray() + [
@@ -123,6 +128,7 @@ class AdminProductController extends Controller
                 'label' => $reseller->name . ($reseller->company_name ? " ({$reseller->company_name})" : "")
             ])->toArray(),
             'all_option_groups' => $allOptionGroupsData, // Usar la variable depurada
+            'billingCycles' => $billingCycles, // Pasar los ciclos de facturación a la vista
         ]);
     }
 
@@ -132,7 +138,6 @@ class AdminProductController extends Controller
      */
     public function update(UpdateProductRequest $request, Product $product): RedirectResponse
     {
-        // dd($request->all()); // Descomenta esta línea para ver todo lo que llega
 
         // La autorización y validación son manejadas por UpdateProductRequest
         $validatedData = $request->validated();
@@ -185,7 +190,11 @@ class AdminProductController extends Controller
         // Asumiendo que si puede crear el producto, puede añadirle precios, o usar ProductPricingPolicy directamente
         // La autorización y validación ahora son manejadas por StoreProductPricingRequest
         $validated = $request->validated();
+        Log::info('Datos validados en storePricing:', $validated); // Log para depuración
+
+        // Usar directamente los datos validados para la creación, incluyendo billing_cycle_id
         $product->pricings()->create($validated);
+        Log::info('Datos usados para crear pricing:', $validated); // Log para depuración
         return redirect()->back()->with('success', 'Precio añadido correctamente.');
     }
 
@@ -194,7 +203,11 @@ class AdminProductController extends Controller
         // La autorización y validación ahora son manejadas por UpdateProductPricingRequest
         // $this->authorize('update', $pricing); // Ya no es necesario aquí
         $validated = $request->validated();
+        Log::info('Datos validados en updatePricing:', $validated); // Log para depuración
+
+        // Usar directamente los datos validados para la actualización
         $pricing->update($validated);
+        Log::info('Datos usados para actualizar pricing:', $validated); // Log para depuración
         return redirect()->back()->with('success', 'Precio actualizado correctamente.');
     }
 

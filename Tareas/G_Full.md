@@ -3287,7 +3287,7 @@ Este documento se enfoca en la creación de la entidad `ClientService`, que repr
 
 
 
-### 5.1. Migración de la Tabla `client_services`
+### Fase 5.1. Migración de la Tabla `client_services`
 Contexto:** Esta tabla es fundamental, ya que registra cada servicio activo (o inactivo) que un cliente ha contratado.
 Crear la migración para la tabla `client_services`:
 ```bash

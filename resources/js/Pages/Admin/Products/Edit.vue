@@ -7,7 +7,7 @@
 
 import AdminLayout from "@/Layouts/AdminLayout.vue";
 import { Head, Link, useForm, router } from "@inertiajs/vue3";
-import { ref, computed } from "vue"; // Se importa computed desde 'vue'
+import { ref, computed, toRaw } from "vue"; // Importar toRaw
 import {
     ArrowDownTrayIcon, // Para guardar/actualizar
     XMarkIcon,         // Para cancelar
@@ -22,6 +22,7 @@ const props = defineProps({
     product: Object,
     resellers: Array, // Lista de revendedores para el select
     all_option_groups: Array, // Todos los grupos de opciones disponibles
+    billingCycles: Array, // Nueva prop para ciclos de facturación
 });
 
 // Los console.log de depuración se han eliminado
@@ -46,7 +47,7 @@ const editingPricing = ref(null);
 
 const pricingForm = useForm({
     product_id: props.product.id,
-    billing_cycle: "monthly",
+    billing_cycle_id: null, // Cambiado a billing_cycle_id
     price: "",
     setup_fee: 0.0,
     currency_code: "USD",
@@ -81,24 +82,24 @@ const ownerOptions = [
         : []),
 ];
 
-const billingCycleOptions = [
-    { value: "monthly", label: "Mensual" },
-    { value: "quarterly", label: "Trimestral" },
-    { value: "semi_annually", label: "Semestral" },
-    { value: "annually", label: "Anual" },
-    { value: "biennially", label: "Bienal" },
-    { value: "triennially", label: "Trienal" },
-    { value: "one_time", label: "Pago Único" },
-];
+// Eliminado: const billingCycleOptions = [...]
 
 const currencyOptions = [
     { value: "USD", label: "USD" },
     { value: "EUR", label: "EUR" },
 ];
 
+// Nueva propiedad computada para ciclos de facturación dinámicos
+const dynamicBillingCycleOptions = computed(() => {
+    if (!props.billingCycles) return [];
+    return props.billingCycles.map(cycle => ({
+        value: cycle.id,
+        label: cycle.name,
+    }));
+});
+
+
 const submitProductForm = () => {
-    console.log('Datos del formulario que se intentan enviar:', JSON.parse(JSON.stringify(form.data())));
-    console.log('Detalle de configurable_option_groups a enviar (Antes de formatear):', JSON.parse(JSON.stringify(form.configurable_option_groups)));
 
     // Reconstruir configurable_option_groups para asegurar el formato de objeto plano antes de enviar
     const formattedOptionGroups = {};
@@ -118,7 +119,6 @@ const submitProductForm = () => {
     // Reemplazar el objeto original en el formulario con el objeto formateado
     form.configurable_option_groups = formattedOptionGroups;
 
-    console.log('Detalle de configurable_option_groups a enviar (Después de formatear):', JSON.parse(JSON.stringify(form.configurable_option_groups)));
 
     form.put(route("admin.products.update", props.product.id));
 };
@@ -127,17 +127,35 @@ const openAddPricingModal = () => {
     editingPricing.value = null;
     pricingForm.reset();
     pricingForm.product_id = props.product.id;
+    pricingForm.billing_cycle_id = null; // Inicializar con null para el nuevo precio
     showPricingModal.value = true;
 };
 
-const openEditPricingModal = (pricing) => {
+const openEditPricingModal = (pricingId) => {
+    // Encontrar el objeto de precio completo con la relación billingCycle cargada
+    const pricing = props.product.pricings.find(p => p.id === pricingId);
+
+    if (!pricing) {
+        console.error(`Pricing with ID ${pricingId} not found in product pricings.`);
+        return; // Evitar errores si no se encuentra el precio
+    }
+
     editingPricing.value = pricing;
     pricingForm.id = pricing.id;
-    pricingForm.billing_cycle = pricing.billing_cycle;
+
+
+    // Usar toRaw() y notación de corchetes para acceder de forma segura al billing_cycle_id
+    const rawPricing = toRaw(pricing);
+    const billingCycle = rawPricing["billing_cycle"];
+    const billingCycleId = billingCycle ? billingCycle.id : null;
+    pricingForm.billing_cycle_id = billingCycleId; // Establecer el billing_cycle_id en el formulario
+
+
+
     pricingForm.price = pricing.price;
     pricingForm.setup_fee = pricing.setup_fee;
     pricingForm.currency_code = pricing.currency_code;
-    pricingForm.is_active = pricing.is_active;
+    pricingForm.is_active = Boolean(pricing.is_active);
     showPricingModal.value = true;
 };
 
@@ -199,6 +217,16 @@ const filteredOptionGroups = computed(() => {
         return isAssociated || isGlobal || isSpecificToThisProduct;
     });
 });
+// Método para obtener el nombre del ciclo de facturación de forma segura
+const getBillingCycleName = (pricing) => {
+
+  const rawPricing = toRaw(pricing); // Obtener el objeto crudo del Proxy
+
+  // Acceder a la relación usando el nombre de columna de la base de datos (snake_case) con corchetes
+  const billingCycle = rawPricing["billing_cycle"];
+  return billingCycle && billingCycle.name ? billingCycle.name : 'N/A';
+};
+
 </script>
 
 <template>
@@ -398,7 +426,7 @@ const filteredOptionGroups = computed(() => {
                                 <tr v-for="pricing in product.pricings" :key="pricing.id"
                                     class="hover:bg-gray-50 dark:hover:bg-gray-700">
                                     <td class="px-4 py-3 text-sm text-gray-900 dark:text-gray-100">
-                                        {{ pricing.billing_cycle }}
+                                        {{ getBillingCycleName(pricing) }} <!-- Usar el nuevo método -->
                                     </td>
                                     <td class="px-4 py-3 text-sm text-gray-900 dark:text-gray-100">
                                         {{ pricing.price }}
@@ -414,7 +442,7 @@ const filteredOptionGroups = computed(() => {
                                     </td>
                                     <td class="px-4 py-3 text-sm font-medium">
                                         <button @click="
-                                            openEditPricingModal(pricing)"
+                                            openEditPricingModal(pricing.id)"
                                             class="flex items-center mr-2 text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300">
                                             <PencilSquareIcon class="w-4 h-4 mr-1" />
                                             Editar
@@ -488,14 +516,14 @@ const filteredOptionGroups = computed(() => {
                         <label for="billing_cycle"
                             class="block text-sm font-medium text-gray-700 dark:text-gray-300">Ciclo de
                             Facturación</label>
-                        <select v-model="pricingForm.billing_cycle" id="billing_cycle"
+                        <select v-model="pricingForm.billing_cycle_id" id="billing_cycle"
                             class="block w-full mt-1 border-gray-300 rounded-md shadow-sm dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-                            <option v-for="option in billingCycleOptions" :key="option.value" :value="option.value">
+                            <option v-for="option in dynamicBillingCycleOptions" :key="option.value" :value="option.value">
                                 {{ option.label }}
                             </option>
                         </select>
-                        <div v-if="pricingForm.errors.billing_cycle" class="mt-1 text-sm text-red-600">
-                            {{ pricingForm.errors.billing_cycle }}
+                        <div v-if="pricingForm.errors.billing_cycle_id" class="mt-1 text-sm text-red-600">
+                            {{ pricingForm.errors.billing_cycle_id }}
                         </div>
                     </div>
                     <div class="grid grid-cols-2 gap-4 mb-4">

@@ -17,6 +17,7 @@ return new class extends Migration
             $table->foreignId('reseller_id')->nullable()->constrained('users')->onDelete('set null')->comment('FK a users.id del revendedor, si aplica');
             // $table->foreignId('order_id')->nullable()->constrained('orders')->comment('FK a la orden que originó este servicio'); // Comentado temporalmente
             $table->foreignId('product_id')->constrained('products');
+            $table->foreignId('billing_cycle_id')->nullable()->constrained('billing_cycles')->onDelete('set null')->comment('FK a billing_cycles.id');
             $table->foreignId('product_pricing_id')->constrained('product_pricings')->comment('Ciclo de facturación elegido');
             $table->string('domain_name')->nullable()->index();
             $table->string('username')->nullable();

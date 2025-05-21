@@ -22,7 +22,7 @@ class ClientService extends Model
         'domain_name',
         'username',
         'password_encrypted',
-        'server_id',
+      //  'server_id',
         'status',
         'registration_date',
         'next_due_date',
@@ -66,14 +66,22 @@ class ClientService extends Model
     }
 
     /**
-     * Get the product pricing (billing cycle) associated with the service.
+     * Get the billing cycle associated with the service.
      */
-    public function productPricing(): BelongsTo
-    {
-        return $this->belongsTo(ProductPricing::class);
-    }
+   public function billingCycle(): BelongsTo
+   {
+       return $this->belongsTo(BillingCycle::class);
+   }
 
-    // TODO: Definir las siguientes relaciones cuando los modelos existan y estén listos:
+    /**
+     * Get the product pricing associated with the service.
+     */
+   public function productPricing(): BelongsTo
+   {
+       return $this->belongsTo(ProductPricing::class);
+   }
+
+   // TODO: Definir las siguientes relaciones cuando los modelos existan y estén listos:
     // public function order(): BelongsTo
     // {
     //     return $this->belongsTo(Order::class);

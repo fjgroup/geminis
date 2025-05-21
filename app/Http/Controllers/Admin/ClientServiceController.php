@@ -9,11 +9,13 @@ use App\Http\Requests\Admin\UpdateClientServiceRequest; // Importar el FormReque
 use App\Models\Product;
 use App\Models\User;
 use App\Models\ClientService;
+use App\Models\BillingCycle; // Importar BillingCycle
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia; // Importar Inertia
 use Inertia\Response; // Importar Response
+
 
 class ClientServiceController extends Controller
 {
@@ -24,7 +26,7 @@ class ClientServiceController extends Controller
     {
         // TODO: Implementar autorización, ej: $this->authorize('viewAny', ClientService::class);
 
-        $query = ClientService::with(['client:id,name', 'product:id,name', 'reseller:id,name']);
+        $query = ClientService::with(['client:id,name', 'product:id,name', 'reseller:id,name', 'billingCycle:id,name']); // Cargar billingCycle
 
         // Aplicar búsqueda si el parámetro 'search' está presente
         if ($request->filled('search')) {
@@ -48,6 +50,7 @@ class ClientServiceController extends Controller
                 'next_due_date_formatted' => $service->next_due_date->format('d/m/Y'),
                 'billing_amount' => $service->billing_amount,
                 'reseller_name' => $service->reseller ? $service->reseller->name : 'N/A (Plataforma)',
+                'billing_cycle_name' => $service->billingCycle ? $service->billingCycle->name : 'N/A', // Añadir billing_cycle_name
             ]);
 // Pasar los filtros actuales a la vista para que el input de búsqueda pueda mantener su valor
 
@@ -75,6 +78,8 @@ class ClientServiceController extends Controller
         $resellers = User::where('role', 'reseller')->orderBy('name')->get(['id', 'name']);
         // $servers = \App\Models\Server::orderBy('name')->get(['id', 'name']); // Cuando exista el modelo Server
 
+        $billingCycles = \App\Models\BillingCycle::all(); // Obtener todos los BillingCycle
+
         return Inertia::render('Admin/ClientServices/Create', [
             'clients' => $clients->map(fn($user) => ['value' => $user->id, 'label' => $user->name]),
             'products' => $products->map(fn($product) => ['value' => $product->id, 'label' => $product->name]),
@@ -82,6 +87,7 @@ class ClientServiceController extends Controller
             'resellers' => $resellers->map(fn($user) => ['value' => $user->id, 'label' => $user->name]),
             // 'servers' => $servers->map(fn($server) => ['value' => $server->id, 'label' => $server->name]),
             'statusOptions' => ClientService::getPossibleEnumValues('status'),
+            'billingCycles' => $billingCycles, // Pasar billingCycles a la vista
         ]);
     }
 
@@ -94,6 +100,7 @@ class ClientServiceController extends Controller
         // La autorización ya se maneja en StoreClientServiceRequest
         // TODO: Si ClientServicePolicy está implementada, puedes añadir: $this->authorize('create', ClientService::class);
 
+        // Asumiendo que StoreClientServiceRequest ya valida billing_cycle_id
         ClientService::create($request->validated());
 
         return redirect()->route('admin.client-services.index')
@@ -130,6 +137,10 @@ class ClientServiceController extends Controller
         $clientService->termination_date_formatted = $clientService->termination_date ? $clientService->termination_date->format('Y-m-d') : null;
 
 
+        $clientService->load(['productPricing', 'product.pricings', 'billingCycle']); // Cargar billingCycle
+
+        $billingCycles = \App\Models\BillingCycle::all(); // Obtener todos los BillingCycle
+
         return Inertia::render('Admin/ClientServices/Edit', [
             'clientService' => $clientService,
             // Pasamos los datos para los selectores, similar al método create
@@ -138,6 +149,7 @@ class ClientServiceController extends Controller
             'resellers' => $resellers->map(fn($user) => ['value' => $user->id, 'label' => $user->name]),
             // 'servers' => $servers->map(fn($server) => ['value' => $server->id, 'label' => $server->name]),
             'statusOptions' => ClientService::getPossibleEnumValues('status'),
+            'billingCycles' => $billingCycles, // Pasar billingCycles a la vista
             // 'productPricings' se cargarán dinámicamente en el formulario _Form.vue
         ]);
     }
@@ -162,6 +174,7 @@ class ClientServiceController extends Controller
             unset($validatedData['password_encrypted']); // Quitarlo para que no se pase en el update masivo si ya lo manejamos
         }
 
+        // Asumiendo que UpdateClientServiceRequest ya valida billing_cycle_id
         $clientService->update($validatedData);
 
         return redirect()->route('admin.client-services.index')
