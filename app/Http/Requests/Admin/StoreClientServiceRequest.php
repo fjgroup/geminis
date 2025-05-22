@@ -27,17 +27,31 @@ class StoreClientServiceRequest extends FormRequest
     {
         return [
             'client_id' => ['required', 'integer', Rule::exists('users', 'id')], // Asegurar que el cliente exista
+
             'product_id' => ['required', 'integer', Rule::exists('products', 'id')],
+
             'product_pricing_id' => ['required', 'integer', Rule::exists('product_pricings', 'id')], // Asegurar que el pricing exista y pertenezca al producto sería ideal
+
+            'billing_cycle_id' => ['required', 'integer', Rule::exists('billing_cycles', 'id')], // Validar que el ciclo de facturación exista
+
             'registration_date' => ['required', 'date'],
+
             'next_due_date' => ['required', 'date', 'after_or_equal:registration_date'],
+
             'billing_amount' => ['required', 'numeric', 'min:0'],
+
             'status' => ['required', Rule::in(['pending', 'active', 'suspended', 'terminated', 'cancelled', 'fraud'])],
+
             'domain_name' => ['nullable', 'string', 'max:255'],
+
             'username' => ['nullable', 'string', 'max:255'],
+
             'password_encrypted' => ['nullable', 'string', 'min:6'], // Si se envía, que tenga un mínimo
+
             'reseller_id' => ['nullable', 'integer', Rule::exists('users', 'id')->where('role', 'reseller')],
+
             'server_id' => ['nullable', 'integer', Rule::exists('servers', 'id')], // Cuando la tabla servers exista
+
             'notes' => ['nullable', 'string'],
             // 'order_id' no se suele crear manualmente aquí, se asociaría si viene de una orden.
         ];

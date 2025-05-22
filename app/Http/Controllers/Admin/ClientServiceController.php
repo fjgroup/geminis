@@ -80,13 +80,21 @@ class ClientServiceController extends Controller
 
         $billingCycles = BillingCycle::all(); // Obtener todos los BillingCycle
 
-        return Inertia::render('Admin/ClientServices/Create', [
+        return Inertia::render('Admin/ClientServices/Create',
+        [
             'clients' => $clients->map(fn($user) => ['value' => $user->id, 'label' => $user->name]),
-            'products' => $products->map(fn($product) => ['id' => $product->id, 'name' => $product->name, 'pricings' => $product->pricings]),
+
+            // Formatear productos para que usen 'value' y 'label', pero manteniendo 'pricings'
+            'products' => $products->map(fn($product) => ['value' => $product->id, 'label' => $product->name, 'pricings' => $product->pricings]),
+
+
             // 'productPricings' => $productPricings, // Considerar cómo manejar esto
             'resellers' => $resellers->map(fn($user) => ['value' => $user->id, 'label' => $user->name]),
+
             // 'servers' => $servers->map(fn($server) => ['value' => $server->id, 'label' => $server->name]),
+
             'statusOptions' => ClientService::getPossibleEnumValues('status'),
+
             'billingCycles' => $billingCycles, // Pasar billingCycles a la vista
         ]);
     }
@@ -126,7 +134,15 @@ class ClientServiceController extends Controller
         // $clientService->loadMissing(['client', 'product', 'reseller', 'server']);
 
         $clients = User::where('role', 'client')->orderBy('name')->get(['id', 'name']);
-        $products = Product::where('status', 'active')->orWhere('id', $clientService->product_id)->orderBy('name')->get(['id', 'name']);
+
+        // Asegurarse de cargar pricings y billingCycle para la lista de productos, similar a create()
+        $products = Product::with(['pricings.billingCycle']) // Cargar pricings y sus billingCycle
+                            ->where('status', 'active')
+                            ->orWhere('id', $clientService->product_id) // Incluir el producto actual aunque no esté activo
+                            ->orderBy('name')->get(); // Obtener todas las columnas para que las relaciones funcionen
+
+
+
         $resellers = User::where('role', 'reseller')->orderBy('name')->get(['id', 'name']);
         // $servers = \App\Models\Server::orderBy('name')->get(['id', 'name']); // Cuando exista
 
@@ -137,7 +153,12 @@ class ClientServiceController extends Controller
         $clientService->termination_date_formatted = $clientService->termination_date ? $clientService->termination_date->format('Y-m-d') : null;
 
 
-        $clientService->load(['productPricing', 'product.pricings', 'billingCycle']); // Cargar billingCycle
+        $clientService->load([
+            'client', // ¡Asegúrate de que esta relación esté aquí!
+            'productPricing',
+            'product.pricings', // Esto carga el producto y luego sus pricings
+            'billingCycle'
+        ]); // Cargar billingCycle
 
         $billingCycles = BillingCycle::all(); // Obtener todos los BillingCycle
 
@@ -145,8 +166,13 @@ class ClientServiceController extends Controller
             'clientService' => $clientService,
             // Pasamos los datos para los selectores, similar al método create
             'clients' => $clients->map(fn($user) => ['value' => $user->id, 'label' => $user->name]),
-            'products' => $products->map(fn($product) => ['value' => $product->id, 'label' => $product->name]),
+
+            // Formatear productos para que usen 'value' y 'label', pero manteniendo 'pricings'
+            'products' => $products->map(fn($product) => ['value' => $product->id, 'label' => $product->name, 'pricings' => $product->pricings]),
+
+
             'resellers' => $resellers->map(fn($user) => ['value' => $user->id, 'label' => $user->name]),
+
             // 'servers' => $servers->map(fn($server) => ['value' => $server->id, 'label' => $server->name]),
             'statusOptions' => ClientService::getPossibleEnumValues('status'),
             'billingCycles' => $billingCycles, // Pasar billingCycles a la vista

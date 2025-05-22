@@ -12,21 +12,15 @@ const props = defineProps({
     // errors: Object, // Los errores de validación vienen en form.errors
 });
 
-const formattedProducts = computed(() => {
-    return props.products.map(product => ({
-        value: product.id,
-        label: product.name,
-        pricings: product.pricings,
-    }));
-});
-
 const form = useForm({
     client_id: null,
     product_id: null,
-    product_pricing_id: null,
+    billing_cycle_id:null,  //LO HE AGREGADO 21-05-2025
+    billing_amount: 0.00,
+    product_pricing_id: null,  //nose que es
     registration_date: new Date().toISOString().split('T')[0], // Fecha actual por defecto
     next_due_date: '',
-    billing_amount: 0.00,
+
     status: 'pending', // Estado por defecto
     domain_name: '',
     username: '',
@@ -60,9 +54,8 @@ const submit = () => {
                 <div class="p-6 overflow-hidden bg-white shadow-xl dark:bg-gray-800 sm:rounded-lg md:p-8">
                     <ClientServiceForm
                         :form="form"
-                        :products="formattedProducts"
+                        :products="props.products"
                         :statusOptions="props.statusOptions"
-                        @pricing-selected="handlePricingSelected"
                         @submit="submit"
                     />
                 </div>

@@ -30,19 +30,34 @@ class UpdateClientServiceRequest extends FormRequest
 
         return [
             'client_id' => ['required', 'integer', Rule::exists('users', 'id')],
+
             'product_id' => ['required', 'integer', Rule::exists('products', 'id')],
+
             'product_pricing_id' => ['required', 'integer', Rule::exists('product_pricings', 'id')],
+
+            'billing_cycle_id' => ['required', 'integer', Rule::exists('billing_cycles', 'id')], // Validar que el ciclo de facturación exista
+
             'registration_date' => ['required', 'date'],
+
             'next_due_date' => ['required', 'date', 'after_or_equal:registration_date'],
+
             'billing_amount' => ['required', 'numeric', 'min:0'],
-            'status' => ['required', Rule::in(['pending', 'active', 'suspended', 'terminated', 'cancelled', 'fraud'])],
+
+            'status' => ['required', Rule::in(['pending', 'active', 'suspended', 'terminated', 'cancelled',
+            'fraud'])],
+
             'domain_name' => ['nullable', 'string', 'max:255'],
             // Ejemplo de unicidad ignorando el actual, si domain_name tuviera que ser único:
             // 'domain_name' => ['nullable', 'string', 'max:255', Rule::unique('client_services')->ignore($clientServiceId)],
+
             'username' => ['nullable', 'string', 'max:255'],
+
             'password_encrypted' => ['nullable', 'string', 'min:6'], // Si se envía, que tenga un mínimo. Si es vacío, no se actualiza.
+
             'reseller_id' => ['nullable', 'integer', Rule::exists('users', 'id')->where('role', 'reseller')],
+
             'server_id' => ['nullable', 'integer', Rule::exists('servers', 'id')], // Cuando la tabla servers exista
+            
             'notes' => ['nullable', 'string'],
         ];
     }

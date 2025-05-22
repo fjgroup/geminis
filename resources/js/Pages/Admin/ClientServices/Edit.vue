@@ -1,8 +1,8 @@
 <script setup>
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { Head, useForm } from '@inertiajs/vue3';
-import { watch, computed } from 'vue';
-import ClientServiceForm from './_Form.vue'; // Importar el componente de formulario
+import ClientServiceForm from './_Form.vue'; // Cambiar a _Form.vue
+
 
 const props = defineProps({
     clientService: Object, // El servicio de cliente a editar
@@ -13,14 +13,16 @@ const props = defineProps({
     // errors: Object, // Los errores de validación vienen en form.errors
 });
 
+
+
 const form = useForm({
     _method: 'PUT', // Importante para la actualización
     client_id: props.clientService.client_id,
     product_id: props.clientService.product_id,
-    product_pricing_id: props.clientService.product_pricing_id,
+    billing_cycle_id: props.clientService.billing_cycle_id,
+    billing_amount: props.clientService.billing_amount,
     registration_date: props.clientService.registration_date_formatted, // Usar la fecha formateada
     next_due_date: props.clientService.next_due_date_formatted, // Usar la fecha formateada
-    billing_amount: props.clientService.billing_amount,
     status: props.clientService.status,
     domain_name: props.clientService.domain_name || '',
     username: props.clientService.username || '',
@@ -28,31 +30,18 @@ const form = useForm({
     reseller_id: props.clientService.reseller_id,
     server_id: props.clientService.server_id,
     notes: props.clientService.notes || '',
+    product_pricing_id: props.clientService.product_pricing_id,
     // Añade aquí cualquier otro campo que esté en tu _Form.vue y modelo ClientService
     // termination_date: props.clientService.termination_date_formatted, // Si lo tienes en el form
 });
 
-// Propiedad computada para mapear products a la estructura esperada por _Form.vue
-const formattedProducts = computed(() => {
-    if (!props.products) {
-        return [];
-    }
-    return props.products.map(product => ({
-        value: product.id,
-        label: product.name,
-        pricings: product.pricings,
-    }));
-});
 
-// Observar cambios en product_pricing_id de props y actualizar form si es necesario
-watch(() => props.clientService.product_pricing_id, (newValue) => {
-    if (newValue !== null && newValue !== undefined) {
-        form.product_pricing_id = newValue;
-    }
-}, { immediate: true }); // Ejecutar inmediatamente si el valor ya está disponible
+
 
 const submit = () => {
-    form.post(route('admin.client-services.update', props.clientService.id), {
+    // Para actualizar, se usa form.put o form.patch.
+    // form.post es para crear nuevos recursos.
+    form.put(route('admin.client-services.update', props.clientService.id), {
         // onSuccess: () => { /* Quizás no resetear en edición */ },
     });
 };
@@ -66,7 +55,7 @@ const submit = () => {
 
         <template #header>
             <h2 class="text-xl font-semibold leading-tight text-gray-800 dark:text-gray-200">
-                Editar Servicio de Cliente #{{ clientService.id }}
+                Editar Servicio de Cliente: {{ clientService.client?.name || '#' + clientService.id }}
                 <span v-if="clientService.domain_name" class="text-base font-normal text-gray-500">
                     ({{ clientService.domain_name }})
                 </span>
@@ -78,7 +67,7 @@ const submit = () => {
                 <div class="p-6 overflow-hidden bg-white shadow-xl dark:bg-gray-800 sm:rounded-lg md:p-8">
                     <ClientServiceForm
                         :form="form"
-                        :products="formattedProducts"
+                        :products="props.products"
                         :statusOptions="props.statusOptions"
                         :isEdit="true"
                         @submit="submit"

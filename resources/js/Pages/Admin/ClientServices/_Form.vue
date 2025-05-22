@@ -11,7 +11,12 @@ import { ArrowDownTrayIcon, XMarkIcon } from '@heroicons/vue/24/outline';
 
 const props = defineProps({
     form: Object, // El objeto useForm de Inertia
-    products: Array, // [{ id: id, name: name, pricings: [{ id: id, billing_cycle_id: id, price: price, billing_cycle: { id: id, name: name } }, ...] }, ...]
+
+    // products: Array, // Antes: [{ id: id, name: name, pricings: [...] }, ...]
+    products: Array, // Ahora: [{ value: id, label: name, pricings: [...] }, ...]
+
+
+
     statusOptions: Array, // [{ value: 'status_val', label: 'Status Label' }, ...]
     // clients: Array, // Para selectores con búsqueda asíncrona, no se pasarían todos
     // resellers: Array, // Para selectores con búsqueda asíncrona, no se pasarían todos
@@ -21,23 +26,47 @@ const props = defineProps({
     }
 });
 
-// 1. Log de props y products después de la definición de props
-
 const emit = defineEmits(['submit']);
+
+// Computed para formatear las opciones de producto para el SelectInput
+
+
+
+const productOptions = computed(() => {
+    const options = props.products?.map(product => ({
+        value: product.value,
+        label: product.label,
+    })) || [];
+
+    return options;
+});
+
+
 
 // Computed para obtener el producto seleccionado
 const selectedProduct = computed(() => {
-    return props.products?.find(product => product.value === parseInt(props.form.product_id));
+    // props.form.product_id es el 'value' del producto seleccionado en el SelectInput
+    if (!props.form.product_id) return null;
+    const productIdAsInt = parseInt(props.form.product_id);
+    // props.products es [{ value: id, label: name, pricings: [...] }, ...]
+    return props.products?.find(product => product.value === productIdAsInt);
 });
+
 
 // Computed para formatear los ciclos de facturación disponibles basados en el producto seleccionado
 const billingCycleOptions = computed(() => {
+    // Asegurar que selectedProduct.value existe y tiene una propiedad pricings que es un array
+    if (!selectedProduct.value || !Array.isArray(selectedProduct.value.pricings)) {
+        return []; // Retorna un array vacío si no hay producto seleccionado o pricings no es un array
+    }
+
     // Obtener los pricings del producto seleccionado
-    const productPricings = selectedProduct.value?.pricings || [];
+    const productPricings = selectedProduct.value.pricings;
 
     // Mapear los pricings a opciones de ciclo de facturación, evitando duplicados por ciclo
     const cyclesMap = new Map();
     productPricings.forEach(pricing => {
+        // Verificar explícitamente que la relación billing_cycle existe
         if (pricing.billing_cycle) {
             cyclesMap.set(pricing.billing_cycle.id, {
                 value: pricing.billing_cycle.id,
@@ -74,40 +103,53 @@ function calculateNextDueDate(registrationDate, numberOfDays) {
 
 
 // Observar cambios en form.product_id para resetear ciclo y pricing
-watch(() => props.form.product_id, (newProductId) => {
+watch(() =>
+    props.form.product_id, (newProductId) =>
+{
     // Resetear billing_cycle_id y product_pricing_id cuando cambie el producto
     props.form.billing_cycle_id = null;
     props.form.product_pricing_id = null;
     props.form.billing_amount = 0.00; // Resetear también el monto de facturación
 });
 
-// Observar cambios en form.billing_cycle_id para actualizar la próxima fecha de vencimiento, product_pricing_id y billing_amount
-watch(() => props.form.billing_cycle_id, (newBillingCycleId) => {
-    if (newBillingCycleId) {
-        // Encontrar el pricing correspondiente al producto seleccionado y el ciclo de facturación
-        const selectedPricing = selectedProduct.value?.pricings?.find(pricing =>
-            pricing.billing_cycle_id === parseInt(newBillingCycleId)
-        );
+// Observar cambios en form.billing_cycle_id Y en selectedProduct
+// para actualizar la próxima fecha de vencimiento, product_pricing_id y billing_amount.
+// Esto es crucial para que en modo edición, cuando selectedProduct se resuelva
+// (después de que props.products y form.product_id estén disponibles),
+// se recalculen los datos dependientes.
+watch(
+    [() =>
+        props.form.billing_cycle_id, selectedProduct],
+    ([newBillingCycleId, currentSelectedProduct], [oldBillingCycleId, oldSelectedProduct]) =>
 
-        if (selectedPricing) {
-            // Usar los días del ciclo de facturación relacionado para calcular la próxima fecha de vencimiento
-            props.form.next_due_date = calculateNextDueDate(props.form.registration_date, selectedPricing.billing_cycle?.days);
-            // Actualizar product_pricing_id y billing_amount basándose en el pricing encontrado
-            props.form.product_pricing_id = selectedPricing.id;
-            props.form.billing_amount = parseFloat(selectedPricing.price).toFixed(2);
+    {
+        if (newBillingCycleId && currentSelectedProduct) {
+            // Encontrar el pricing correspondiente al producto seleccionado y el ciclo de facturación
+            const selectedPricing = currentSelectedProduct.pricings?.find(pricing =>
+                pricing.billing_cycle_id === parseInt(newBillingCycleId)
+            );
+
+            if (selectedPricing) {
+                // Usar los días del ciclo de facturación relacionado para calcular la próxima fecha de vencimiento
+                props.form.next_due_date = calculateNextDueDate(props.form.registration_date, selectedPricing.billing_cycle?.days);
+                // Actualizar product_pricing_id y billing_amount basándose en el pricing encontrado
+                props.form.product_pricing_id = selectedPricing.id;
+                props.form.billing_amount = parseFloat(selectedPricing.price).toFixed(2);
+            } else {
+                // Si no se encuentra el pricing (puede pasar si se carga un formulario de edición con valores inválidos
+                // o si los datos del producto aún no están completamente cargados/sincronizados)
+                props.form.next_due_date = '';
+                props.form.product_pricing_id = null;
+                props.form.billing_amount = 0.00;
+            }
         } else {
-            // Si no se encuentra el pricing (puede pasar si se carga un formulario de edición con valores inválidos)
+            // Si se borra la selección del ciclo, o no hay producto seleccionado, resetear la fecha, pricing_id y monto
             props.form.next_due_date = '';
             props.form.product_pricing_id = null;
             props.form.billing_amount = 0.00;
         }
-    } else {
-        // Si se borra la selección del ciclo, resetear la fecha, pricing_id y monto
-        props.form.next_due_date = '';
-        props.form.product_pricing_id = null;
-        props.form.billing_amount = 0.00;
-    }
-}, { immediate: true }); // Ejecutar inmediatamente si billing_cycle_id ya tiene valor (en edición)
+    }, { immediate: true, deep: true } // `immediate: true` para ejecutar en carga, `deep: true` por si selectedProduct es complejo.
+);
 
 
 const submitForm = () => {
@@ -131,7 +173,7 @@ const submitForm = () => {
 
             <div>
                 <InputLabel for="product_id" value="Producto" required />
-                <SelectInput id="product_id" class="block w-full mt-1" v-model="form.product_id" :options="products"
+                <SelectInput id="product_id" class="block w-full mt-1" v-model="form.product_id" :options="productOptions"
                     placeholder="Seleccione un producto" />
                 <InputError class="mt-2" :message="form.errors.product_id" />
             </div>
