@@ -12,6 +12,7 @@ use App\Http\Controllers\Reseller\ResellerClientController;
 use App\Http\Controllers\Admin\ConfigurableOptionController;
 use App\Http\Controllers\Admin\ClientServiceController; // Añadir esta línea
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\Client\ClientDashboardController;
 use App\Http\Controllers\Admin\SearchController;
 
 
@@ -39,7 +40,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'verified', 'admin']
     Route::put('products/{product}/pricing/{pricing}', [AdminProductController::class, 'updatePricing'])->name('products.pricing.update');
 
     Route::delete('products/{product}/pricing/{pricing}', [AdminProductController::class, 'destroyPricing'])->name('products.pricing.destroy');
-    
+
     Route::get('/products/{product}/pricings', [ClientServiceController::class, 'getProductPricings'])->name('products.getPricings');
 });
 
@@ -55,6 +56,34 @@ Route::middleware(['auth', 'verified', 'role.reseller'])->prefix('reseller-panel
     Route::get('/clients/create', [ResellerClientController::class, 'create'])->name('clients.create');
     Route::post('/clients', [ResellerClientController::class, 'store'])->name('clients.store');
     // Aquí añadirías las rutas para edit, update, show, destroy de clientes por el revendedor
+});
+
+
+// Rutas para el área de cliente
+Route::prefix('client')->name('client.')->middleware(['auth'])->group(function () {
+    // Panel de cliente y lista de servicios
+    Route::get('/services', [ClientDashboardController::class, 'index'])->name('services.index');
+
+    // Rutas placeholder para la gestión de servicios
+    Route::get('/services/create', function () {
+        return Inertia::render('Client/Services/Create');
+    })->name('services.create');
+
+    Route::get('/services/{service}', function ($service) {
+        // En una implementación real, aquí cargarías los datos del servicio
+        return Inertia::render('Client/Services/Show', ['serviceId' => $service]);
+    })->name('services.show');
+
+    Route::get('/services/{service}/edit', function ($service) {
+        // En una implementación real, aquí cargarías los datos del servicio
+        return Inertia::render('Client/Services/Edit', ['serviceId' => $service]);
+    })->name('services.edit');
+
+    // Placeholder para eliminar servicio
+    Route::delete('/services/{service}', function ($service) {
+        // En una implementación real, aquí manejarías la eliminación
+        return back()->with('success', 'Servicio eliminado (placeholder)');
+    })->name('services.destroy');
 });
 
 

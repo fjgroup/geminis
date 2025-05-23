@@ -3439,11 +3439,17 @@ Ejecutar la migración: `php artisan migrate`.
 ### 5.6. Panel de Cliente: Listado de Servicios (Básico)
 
 Contexto:** Los clientes necesitan ver los servicios que han contratado.
-Crear `Client/DashboardController.php` o `Client/ServiceController.php` si no existen.
-En el controlador del cliente, método `index` o `services`, obtener los `client_services` del usuario autenticado.
+Crear `Client/ClientDashboardController.php` y las policies necesarias.
+En el controlador del cliente, método `index` , obtener los `client_services` del usuario autenticado.
 Filtrar por `client_id = auth()->id()`.
 Cargar relaciones necesarias (producto, precios).
-Crear vista `resources/js/Pages/Client/Services/Index.vue`.
+Crear vista  / Hacer un Request para el panel de cliente.
+Crear vista `Client/ClientDashboard.vue` (o similar) para mostrar el listado de servicios.
+Crear vistas para los servicios (si no existen) en `resources/js/Pages/Client/Services`:
+`resources/js/Pages/Client/Services/Create.vue`.
+`resources/js/Pages/Client/Services/Show.vue`.
+`resources/js/Pages/Client/Services/Index.vue`.
+`resources/js/Pages/Client/Services/Edit.vue`.
 Mostrar una tabla/lista de los servicios del cliente (Nombre del producto, Dominio, Próxima Fecha de Vencimiento, Estado, Precio).
 Definir rutas en `routes/web.php` para el panel de cliente (ej. `/client/services`).
 Asegurar middleware de autenticación y que el rol sea 'client' (o que `EnsureUserIsClient` exista y funcione).
