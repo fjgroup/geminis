@@ -15,6 +15,9 @@ export default {
             fontFamily: {
                 sans: ['Figtree', ...defaultTheme.fontFamily.sans],
             },
+            colors: {
+                'brand-blue': '#2563eb', // Puedes cambiar este valor al azul exacto de tu marca
+            },
         },
     },
 

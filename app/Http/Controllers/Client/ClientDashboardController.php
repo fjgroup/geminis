@@ -16,7 +16,7 @@ class ClientDashboardController extends Controller
     {
         $clientServices = $request->user()
                                     ->clientServices()
-                                    ->with(['product', 'prices'])
+                                    ->with(['product', 'productPricing', 'billingCycle'])
                                     ->get();
 
         return Inertia::render('Client/ClientDashboard', [

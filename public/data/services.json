@@ -1,0 +1,985 @@
+{
+  "appName": "Fj Group CA",
+  "currencySymbol": "$",
+  "markupPercentage": 0.22,
+  "heroSection": {
+    "title": "Servicio de Hosting Web Fácil y Administrado para Aplicaciones",
+    "subtitle": "Desarrolle arquitecturas superiores de manera conveniente. Oportunidades únicas de alto rendimiento para su proyecto.",
+    "ctaButtonText": "Comenzar Ahora",
+    "backgroundImageUrl": "https://images.unsplash.com/photo-1522204538344-922f76ecc041?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80",
+    "trustpilot": {
+      "ratingText": "Calificación: 4.7 de 5",
+      "reviewsText": "Excelente",
+      "reviewUrl": "https://es.trustpilot.com/review/fjgroupca.com?utm_medium=trustbox&utm_source=MicroReviewCount"
+    },
+    "featureHighlights": [
+      { "icon": "shield-check", "text": "Seguro y Protegido" },
+      { "icon": "cloud-arrow-up", "text": "Respaldos 24/7" },
+      { "icon": "cog", "text": "Actualización Automática" },
+      { "icon": "bolt", "text": "Velocidad Garantizada" }
+    ]
+  },
+  "whatIsHostingInfo": {
+    "title": "¿Qué es el Hosting Web y Por Qué lo Necesitas?",
+    "content": "El **hosting web** (u hospedaje web) es un servicio esencial que te permite publicar tu sitio web o aplicación en Internet. Imagina que es como alquilar un espacio en un servidor (un ordenador muy potente siempre conectado) donde se guardan todos los archivos, imágenes, bases de datos y contenido de tu web. Cuando alguien escribe tu dirección web (dominio) en su navegador, este se conecta al servidor y muestra tu página."
+  },
+  "generalFeaturesExplained": [
+    {
+      "name": "Discos Duros SSD",
+      "icon": "ssd-drive",
+      "explanation": "Nuestros discos duros SSD (Solid State Drive) permiten que tu sitio web cargue hasta un 500% más rápido en comparación con los discos duros tradicionales. Esto significa una mejor experiencia para tus visitantes y un impulso para tu SEO. Todos nuestros servidores utilizan discos SSD."
+    },
+    {
+      "name": "Instalador Softaculous",
+      "icon": "apps",
+      "explanation": "Softaculous es un potente instalador automático que te permite instalar más de 440 aplicaciones web (como WordPress, Joomla, PrestaShop, Moodle) con solo unos clics. Simplifica la creación y gestión de tus sitios."
+    },
+    {
+      "name": "Constructor de Sitios (SiteBuilder)",
+      "icon": "desktop-computer",
+      "explanation": "Si no tienes conocimientos técnicos, nuestro SiteBuilder te permite crear tu página web fácilmente. Solo tienes que seleccionar una plantilla, arrastrar y soltar elementos, añadir tu contenido e imágenes, ¡y listo para publicar!"
+    },
+    {
+      "name": "Migración Gratuita",
+      "icon": "switch-horizontal",
+      "explanation": "¿No estás contento con tu proveedor actual? ¡Nosotros te ayudamos a mudarte! Migramos todos los datos de tu sitio web (archivos, bases de datos, correos) a nuestros servidores sin costo adicional, siempre que tu cuenta actual use cPanel."
+    },
+    {
+      "name": "Panel de Control cPanel",
+      "icon": "cpanel-logo",
+      "explanation": "Administra fácilmente todos los aspectos de tu hosting web: crea y gestiona cuentas de correo, bases de datos, dominios, subdominios, archivos y mucho más, todo desde la interfaz intuitiva y líder en la industria de cPanel."
+    },
+    {
+      "name": "Certificados SSL Gratuitos",
+      "icon": "lock-closed",
+      "explanation": "Todos nuestros planes incluyen certificados SSL Let's Encrypt gratuitos. Esto asegura la conexión entre tu sitio web y tus visitantes (HTTPS), protegiendo datos sensibles, generando confianza y mejorando tu ranking en buscadores."
+    }
+  ],
+  "serviceCategoriesTitle": "Obtén los Planes de Hosting Web Más Poderosos con Fj Group CA",
+  "highlightedPlansSection": {
+    "title": "Ideal para Emprendedores y Diseñadores Web",
+    "subtitle": "Comienza con nuestros planes más accesibles y potentes, diseñados para impulsar tus primeros proyectos o los de tus clientes.",
+    "plansToHighlight": ["reseller_1", "shared_inicio", "email_startup", "unmanaged_vps_build1"]
+  },
+  "contactInfo": {
+    "phone": "+58 412 8172337",
+    "email": "cesarfigueroa@fjgroupca.com",
+    "message": "Para contratar un plan o resolver tus dudas, por favor contáctanos a través de los siguientes medios:",
+    "footerDescription": "En **Fj Group CA**, ofrecemos soluciones de hosting económicas y de alto rendimiento desde 2012, con servidores en USA equipados con discos SSD, LiteSpeed, Cloudflare, y más, optimizados para que tu web cargue rápidamente y esté disponible las 24 horas. Un buen hosting es crucial para la velocidad, seguridad y fiabilidad de tu presencia online, impactando directamente la experiencia de tus usuarios y tu posicionamiento en buscadores."
+  },
+  "paymentMethods": [
+      { "name": "Mercantil Panamá", "logoIcon": "building-office" },
+      { "name": "Mony", "logoIcon": "wallet" },
+      { "name": "Zinli", "logoIcon": "wallet" },
+      { "name": "USDT", "logoIcon": "binance" },
+      { "name": "PayPal", "logoIcon": "paypal" }
+  ],
+  "planButtonText": "Contratar Ahora",
+  "serviceCategories": [
+    {
+      "categoryId": "reseller-hosting",
+      "categoryName": "Hosting Revendedor",
+      "categoryIcon": "server",
+      "categoryDescription": "Administra múltiples cuentas de clientes con nuestras robustas soluciones de hosting para revendedores. Ideal para diseñadores web, desarrolladores y agencias que desean ofrecer servicios de hosting bajo su propia marca, con control total y herramientas profesionales.",
+      "imageUrl": "",
+      "plans": [
+        {
+          "id": "reseller_1",
+          "planIcon": "server",
+          "name": "Revendedor 20",
+          "description": "Ideal para iniciar, hasta 20 cuentas cPanel. Perfecto para manejar los proyectos de tus primeros clientes.",
+          "accounts_limit": "Hasta 20",
+          "storage_gb": 50,
+          "storage_type": "SSD",
+          "features": [
+            {
+              "text": "Certificados SSL Gratuitos para todos los sitios",
+              "explanation": "Asegura todos los sitios web de tus clientes con encriptación HTTPS sin costo adicional, aumentando la confianza y seguridad."
+            },
+            {
+              "text": "Panel de Control cPanel/WHM Profesional",
+              "explanation": "WHM (Web Host Manager) te da control total para crear y administrar las cuentas de cPanel de tus clientes. cPanel permite a tus clientes gestionar sus propios hostings fácilmente."
+            },
+            "Copias de Seguridad Diarias Automatizadas",
+            {
+              "text": "DNS Privado Personalizable (White-Label)",
+              "explanation": "Configura tus propios Name Servers (ej: ns1.tuempresa.com, ns2.tuempresa.com) para ofrecer un servicio de hosting completamente bajo tu marca (marca blanca)."
+            },
+            "Soporte Técnico Especializado para Revendedores"
+          ],
+          "price_introductory": 20.95,
+          "price_renewal": 24.95,
+          "billing_cycle": "mensual"
+        },
+        {
+          "id": "reseller_2",
+          "planIcon": "server",
+          "name": "Revendedor 40",
+          "description": "Para crecimiento moderado, hasta 40 cuentas.",
+          "accounts_limit": "Hasta 40",
+          "storage_gb": 100,
+          "storage_type": "SSD",
+          "features": [
+            "Certificados SSL Gratuitos",
+            {
+              "text": "Panel de Control cPanel/WHM",
+              "explanation": "WHM (Web Host Manager) te da control total para crear y administrar las cuentas de cPanel de tus clientes. cPanel permite a tus clientes gestionar sus propios hostings fácilmente."
+            },
+            "Copias de Seguridad Diarias",
+            {
+              "text": "DNS Privado",
+              "explanation": "Configura tus propios Name Servers para ofrecer un servicio de hosting completamente bajo tu marca."
+            }
+          ],
+          "price_introductory": 34.95,
+          "price_renewal": 39.95,
+          "billing_cycle": "mensual"
+        },
+        {
+          "id": "reseller_3",
+          "planIcon": "server",
+          "name": "Revendedor 60",
+          "description": "Mayor e, hasta 60 cuentas.",
+          "accounts_limit": "Hasta 60",
+          "storage_gb": 150,
+          "storage_type": "SSD",
+          "features": [
+            "Certificados SSL Gratuitos",
+            {
+              "text": "Panel de Control cPanel/WHM",
+              "explanation": "WHM (Web Host Manager) te da control total para crear y administrar las cuentas de cPanel de tus clientes. cPanel permite a tus clientes gestionar sus propios hostings fácilmente."
+            },
+            "Copias de Seguridad Diarias",
+            {
+              "text": "DNS Privado",
+              "explanation": "Configura tus propios Name Servers para ofrecer un servicio de hosting completamente bajo tu marca."
+            }
+          ],
+          "price_introductory": 49.95,
+          "price_renewal": 54.95,
+          "billing_cycle": "mensual"
+        },
+        {
+          "id": "reseller_entry_cloud",
+          "planIcon": "cloud-arrow-up",
+          "name": "Revendedor Entry Cloud",
+          "description": "Cuentas ilimitadas, rendimiento superior con NVMe.",
+          "accounts_limit": "Ilimitadas",
+          "storage_gb": 50,
+          "storage_type": "NVMe SSD (Actualizable)",
+          "features": [
+            "Recursos CPU y RAM Garantizados",
+            {
+              "text": "Panel de Control SPanel",
+              "explanation": "SPanel es una alternativa moderna y eficiente a cPanel, diseñada para la velocidad y la facilidad de uso en la gestión de tus servidores y cuentas de hosting."
+            },
+            "Seguridad Avanzada SShield",
+            "IP Dedicada",
+            "Soporte Prioritario",
+            {
+              "text": "Completa Marca Blanca",
+              "explanation": "Personaliza completamente la experiencia de hosting para tus clientes, desde los DNS hasta el panel de control, con tu propia marca."
+            }
+          ],
+          "price_introductory": 14.95,
+          "price_renewal": 34.95,
+          "billing_cycle": "mensual",
+          "notes": "Precio intro para plan de 36 meses."
+        }
+      ]
+    },
+    {
+      "categoryId": "shared-web-hosting",
+      "categoryName": "Hosting Web Compartido",
+      "categoryIcon": "globe-alt",
+      "categoryDescription": "Soluciones económicas y sencillas para iniciar tu presencia en línea. Perfecto para blogs, sitios web personales o pequeñas empresas que recién comienzan. Obtén todo lo necesario para lanzar tu proyecto web sin complicaciones y a un costo accesible.",
+      "imageUrl": "",
+      "plans": [
+        {
+          "id": "shared_eco",
+          "planIcon": "document-text",
+          "name": "Web Eco",
+          "description": "Perfecto para un sitio web básico en HTML e iniciar una presencia en línea.",
+          "storage_gb": 1,
+          "storage_type": "SSD",
+          "features": [
+            {
+              "text": "Certificado SSL Gratuito (HTTPS)",
+              "explanation": "Asegura la conexión de tu sitio y muestra el candado verde en el navegador, generando confianza en tus visitantes."
+            },
+            "Copias de Seguridad Semanales",
+            "Protección Anti-Malware Básica",
+            {
+              "text": "Instalador Softaculous",
+              "explanation": "Instala fácilmente más de 400 aplicaciones web como WordPress, Joomla, PrestaShop y más, con solo unos clics."
+            },
+            {
+              "text": "Panel de Control Fácil de Usar",
+              "explanation": "Utilizamos cPanel, el panel de control líder en la industria, para que gestiones tu hosting de forma sencilla e intuitiva."
+            }
+          ],
+          "price_introductory": 2.95,
+          "price_renewal": 5,
+          "billing_cycle": "mensual"
+        },
+        {
+          "id": "shared_inicio",
+          "planIcon": "document-text",
+          "name": "Web Inicio",
+          "description": "Perfecto para un sitio web básico o tu primer blog. ¡Lanza tu idea al mundo hoy mismo!",
+          "storage_gb": 6,
+          "storage_type": "SSD",
+          "features": [
+            {
+              "text": "Certificado SSL Gratuito (HTTPS)",
+              "explanation": "Asegura la conexión de tu sitio y muestra el candado verde en el navegador, generando confianza en tus visitantes."
+            },
+            "Copias de Seguridad Semanales",
+            "Protección Anti-Malware Básica",
+            {
+              "text": "Instalador Softaculous",
+              "explanation": "Instala fácilmente más de 400 aplicaciones web como WordPress, Joomla, PrestaShop y más, con solo unos clics."
+            },
+            {
+              "text": "Panel de Control Fácil de Usar",
+              "explanation": "Utilizamos cPanel, el panel de control líder en la industria, para que gestiones tu hosting de forma sencilla e intuitiva."
+            }
+          ],
+          "price_introductory": 2.95,
+          "price_renewal": 10,
+          "billing_cycle": "mensual"
+        },
+        {
+          "id": "shared_pyme",
+          "planIcon": "document-text",
+          "name": "Web Pyme",
+          "description": "Perfecto para nuestra Pyme o un sitio web más grande. Ideal para blogs, tiendas online o páginas de negocios.",
+          "storage_gb": 12,
+          "storage_type": "SSD",
+          "features": [
+            {
+              "text": "Certificado SSL Gratuito (HTTPS)",
+              "explanation": "Asegura la conexión de tu sitio y muestra el candado verde en el navegador, generando confianza en tus visitantes."
+            },
+            "Copias de Seguridad Semanales",
+            "Protección Anti-Malware Básica",
+            {
+              "text": "Instalador Softaculous",
+              "explanation": "Instala fácilmente más de 400 aplicaciones web como WordPress, Joomla, PrestaShop y más, con solo unos clics."
+            },
+            {
+              "text": "Panel de Control Fácil de Usar",
+              "explanation": "Utilizamos cPanel, el panel de control líder en la industria, para que gestiones tu hosting de forma sencilla e intuitiva."
+            }
+          ],
+          "price_introductory": 2.95,
+          "price_renewal": 12.95,
+          "billing_cycle": "mensual"
+        },
+        {
+          "id": "shared_negocio",
+          "planIcon": "document-text",
+          "name": "Web Negocio",
+          "description": "Ideal para empresas que buscan una presencia profesional en línea, como tu propia tienda online, un blog profesional o un sitio web de negocios.",
+          "storage_gb": 25,
+          "storage_type": "SSD",
+          "features": [
+            {
+              "text": "Certificado SSL Gratuito (HTTPS)",
+              "explanation": "Asegura la conexión de tu sitio y muestra el candado verde en el navegador, generando confianza en tus visitantes."
+            },
+            "Copias de Seguridad Semanales",
+            "Protección Anti-Malware Básica",
+            {
+              "text": "Instalador Softaculous",
+              "explanation": "Instala fácilmente más de 400 aplicaciones web como WordPress, Joomla, PrestaShop y más, con solo unos clics."
+            },
+            {
+              "text": "Panel de Control Fácil de Usar",
+              "explanation": "Utilizamos cPanel, el panel de control líder en la industria, para que gestiones tu hosting de forma sencilla e intuitiva."
+            }
+          ],
+          "price_introductory": 2.95,
+          "price_renewal": 15.95,
+          "billing_cycle": "mensual"
+        },
+
+        {
+          "id": "shared_advanced",
+          "planIcon": "document-text",
+          "name": "Web Avanzado",
+          "description": "Ideal para múltiples sitios pequeños o uno con más tráfico, por ejemplo, un sitio de noticias, un sitio de mercados financieros.",
+          "storage_gb": 50,
+          "storage_type": "SSD",
+          "features": [
+            "Certificado SSL Gratuito",
+            "Copias de Seguridad Diarias Avanzadas",
+            "Protección Anti-Malware Pro",
+            "Instalador Softaculous",
+            "Herramientas WordPress"
+          ],
+          "price_introductory": 6.95,
+          "price_renewal": 20.95,
+          "billing_cycle": "mensual"
+        }
+      ]
+    },
+    {
+      "categoryId": "managed-cloud-hosting",
+      "categoryName": "Hosting Cloud Administrado",
+      "categoryIcon": "server-stack",
+      "categoryDescription": "Alto rendimiento, ebilidad y gestión completa para tus proyectos más exigentes. Disfruta de la potencia de la nube sin preocuparte por la administración técnica. Nosotros nos encargamos para que tú te enfoques en crecer.",
+      "imageUrl": "",
+      "plans": [
+        {
+          "id": "managed_cloud_build1",
+          "planIcon": "server",
+          "name": "Cloud Build #1",
+          "description": "Potencia y recursos dedicados para empezar en la nube.",
+          "cpu_cores": 2,
+          "ram_gb": 4,
+          "storage_gb": 50,
+          "storage_type": "NVMe SSD",
+          "features": [
+            {
+              "text": "Panel de Control cPanel ",
+              "explanation": "Disfruta de la familiaridad de cPanel con la eficiencia de SPanel. Gestiona tu servidor cloud de forma intuitiva."
+            },
+            "Seguridad SShield",
+            "Migración Gratuita",
+            "Certificados SSL Gratuitos",
+            "IP Dedicada"
+          ],
+          "price_introductory": 29.95,
+          "price_renewal": 49.95,
+          "billing_cycle": "mensual"
+        },
+        {
+          "id": "managed_cloud_build2",
+          "planIcon": "server",
+          "name": "Cloud Build #2",
+          "description": "Más capacidad para aplicaciones en crecimiento.",
+          "cpu_cores": 4,
+          "ram_gb": 8,
+          "storage_gb": 80,
+          "storage_type": "NVMe SSD",
+          "features": [
+            "Panel de Control cPanel ",
+            "Seguridad SShield",
+            "Migración Gratuita",
+            "Certificados SSL Gratuitos",
+            "IP Dedicada"
+          ],
+          "price_introductory": 44.95,
+          "price_renewal": 91.95,
+          "billing_cycle": "mensual"
+        },
+        {
+          "id": "managed_cloud_build3",
+          "planIcon": "server",
+          "name": "Cloud Build #3",
+          "description": "Alto rendimiento para proyectos grandes.",
+          "cpu_cores": 8,
+          "ram_gb": 16,
+          "storage_gb": 160,
+          "storage_type": "NVMe SSD",
+          "features": [
+            "Panel de Control cPanel ",
+            "Seguridad SShield",
+            "Migración Gratuita",
+            "Certificados SSL Gratuitos",
+            "IP Dedicada"
+          ],
+          "price_introductory": 69.95,
+          "price_renewal": 165.95,
+          "billing_cycle": "mensual"
+        },
+        {
+          "id": "managed_cloud_build4",
+          "planIcon": "server",
+          "name": "Cloud Build #4",
+          "description": "Máxima potencia para aplicaciones críticas.",
+          "cpu_cores": 12,
+          "ram_gb": 24,
+          "storage_gb": 240,
+          "storage_type": "NVMe SSD",
+          "features": [
+            "Panel de Control cPanel ",
+            "Seguridad SShield",
+            "Migración Gratuita",
+            "Certificados SSL Gratuitos",
+            "IP Dedicada"
+          ],
+          "price_introductory": 94.95,
+          "price_renewal": 239.95,
+          "billing_cycle": "mensual"
+        }
+      ]
+    },
+    {
+      "categoryId": "wordpress-hosting",
+      "categoryName": "Hosting WordPress Administrado",
+      "categoryIcon": "wordpress",
+      "categoryDescription": "Hosting optimizado para sitios WordPress, garantizando velocidad, seguridad y herramientas específicas. Simplifica la gestión de tu WordPress con actualizaciones automáticas, backups y soporte especializado.",
+      "imageUrl": "",
+      "plans": [
+        {
+          "id": "wp_starter_cloud",
+          "planIcon": "wordpress",
+          "name": "WP Starter Cloud",
+          "description": "Perfecto para nuevos sitios WordPress, basado en Cloud Build #1.",
+          "cpu_cores": 2,
+          "ram_gb": 4,
+          "storage_gb": 50,
+          "storage_type": "NVMe SSD",
+          "features": [
+            {
+              "text": "Instalación WP 1-Clic",
+              "explanation": "Comienza tu sitio WordPress en minutos con nuestro instalador de un solo clic."
+            },
+            "Actualizaciones Automáticas WP",
+            "Seguridad SShield",
+            {
+              "text": "Constructor de Sitios IA (Spectra)",
+              "explanation": "Crea páginas impresionantes en WordPress sin código usando Spectra, un constructor visual potenciado por IA."
+            },
+            {
+              "text": "Entorno de Pruebas (Staging)",
+              "explanation": "Prueba cambios, plugins o temas nuevos en una copia de tu sitio (staging) antes de aplicarlos al sitio en vivo, evitando errores."
+            }
+          ],
+          "price_introductory": 29.95,
+          "price_renewal": 49.95,
+          "billing_cycle": "mensual"
+        },
+        {
+          "id": "wp_pro_cloud",
+          "planIcon": "wordpress",
+          "name": "WP Pro Cloud",
+          "description": "Más recursos para sitios en crecimiento, basado en Cloud Build #2.",
+          "cpu_cores": 4,
+          "ram_gb": 8,
+          "storage_gb": 80,
+          "storage_type": "NVMe SSD",
+          "features": [
+            "Seguridad Mejorada WP",
+            "Entorno de Pruebas (Staging)",
+            "Soporte Prioritario WP",
+            "WP-CLI",
+            "Bloqueo WordPress"
+          ],
+          "price_introductory": 44.95,
+          "price_renewal": 91.95,
+          "billing_cycle": "mensual"
+        },
+        {
+          "id": "wp_avanzado_cloud",
+          "planIcon": "wordpress",
+          "name": "WP Avanzado Cloud",
+          "description": "Alto rendimiento para WordPress, basado en Cloud Build #3.",
+          "cpu_cores": 8,
+          "ram_gb": 16,
+          "storage_gb": 160,
+          "storage_type": "NVMe SSD",
+          "features": [
+            "Todas las características Pro",
+            "Más capacidad de procesamiento",
+            "Ideal para múltiples sitios o WooCommerce"
+          ],
+          "price_introductory": 69.95,
+          "price_renewal": 165.95,
+          "billing_cycle": "mensual"
+        },
+        {
+          "id": "wp_elite_cloud",
+          "planIcon": "wordpress",
+          "name": "WP Élite Cloud",
+          "description": "Máxima potencia para WordPress, basado en Cloud Build #4.",
+          "cpu_cores": 12,
+          "ram_gb": 24,
+          "storage_gb": 240,
+          "storage_type": "NVMe SSD",
+          "features": [
+            "Todas las características Avanzado",
+            "Rendimiento Extremo",
+            "Para sitios de alta demanda y agencias"
+          ],
+          "price_introductory": 94.95,
+          "price_renewal": 239.95,
+          "billing_cycle": "mensual"
+        }
+      ]
+    },
+    {
+      "categoryId": "moodle-hosting",
+      "categoryName": "Hosting Educativo (Moodle)",
+      "categoryIcon": "academic-cap",
+      "categoryDescription": "Plataforma optimizada para Moodle, ideal para instituciones educativas y capacitadores. Crea aulas virtuales interactivas, gestiona cursos y ofrece una experiencia de aprendizaje en línea robusta y segura, respaldada por nuestro soporte experto.",
+      "imageUrl": "",
+      "plans": [
+        {
+          "id": "moodle_basic_cloud",
+          "planIcon": "academic-cap",
+          "name": "Moodle Básico Cloud",
+          "description": "Inicia tu plataforma educativa Moodle con lo esencial. Perfecto para academias pequeñas o cursos individuales.",
+          "cpu_cores": 2,
+          "ram_gb": 2,
+          "storage_gb": 50,
+          "storage_type": "NVMe SSD",
+          "features": [
+            {
+              "text": "Instalación Moodle 1-Clic",
+              "explanation": "Despliega tu plataforma Moodle de forma rápida y sencilla con nuestro instalador automático."
+            },
+            "Optimizado para Moodle",
+            "Certificados SSL Gratuitos",
+            "Soporte Moodle Básico",
+            "Backups semanales de cursos"
+          ],
+          "price_introductory": 14.95,
+          "price_renewal": 34.95,
+          "billing_cycle": "mensual",
+          "notes": "Precio intro para plan de 36 meses."
+        },
+        {
+          "id": "moodle_pro_cloud",
+          "planIcon": "academic-cap",
+          "name": "Moodle Pro Cloud",
+          "description": "Ideal para academias en crecimiento con más cursos y un mayor número de estudiantes.",
+          "cpu_cores": 2,
+          "ram_gb": 4,
+          "storage_gb": 50,
+          "storage_type": "NVMe SSD",
+          "features": [
+            "Todo en Básico Cloud+",
+            "Soporte Moodle Especializado",
+            "Backups diarios de cursos y plataforma",
+            {
+              "text": "Entorno de Pruebas para Moodle",
+              "explanation": "Prueba nuevas configuraciones o plugins de Moodle en un entorno seguro antes de aplicarlos a tu plataforma principal."
+            },
+            "Mayor capacidad de alumnos concurrentes"
+          ],
+          "price_introductory": 29.95,
+          "price_renewal": 49.95,
+          "billing_cycle": "mensual"
+        },
+        {
+          "id": "moodle_advanced_cloud",
+          "planIcon": "academic-cap",
+          "name": "Moodle Avanzado Cloud",
+          "description": "Alto rendimiento para grandes instituciones educativas y múltiples aulas virtuales activas.",
+          "cpu_cores": 4,
+          "ram_gb": 8,
+          "storage_gb": 80,
+          "storage_type": "NVMe SSD",
+          "features": [
+            "Todo en Pro Cloud+",
+            "Recursos Dedicados Superiores",
+            "Integración con herramientas externas (opcional)",
+            "Soporte Prioritario Moodle",
+            "Ebilidad Avanzada"
+          ],
+          "price_introductory": 44.95,
+          "price_renewal": 91.95,
+          "billing_cycle": "mensual"
+        },
+        {
+          "id": "moodle_institutional_cloud",
+          "planIcon": "academic-cap",
+          "name": "Moodle Institucional Cloud",
+          "description": "Máxima capacidad y personalización para proyectos educativos a gran e y universidades.",
+          "cpu_cores": 8,
+          "ram_gb": 16,
+          "storage_gb": 160,
+          "storage_type": "NVMe SSD",
+          "features": [
+            "Todo en Avanzado Cloud+",
+            "Infraestructura de Alto Rendimiento",
+            "Personalización completa de Moodle",
+            "Soporte Premium y SLA",
+            "Ideal para miles de usuarios"
+          ],
+          "price_introductory": 69.95,
+          "price_renewal": 165.95,
+          "billing_cycle": "mensual"
+        }
+      ]
+    },
+    {
+      "categoryId": "ecommerce-hosting",
+      "categoryName": "Hosting eCommerce",
+      "categoryIcon": "shopping-cart",
+      "categoryDescription": "Hosting seguro, eble y de alto rendimiento para tu tienda en línea. Vende más con una plataforma optimizada para WooCommerce, PrestaShop y otras soluciones de comercio electrónico. Seguridad y velocidad para tus clientes.",
+      "imageUrl": "",
+      "plans": [
+        {
+          "id": "ecom_entry_cloud",
+          "planIcon": "shopping-cart",
+          "name": "eCommerce Entry Cloud",
+          "description": "Inicia tu tienda online fácilmente.",
+          "cpu_cores": 2,
+          "ram_gb": 2,
+          "storage_gb": 50,
+          "storage_type": "NVMe SSD",
+          "features": [
+            {
+              "text": "Instalación Carrito Gratis (WooCommerce, PrestaShop)",
+              "explanation": "Comienza a vender rápidamente con la instalación gratuita de las plataformas de eCommerce más populares."
+            },
+            "Listo para PCI Compliance (con configuración)",
+            "SSL Incluido",
+            "Seguridad SShield"
+          ],
+          "price_introductory": 14.95,
+          "price_renewal": 34.95,
+          "billing_cycle": "mensual",
+          "notes": "Precio intro para plan de 36 meses."
+        },
+        {
+          "id": "ecom_build1",
+          "planIcon": "shopping-cart",
+          "name": "eCommerce Build #1",
+          "description": "Tiendas en crecimiento, basado en Cloud Build #1.",
+          "cpu_cores": 2,
+          "ram_gb": 4,
+          "storage_gb": 50,
+          "storage_type": "NVMe SSD",
+          "features": [
+            "Optimizado para OpenCart, Magento",
+            "Entorno de Pruebas",
+            "Actualizaciones Automáticas",
+            "Soporte eCommerce Experto"
+          ],
+          "price_introductory": 29.95,
+          "price_renewal": 49.95,
+          "billing_cycle": "mensual"
+        },
+        {
+          "id": "ecom_build2",
+          "planIcon": "shopping-cart",
+          "name": "eCommerce Build #2",
+          "description": "Más potencia para tiendas grandes, basado en Cloud Build #2.",
+          "cpu_cores": 4,
+          "ram_gb": 8,
+          "storage_gb": 80,
+          "storage_type": "NVMe SSD",
+          "features": [
+            "Alto rendimiento para catálogos extensos",
+            "Compresión Gzip",
+            "Integración CDN",
+            "IP Dedicada"
+          ],
+          "price_introductory": 44.95,
+          "price_renewal": 91.95,
+          "billing_cycle": "mensual"
+        },
+        {
+          "id": "ecom_build3",
+          "planIcon": "shopping-cart",
+          "name": "eCommerce Build #3",
+          "description": "Para tiendas con alto tráfico y ventas, basado en Cloud Build #3.",
+          "cpu_cores": 8,
+          "ram_gb": 16,
+          "storage_gb": 160,
+          "storage_type": "NVMe SSD",
+          "features": [
+            "Ebilidad superior",
+            "Seguridad SShield avanzada",
+            "Backups de recuperación ante desastres",
+            "Acceso Root (opcional)"
+          ],
+          "price_introductory": 69.95,
+          "price_renewal": 165.95,
+          "billing_cycle": "mensual"
+        }
+      ]
+    },
+    {
+      "categoryId": "unmanaged-vps-hosting",
+      "categoryName": "VPS Cloud No Administrado",
+      "categoryIcon": "code-bracket",
+      "categoryDescriptionFontSize": "text-xl",
+      "categoryDescription": "¡Libera todo tu potencial con nuestros VPS Cloud No Administrados! Obtén **control total (acceso root)** para configurar tu servidor exactamente como lo necesitas. Nuestros VPS son la solución perfecta para desarrolladores experimentados, administradores de sistemas y proyectos que demandan **máxima flexibilidad y un rendimiento personalizable sin igual**. Conviértete en el arquitecto de tu propia infraestructura digital y despliega tus aplicaciones más ambiciosas con la potencia y libertad que solo un VPS no administrado te puede ofrecer. ¡E tus recursos a medida que creces y paga solo por lo que usas!",
+      "advantagesTitle": "Ventajas Clave de Nuestro VPS Cloud:",
+      "advantagesList": [
+        "Acceso Root completo para control total del sistema.",
+        "Elección de tu Sistema Operativo Linux preferido (Ubuntu, CentOS, Debian, etc.).",
+        "Recursos dedicados (CPU, RAM, Almacenamiento NVMe SSD) y fácilmente ebles.",
+        "Infraestructura de red de alta velocidad y redundancia para máxima disponibilidad.",
+        "IP Dedicada incluida sin costo adicional para tus aplicaciones.",
+        "Panel de control SPanel gratuito para gestión básica (cPanel/Plesk opcionales con costo).",
+        "Posibilidad de instalar cualquier software o aplicación que necesites.",
+        "Snapshots para crear copias de seguridad instantáneas de tu servidor.",
+        "Activación rápida para que comiences a trabajar en minutos.",
+        "Ideal para alojar múltiples sitios web, aplicaciones customizadas, servidores de juegos, VPNs, entornos de desarrollo y mucho más."
+      ],
+      "imageUrl": "",
+      "plans": [
+        {
+          "id": "unmanaged_vps_build1",
+          "planIcon": "terminal",
+          "name": "VPS No Admin Build #1",
+          "description": "Flexibilidad total con acceso root.",
+          "cpu_cores_info": "2",
+          "ram_gb_info": "4",
+          "storage_gb_info": "50GB (NVMe)",
+          "features": [
+            {
+              "text": "Acceso Root Completo",
+              "explanation": "Control total sobre tu servidor, instala el software que necesites y configúralo a tu medida."
+            },
+            {
+              "text": "Panel de Control cPanel (Opcional, SPanel Gratuito)",
+              "explanation": "Puedes optar por el popular cPanel (con costo adicional) o usar SPanel (gratuito) para gestionar tu VPS."
+            },
+            "Snapshots Gratuitos",
+            "IP Dedicada Gratuita",
+            "Alta Disponibilidad",
+            "Elección de SO Linux"
+          ],
+          "price_introductory": 19.95,
+          "price_renewal": 24.95,
+          "billing_cycle": "mensual"
+        },
+        {
+          "id": "unmanaged_vps_build2",
+          "planIcon": "terminal",
+          "name": "VPS No Admin Build #2",
+          "description": "Más recursos base para tus proyectos.",
+          "cpu_cores_info": "4",
+          "ram_gb_info": "8",
+          "storage_gb_info": "100GB (NVMe)",
+          "features": [
+            "Acceso Root Completo",
+            "Panel de Control cPanel (Opcional, SPanel Gratuito)",
+            "Snapshots Gratuitos",
+            "IP Dedicada Gratuita",
+            "Múltiples Ubicaciones de Servidor"
+          ],
+          "price_introductory": 36.95,
+          "price_renewal": 49.95,
+          "billing_cycle": "mensual"
+        },
+        {
+          "id": "unmanaged_vps_build3",
+          "planIcon": "terminal",
+          "name": "VPS No Admin Build #3",
+          "description": "Para aplicaciones que demandan más potencia.",
+          "cpu_cores_info": "8",
+          "ram_gb_info": "16",
+          "storage_gb_info": "160GB (NVMe)",
+          "features": [
+            "Acceso Root Completo",
+            "Panel de Control cPanel (Opcional, SPanel Gratuito)",
+            "Activación Instantánea",
+            "Garantía Devolución Dinero"
+          ],
+          "price_introductory": 66.95,
+          "price_renewal": 95.95,
+          "billing_cycle": "mensual"
+        },
+        {
+          "id": "unmanaged_vps_build4",
+          "planIcon": "terminal",
+          "name": "VPS No Admin Build #4",
+          "description": "Máxima capacidad personalizable.",
+          "cpu_cores_info": "16",
+          "ram_gb_info": "32",
+          "storage_gb_info": "240GB (NVMe)",
+          "features": [
+            "Acceso Root Completo",
+            "Panel de Control cPanel (Opcional, SPanel Gratuito)",
+            {
+              "text": "Windows Disponible (con licencia)",
+              "explanation": "Si necesitas un entorno Windows Server, podemos ofrecértelo (requiere licencia adicional)."
+            },
+            "Soporte para Diversas Distros Linux"
+          ],
+          "price_introductory": 122.95,
+          "price_renewal": 183.95,
+          "billing_cycle": "mensual"
+        }
+      ]
+    },
+    {
+      "categoryId": "agency-hosting",
+      "categoryName": "Hosting para Agencias",
+      "categoryIcon": "users",
+      "categoryDescription": "Soluciones centralizadas para agencias digitales que gestionan múltiples proyectos de clientes. Ofrece servicios de hosting de calidad a tus clientes con herramientas de gestión eficientes, marca blanca y soporte prioritario.",
+      "imageUrl": "",
+      "plans": [
+        {
+          "id": "agency_entry_cloud",
+          "planIcon": "briefcase",
+          "name": "Agencia Entry Cloud",
+          "description": "Ideal para agencias iniciando o con pocos clientes.",
+          "cpu_cores": 2,
+          "ram_gb": 2,
+          "storage_gb": 50,
+          "storage_type": "NVMe SSD (Ajustable)",
+          "features": [
+            "Panel de Control cPanel ",
+            "Migraciones Gratuitas Ilimitadas",
+            {
+              "text": "Marca Blanca Completa",
+              "explanation": "Ofrece el servicio de hosting bajo tu propia marca, personalizando DNS y paneles para tus clientes."
+            },
+            "Ebilidad Fácil",
+            "Soporte Experto 24/7"
+          ],
+          "price_introductory": 14.95,
+          "price_renewal": 34.95,
+          "billing_cycle": "mensual",
+          "notes": "Precio intro para plan de 36 meses."
+        },
+        {
+          "id": "agency_build1",
+          "planIcon": "briefcase",
+          "name": "Agencia Build #1",
+          "description": "Gestiona más clientes con recursos dedicados.",
+          "cpu_cores": 2,
+          "ram_gb": 4,
+          "storage_gb": 50,
+          "storage_type": "NVMe SSD (Ajustable)",
+          "features": [
+            "Panel de Control cPanel ",
+            "Constructor Sitios WordPress (Spectra)",
+            "Acceso Git y SSH",
+            "Instalador Softaculous",
+            "Rendimiento Optimizado OpenLiteSpeed"
+          ],
+          "price_introductory": 29.95,
+          "price_renewal": 49.95,
+          "billing_cycle": "mensual"
+        },
+        {
+          "id": "agency_build2",
+          "planIcon": "briefcase",
+          "name": "Agencia Build #2",
+          "description": "Mayor capacidad para agencias en expansión.",
+          "cpu_cores": 4,
+          "ram_gb": 8,
+          "storage_gb": 100,
+          "storage_type": "NVMe SSD (Ajustable)",
+          "features": [
+            "Panel de Control cPanel ",
+            "Gestión Centralizada",
+            "NVMe SSD Ultrarrápido",
+            "Soporte Prioritario para Agencias"
+          ],
+          "price_introductory": 44.95,
+          "price_renewal": 91.95,
+          "billing_cycle": "mensual"
+        },
+        {
+          "id": "agency_build3",
+          "planIcon": "briefcase",
+          "name": "Agencia Build #3",
+          "description": "Solución robusta para agencias grandes.",
+          "cpu_cores": 8,
+          "ram_gb": 16,
+          "storage_gb": 150,
+          "storage_type": "NVMe SSD (Ajustable)",
+          "features": [
+            "Panel de Control cPanel ",
+            "Máxima Ebilidad",
+            "Seguridad SShield",
+            "Copias de Seguridad Externas"
+          ],
+          "price_introductory": 69.95,
+          "price_renewal": 165.95,
+          "billing_cycle": "mensual"
+        }
+      ]
+    },
+    {
+      "categoryId": "email-hosting",
+      "categoryName": "Hosting de Correo Empresarial",
+      "categoryIcon": "envelope-open",
+      "categoryDescription": "Hosting de correo profesional, seguro y confiable con tu propio dominio. Fortalece la imagen de tu marca con direcciones de email personalizadas, protección anti-spam y acceso desde cualquier dispositivo.",
+      "imageUrl": "",
+      "plans": [
+        {
+          "id": "email_startup",
+          "planIcon": "envelope",
+          "name": "Correo StartUp",
+          "description": "Hasta 10 cuentas de correo, 50GB almacenamiento.",
+          "accounts_limit": 10,
+          "domains_limit": 1,
+          "storage_gb": 50,
+          "features": [
+            "Protección SPAM Avanzada",
+            {
+              "text": "Acceso Webmail Profesional",
+              "explanation": "Accede a tus correos desde cualquier navegador con una interfaz webmail moderna y completa."
+            },
+            {
+              "text": "Configuración SPF, DKIM, DMARC",
+              "explanation": "Ayudamos a configurar estos registros para mejorar la entregabilidad de tus correos y protegerte contra el spoofing."
+            },
+            "Migración Gratuita"
+          ],
+          "price_introductory": 4.95,
+          "price_renewal": 12.95,
+          "billing_cycle": "mensual"
+        },
+        {
+          "id": "email_smallbiz",
+          "planIcon": "envelope",
+          "name": "Correo SmallBiz",
+          "description": "Hasta 50 cuentas, 100GB almacenamiento.",
+          "accounts_limit": 50,
+          "domains_limit": 5,
+          "storage_gb": 100,
+          "features": [
+            "Protección SPAM Avanzada",
+            "Soporte Técnico 24/7",
+            "Comunicación Segura",
+            "Backups Externos"
+          ],
+          "price_introductory": 6.95,
+          "price_renewal": 15.95,
+          "billing_cycle": "mensual"
+        },
+        {
+          "id": "email_medium",
+          "planIcon": "envelope",
+          "name": "Correo Medium",
+          "description": "Hasta 100 cuentas, 150GB almacenamiento.",
+          "accounts_limit": 100,
+          "domains_limit": 10,
+          "storage_gb": 150,
+          "features": [
+            "Protección SPAM Avanzada",
+            "Entrega Mejorada en Bandeja de Entrada",
+            "Múltiples Servidores Interconectados"
+          ],
+          "price_introductory": 9.95,
+          "price_renewal": 20.95,
+          "billing_cycle": "mensual"
+        },
+        {
+          "id": "email_cloud",
+          "planIcon": "cloud-check",
+          "name": "Correo Cloud",
+          "description": "Cuentas y dominios ilimitados, almacenamiento actualizable.",
+          "accounts_limit_text": "Ilimitadas",
+          "domains_limit_text": "Ilimitados",
+          "storage_gb": 50,
+          "storage_type": "Actualizable",
+          "features": [
+            "Seguridad Alta",
+            "Entrega Premium en Bandeja de Entrada",
+            "IP Dedicada",
+            "Marca Blanca",
+            "Certificados SSL Gratuitos"
+          ],
+          "price_introductory": 14.95,
+          "price_renewal": 34.95,
+          "billing_cycle": "mensual"
+        }
+      ]
+    }
+  ]
+}

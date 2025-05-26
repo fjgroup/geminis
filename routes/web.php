@@ -11,10 +11,12 @@ use App\Http\Controllers\Admin\ConfigurableOptionGroupController;
 use App\Http\Controllers\Reseller\ResellerClientController;
 use App\Http\Controllers\Admin\ConfigurableOptionController;
 use App\Http\Controllers\Admin\ClientServiceController; // Añadir esta línea
+use App\Http\Controllers\Admin\OrderController; // Añadir esta línea para el controlador de Admin
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Client\ClientDashboardController;
 use App\Http\Controllers\Admin\SearchController;
-
+use App\Http\Controllers\Client\OrderController as ClientOrderController; // Renombrar el controlador de cliente para evitar conflicto
+use App\Http\Controllers\Admin\InvoiceController; // Añadir esta línea para el controlador de Admin
 
 
 // Rutas para la administración
@@ -32,6 +34,12 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'verified', 'admin']
     // Rutas para Client Services
     Route::resource('client-services', ClientServiceController::class);
 
+    // Rutas para Órdenes de Administración
+    Route::resource('orders', OrderController::class);
+
+    // Rutas para Facturas de Administración
+    Route::resource('invoices', InvoiceController::class);
+
     Route::resource('products', AdminProductController::class);
 
     // Route::get('/products/{product}/pricings', [SearchController::class, 'getProductPricings'])->name('products.search.pricings');
@@ -42,6 +50,11 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'verified', 'admin']
     Route::delete('products/{product}/pricing/{pricing}', [AdminProductController::class, 'destroyPricing'])->name('products.pricing.destroy');
 
     Route::get('/products/{product}/pricings', [ClientServiceController::class, 'getProductPricings'])->name('products.getPricings');
+
+    Route::get('/project-progress', function () {
+        // Aquí no necesitas pasar datos porque el componente los tiene o los carga de localStorage
+        return Inertia::render('Admin/ProjectProgress');
+    })->middleware(['auth', 'verified', /* tu middleware de admin si es necesario */])->name('project.progress');
 });
 
 
@@ -84,19 +97,30 @@ Route::prefix('client')->name('client.')->middleware(['auth'])->group(function (
         // En una implementación real, aquí manejarías la eliminación
         return back()->with('success', 'Servicio eliminado (placeholder)');
     })->name('services.destroy');
+
+    // Rutas para la creación de órdenes
+    Route::get('/order/product/{product}', [OrderController::class, 'showOrderForm'])->name('order.showOrderForm');
+    Route::post('/order/place/{product}', [OrderController::class, 'placeOrder'])->name('order.placeOrder');
+
+    // Rutas para la gestión de órdenes de cliente
+    Route::get('/orders', [ClientOrderController::class, 'index'])->name('orders.index');
+
+    // Rutas para la gestión de facturas de cliente
+    Route::get('/invoices', [\App\Http\Controllers\Client\InvoiceController::class, 'index'])->name('invoices.index');
+
+    Route::get('/invoices/{invoice}', [\App\Http\Controllers\Client\InvoiceController::class, 'show'])->name('invoices.show');
 });
 
 
 Route::get('/', function () {
-    return Inertia::render('Welcome', [
-        'canLogin' => Route::has('login'),
-        'canRegister' => Route::has('register'),
-        'laravelVersion' => Application::VERSION,
-        'phpVersion' => PHP_VERSION,
+
+    // Opcionalmente, podrías cargar services.json aquí y pasarlo como prop
+     $servicesData = json_decode(file_get_contents(public_path('data/services.json')), true);
+    return Inertia::render('LandingPage', [ // Cambiado de 'Welcome' a 'LandingPage' 'canLogin' => Route::has('login'), 'canRegister' => Route::has('register'), 'laravelVersion' => Application::VERSION, 'phpVersion' => PHP_VERSION,
     ]);
 });
 
-Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
+
 
 
 Route::middleware('auth')->group(function () {

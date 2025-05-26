@@ -67,6 +67,14 @@ class ClientService extends Model
     }
 
     /**
+     * Get the product pricing associated with the service.
+     */
+   public function productPricing(): BelongsTo
+   {
+       return $this->belongsTo(ProductPricing::class);
+   }
+   
+    /**
      * Get the billing cycle associated with the service.
      */
    public function billingCycle(): BelongsTo
@@ -74,13 +82,6 @@ class ClientService extends Model
        return $this->belongsTo(BillingCycle::class);
    }
 
-    /**
-     * Get the product pricing associated with the service.
-     */
-   public function productPricing(): BelongsTo
-   {
-       return $this->belongsTo(ProductPricing::class);
-   }
 
    // TODO: Definir las siguientes relaciones cuando los modelos existan y estén listos:
     // public function order(): BelongsTo

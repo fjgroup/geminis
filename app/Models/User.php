@@ -93,7 +93,7 @@ class User extends Authenticatable implements MustVerifyEmail
      *
      * @return \Illuminate\Database\Eloquent\Relations\HasMany<User>
      */
-    public function clients()
+        public function clients(): HasMany
     {
         return $this->hasMany(User::class, 'reseller_id');
     }
@@ -118,8 +118,25 @@ class User extends Authenticatable implements MustVerifyEmail
     /**
      * Get the client services for the user.
      */
-    public function clientServices(): HasMany
+        public function clientServices(): HasMany
     {
         return $this->hasMany(ClientService::class, 'client_id');
     }
+    /**
+     * Get the orders for the user.
+     */
+        public function orders(): HasMany
+    {
+        return $this->hasMany(Order::class, 'client_id');
+    }
+
+    /**
+     * Check if the user has a specific role.
+     * @param string $roleName  @return bool
+     */
+        public function hasRole(string $roleName): bool
+    {
+        return $this->role === $roleName;
+    }
+
 }

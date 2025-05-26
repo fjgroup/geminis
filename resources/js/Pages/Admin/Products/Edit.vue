@@ -25,7 +25,9 @@ const props = defineProps({
     billingCycles: Array, // Nueva prop para ciclos de facturación
 });
 
-// Los console.log de depuración se han eliminado
+// Paso de depuración: Imprimir los billingCycles que llegan como props
+console.log('Props billingCycles en Edit.vue:', JSON.parse(JSON.stringify(props.billingCycles)));
+
 
 
 const form = useForm({
@@ -92,11 +94,15 @@ const currencyOptions = [
 // Nueva propiedad computada para ciclos de facturación dinámicos
 const dynamicBillingCycleOptions = computed(() => {
     if (!props.billingCycles) return [];
-    return props.billingCycles.map(cycle => ({
-        value: cycle.id,
-        label: cycle.name,
-    }));
+    // Dado que props.billingCycles ya llega en el formato { value: ..., label: ... }
+    // desde el controlador, podemos usarlo directamente.
+    const options = props.billingCycles;
+    // Paso de depuración: Imprimir las opciones generadas
+
+    console.log('dynamicBillingCycleOptions generadas:', JSON.parse(JSON.stringify(options)));
+    return options;
 });
+
 
 
 const submitProductForm = () => {

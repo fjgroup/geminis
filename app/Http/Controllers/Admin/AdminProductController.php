@@ -101,7 +101,8 @@ class AdminProductController extends Controller
         $product->load('pricings.billingCycle', 'configurableOptionGroups');
 
         // Obtener todos los ciclos de facturación
-        $billingCycles = BillingCycle::all();
+        $billingCyclesFromDB = BillingCycle::orderBy('name')->get(['id', 'name']);
+
 
         $resellers = User::where('role', 'reseller')->orderBy('name')->get(['id', 'name', 'company_name']);
         // Incluir product_id para saber si un grupo es global o específico de un producto
@@ -128,7 +129,11 @@ class AdminProductController extends Controller
                 'label' => $reseller->name . ($reseller->company_name ? " ({$reseller->company_name})" : "")
             ])->toArray(),
             'all_option_groups' => $allOptionGroupsData, // Usar la variable depurada
-            'billingCycles' => $billingCycles, // Pasar los ciclos de facturación a la vista
+            
+            'billingCycles' => $billingCyclesFromDB->map(fn($cycle) => [
+                'value' => $cycle->id,
+                'label' => $cycle->name
+            ]), // Pasar los ciclos de facturación formateados para SelectInput
         ]);
     }
 
