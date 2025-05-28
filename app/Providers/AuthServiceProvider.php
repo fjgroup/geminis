@@ -15,6 +15,8 @@ use App\Policies\ProductPricingPolicy;
 
 use App\Models\Invoice;
 use App\Policies\InvoicePolicy;
+use App\Models\Transaction; // Added Transaction model import
+use App\Policies\TransactionPolicy; // Added TransactionPolicy import
 
 class AuthServiceProvider extends ServiceProvider
 {
@@ -27,9 +29,10 @@ class AuthServiceProvider extends ServiceProvider
         User::class => UserPolicy::class,
         Product::class => ProductPolicy::class,
         ProductPricing::class => ProductPricingPolicy::class,
-        ProductPricing::class => ProductPricingPolicy::class,
+        // ProductPricing::class => ProductPricingPolicy::class, // Duplicate removed
         Order::class => OrderPolicy::class,
         Invoice::class => InvoicePolicy::class,
+        Transaction::class => TransactionPolicy::class, // Added TransactionPolicy
     ];
 
     /**
@@ -37,7 +40,7 @@ class AuthServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        $this->registerPolicies();
+        // $this->registerPolicies(); // This line is often not needed if policies are in the $policies array
         //
     }
 }

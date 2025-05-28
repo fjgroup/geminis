@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne; // Added HasOne import
 
 class Invoice extends Model
 {
@@ -65,11 +66,12 @@ class Invoice extends Model
     }
 
     /**
-     * Get the order associated with the invoice.
+     * Get the order associated with this invoice.
+     * An invoice is typically generated for one order.
      */
-    public function order(): BelongsTo
+    public function order(): HasOne
     {
-        return $this->belongsTo(Order::class, 'invoice_id');
+        return $this->hasOne(Order::class, 'invoice_id');
     }
 
     /**
