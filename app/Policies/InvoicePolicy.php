@@ -63,7 +63,10 @@ class InvoicePolicy
      */
     public function update(User $user, Invoice $invoice): bool
     {
-        return false; // O $user->isAdmin(); si se desea permitir la actualización a admins
+        // Only admins can edit invoices.
+        // Additional logic could be added, e.g., preventing edits on 'paid' or 'cancelled' invoices
+        // unless the user has a specific higher privilege, but for now, admin override is fine.
+        return $user->isAdmin();
     }
 
     /**
@@ -71,7 +74,11 @@ class InvoicePolicy
      */
     public function delete(User $user, Invoice $invoice): bool
     {
-        return false; // O $user->isAdmin(); si se desea permitir la eliminación a admins
+        // Only admins can delete invoices.
+        // Consider adding logic to prevent deletion of invoices with non-reversed payments,
+        // or if related order is still active, etc. For now, admin override.
+        // Soft deletes are used, so data is recoverable.
+        return $user->isAdmin();
     }
 
     /**
@@ -79,7 +86,7 @@ class InvoicePolicy
      */
     public function restore(User $user, Invoice $invoice): bool
     {
-        return false; // O $user->isAdmin(); si se desea permitir la restauración a admins
+        return $user->isAdmin();
     }
 
     /**
@@ -87,6 +94,6 @@ class InvoicePolicy
      */
     public function forceDelete(User $user, Invoice $invoice): bool
     {
-        return false; // O $user->isAdmin(); si se desea permitir la eliminación forzada a admins
+        return $user->isAdmin(); // Or false, to prevent force deletes via policy
     }
 }
