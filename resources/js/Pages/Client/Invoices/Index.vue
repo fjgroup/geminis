@@ -59,10 +59,19 @@ const formatDate = (dateString) => {
                                     {{ formatDate(invoice.due_date) }}
                                 </td>
                                 <td class="px-6 py-4 text-sm text-gray-900 whitespace-nowrap">
-                                    {{ formatCurrency(invoice.total) }}
+                                    {{ formatCurrency(invoice.total_amount, invoice.currency_code) }}
                                 </td>
-                                <td class="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">
-                                    {{ invoice.status }}
+                                <td class="px-6 py-4 text-sm whitespace-nowrap">
+                                    <span :class="{
+                                        'px-2 inline-flex text-xs leading-5 font-semibold rounded-full': true,
+                                        'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100': invoice.status === 'unpaid' || invoice.status === 'pending' || invoice.status === 'overdue',
+                                        'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100': invoice.status === 'paid',
+                                        'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100': invoice.status === 'cancelled',
+                                        'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100': invoice.status === 'refunded',
+                                        'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300': !['unpaid', 'pending', 'overdue', 'paid', 'cancelled', 'refunded'].includes(invoice.status)
+                                    }">
+                                        {{ invoice.status ? invoice.status.replace(/_/g, ' ').replace(/\b\w/g, char => char.toUpperCase()) : 'N/A' }}
+                                    </span>
                                 </td>
                                 <td class="px-6 py-4 text-sm font-medium text-right whitespace-nowrap">
                                     <Link :href="route('client.invoices.show', invoice.id)" class="text-indigo-600 hover:text-indigo-900">

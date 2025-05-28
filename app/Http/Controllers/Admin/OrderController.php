@@ -30,8 +30,11 @@ class OrderController extends Controller
 
         // $user = Auth::user(); // Not directly used in the new logic if admin sees all by default
         
-        $query = Order::with(['client', 'invoice', 'items']) // Keep existing eager loads
-            ->latest('order_date');
+        $query = Order::with([
+            'client:id,name,email,balance,currency_code', // Specific columns for client
+            'invoice', 
+            'items'
+        ])->latest('order_date');
 
         // Status Filtering
         if ($request->filled('status')) {

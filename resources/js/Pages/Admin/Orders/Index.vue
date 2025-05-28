@@ -13,12 +13,29 @@ const props = defineProps({
     possibleStatuses: Array, // from controller
 });
 
+// Helper function for formatting currency if formatted_balance is not available
+const formatCurrency = (amount, currencyCode = 'USD') => {
+    const number = parseFloat(amount);
+    if (isNaN(number)) {
+        return 'N/A';
+    }
+    // Using Intl.NumberFormat for better localization and currency handling
+    try {
+        return new Intl.NumberFormat(undefined, { style: 'currency', currency: currencyCode }).format(number);
+    } catch (e) {
+        // Fallback for invalid currency code or if Intl is not fully supported in a specific environment
+        console.warn(`Currency formatting failed for ${currencyCode}: ${e.getMessage()}`);
+        return `${currencyCode} ${number.toFixed(2)}`;
+    }
+};
+
+
 const searchFilter = ref(props.filters.search || '');
 const statusFilter = ref(props.filters.status || '');
 
 const statusOptions = props.possibleStatuses.map(status => ({
     value: status,
-    label: status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) 
+    label: status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
 }));
 statusOptions.unshift({ value: '', label: 'All Statuses' });
 
@@ -35,7 +52,7 @@ const applyFilters = () => {
     const currentParams = {};
     if (searchFilter.value) currentParams.search = searchFilter.value;
     if (statusFilter.value) currentParams.status = statusFilter.value;
-    
+
     router.get(route('admin.orders.index'), currentParams, {
         preserveState: true,
         replace: true, // Avoids polluting browser history for filter changes
@@ -91,6 +108,9 @@ watch(statusFilter, applyFilters); // Apply status filter immediately
                                         Cliente
                                     </th>
                                     <th scope="col" class="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                                        Client Balance
+                                    </th>
+                                    <th scope="col" class="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
                                         Fecha
                                     </th>
                                     <th scope="col" class="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
@@ -110,13 +130,28 @@ watch(statusFilter, applyFilters); // Apply status filter immediately
                                         {{ order.order_number }}
                                     </td>
                                     <td class="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">
-                                        {{ order.client ? order.client.name : 'N/A' }}
+                                        <div v-if="order.client">
+                                            <Link :href="route('admin.users.edit', order.client.id)" class="text-indigo-600 hover:text-indigo-900">
+                                                {{ order.client.name }}
+                                            </Link>
+                                            <div class="text-xs text-gray-400">{{ order.client.email }}</div>
+                                        </div>
+                                        <span v-else>N/A</span>
+                                    </td>
+                                    <td class="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">
+                                        <span v-if="order.client && order.client.formatted_balance !== undefined">
+                                            {{ order.client.formatted_balance }}
+                                        </span>
+                                        <span v-else-if="order.client && typeof order.client.balance === 'number' && order.client.currency_code">
+                                            {{ formatCurrency(order.client.balance, order.client.currency_code) }}
+                                        </span>
+                                        <span v-else>N/A</span>
                                     </td>
                                     <td class="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">
                                         {{ new Date(order.order_date).toLocaleDateString() }}
                                     </td>
                                     <td class="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">
-                                        {{ order.total_amount }} {{ order.currency_code }}
+                                        {{ formatCurrency(order.total_amount, order.currency_code) }}
                                     </td>
                                     <td class="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">
                                         <span :class="{

@@ -113,8 +113,8 @@ Route::prefix('client')->name('client.')->middleware(['auth'])->group(function (
     })->name('services.destroy');
 
     // Rutas para la creación de órdenes
-    Route::get('/order/product/{product}', [OrderController::class, 'showOrderForm'])->name('order.showOrderForm');
-    Route::post('/order/place/{product}', [OrderController::class, 'placeOrder'])->name('order.placeOrder');
+    Route::get('/order/product/{product}', [ClientOrderController::class, 'showOrderForm'])->name('order.showOrderForm');
+    Route::post('/order/place/{product}', [ClientOrderController::class, 'placeOrder'])->name('order.placeOrder');
 
     // Rutas para la gestión de órdenes de cliente
     Route::get('/orders', [ClientOrderController::class, 'index'])->name('orders.index');
@@ -132,6 +132,21 @@ Route::prefix('client')->name('client.')->middleware(['auth'])->group(function (
 
     // Rutas para la gestión de transacciones de cliente
     Route::get('/transactions', [\App\Http\Controllers\Client\TransactionController::class, 'index'])->name('transactions.index');
+
+    // Rutas para el listado de productos para clientes
+    Route::get('/products', [ClientDashboardController::class, 'listProducts'])->name('products.index');
+
+    // Ruta para solicitar cancelación de servicio
+    Route::post('/services/{service}/request-cancellation', [\App\Http\Controllers\Client\ClientServiceController::class, 'requestCancellation'])->name('services.requestCancellation');
+
+    // Ruta para mostrar opciones de upgrade/downgrade de servicio
+    Route::get('/services/{service}/upgrade-downgrade-options', [\App\Http\Controllers\Client\ClientServiceController::class, 'showUpgradeDowngradeOptions'])->name('services.showUpgradeDowngradeOptions');
+
+    // Ruta para procesar el cambio de plan de servicio
+    Route::post('/services/{service}/process-upgrade-downgrade', [\App\Http\Controllers\Client\ClientServiceController::class, 'processUpgradeDowngrade'])->name('services.processUpgradeDowngrade');
+
+    // Ruta para solicitar renovación de servicio
+    Route::post('/services/{service}/request-renewal', [\App\Http\Controllers\Client\ClientServiceController::class, 'requestRenewal'])->name('services.requestRenewal');
 });
 
 
