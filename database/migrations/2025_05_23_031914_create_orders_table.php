@@ -18,7 +18,16 @@ return new class extends Migration
             $table->string('order_number')->unique();
             $table->foreignId('invoice_id')->nullable()->unique()->constrained('invoices')->onDelete('set null'); // Se llenará después de generar la factura
             $table->timestamp('order_date');
-            $table->enum('status', ['pending_payment', 'pending_provisioning', 'active', 'fraud', 'cancelled'])->default('pending_payment')->index();
+            $table->enum('status', [
+                'pending_payment',                      // Initial state, awaiting payment
+                'pending_provisioning',                 // Legacy or alternative for paid, pre-admin action
+                'paid_pending_execution',               // Payment confirmed, ready for admin to process
+                'cancellation_requested_by_client',     // Client requests cancel after payment
+                'active',                               // Service is active/provisioned
+                'completed',                            // Order fulfilled and completed
+                'fraud',                                // Order marked as fraudulent
+                'cancelled'                             // Order cancelled (by client pre-payment, or by admin)
+            ])->default('pending_payment')->index();
             $table->decimal('total_amount', 10, 2);
             $table->string('currency_code', 3);
             $table->string('payment_gateway_slug')->nullable()->index();

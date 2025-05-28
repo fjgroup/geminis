@@ -22,8 +22,10 @@ class StoreClientOrderRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'product_pricing_id' => ['required', 'exists:product_pricings,id'],
-            'configurable_options_ids.*' => ['exists:configurable_options,id'],
+            'product_pricing_id' => ['required', 'integer', 'exists:product_pricings,id'],
+            'configurable_options' => ['nullable', 'array'], // Changed key from configurable_options_ids
+            'configurable_options.*' => ['integer', 'exists:configurable_options,id'], // Ensure items in array are valid IDs
+            'notes' => ['nullable', 'string', 'max:5000'], // Added for order notes
         ];
     }
 }

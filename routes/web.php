@@ -62,6 +62,13 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'verified', 'admin']
 
     // Route for listing transactions
     Route::get('/transactions', [TransactionController::class, 'index'])->name('transactions.index');
+
+    // Order Execution Routes
+    Route::post('/orders/{order}/start-execution', [OrderController::class, 'startExecution'])->name('orders.startExecution');
+    Route::post('/orders/{order}/complete-execution', [OrderController::class, 'completeExecution'])->name('orders.completeExecution');
+
+    // Order Cancellation Approval Route
+    Route::post('/orders/{order}/approve-cancellation', [OrderController::class, 'approveCancellationRequest'])->name('orders.approveCancellation');
 });
 
 
@@ -111,11 +118,16 @@ Route::prefix('client')->name('client.')->middleware(['auth'])->group(function (
 
     // Rutas para la gestión de órdenes de cliente
     Route::get('/orders', [ClientOrderController::class, 'index'])->name('orders.index');
+    // Route for client to cancel their own order if it's pending payment
+    Route::delete('/orders/{order}/cancel-prepayment', [ClientOrderController::class, 'cancelPrePaymentOrder'])->name('orders.cancelPrePayment');
+    // Route for client to request cancellation for a paid order pending execution
+    Route::post('/orders/{order}/request-cancellation', [ClientOrderController::class, 'requestPostPaymentCancellation'])->name('orders.requestPostPaymentCancellation');
 
     // Rutas para la gestión de facturas de cliente
     Route::get('/invoices', [\App\Http\Controllers\Client\InvoiceController::class, 'index'])->name('invoices.index');
-
     Route::get('/invoices/{invoice}', [\App\Http\Controllers\Client\InvoiceController::class, 'show'])->name('invoices.show');
+    // Route for simulated invoice payment
+    Route::post('/invoices/{invoice}/pay', [\App\Http\Controllers\Client\InvoicePaymentController::class, 'store'])->name('invoices.payment.store');
 });
 
 
