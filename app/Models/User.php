@@ -67,6 +67,14 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
+     * Get the invoices for the user.
+     */
+    public function invoices(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(\App\Models\Invoice::class, 'client_id');
+    }
+
+    /**
      * Get the user's balance formatted as currency.
      */
     public function getFormattedBalanceAttribute(): string
