@@ -18,6 +18,14 @@ const confirmDeleteOrder = () => {
     }
 };
 
+const confirmApproveCancellation = () => {
+    if (window.confirm('Are you sure you want to approve this cancellation request? This will cancel the order, mark the invoice as refunded, and issue a credit to the client.')) {
+        router.post(route('admin.orders.approveCancellation', props.order.id), {}, {
+            preserveScroll: true,
+        });
+    }
+};
+
 const confirmStartExecution = () => {
     if (window.confirm('Are you sure you want to mark this order as "Processing/Pending Provisioning"?')) {
         router.post(route('admin.orders.startExecution', props.order.id), {}, {
@@ -154,9 +162,12 @@ const formatCurrency = (amount, currencyCode = 'USD') => {
                                     </SecondaryButton>
                                 </div>
                                 
-                                <!-- Placeholder for Approve/Deny Cancellation Request buttons -->
-                                <div v-if="order.status === 'cancellation_requested_by_client'">
-                                    <p class="text-sm text-purple-700">Client has requested cancellation. (Approve/Deny UI to be added)</p>
+                                <div v-if="order.status === 'cancellation_requested_by_client'" class="space-y-2">
+                                    <PrimaryButton @click="confirmApproveCancellation" class="bg-yellow-500 hover:bg-yellow-600 text-white focus:ring-yellow-400">
+                                        Approve Cancellation & Issue Credit
+                                    </PrimaryButton>
+                                    <p class="text-xs text-gray-600 mt-1">Client requested cancellation. Approving will cancel the order, mark invoice as refunded, and create a credit transaction for the client.</p>
+                                    <!-- Deny Cancellation button can be added here -->
                                 </div>
                             </div>
                         </div>

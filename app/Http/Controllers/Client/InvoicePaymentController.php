@@ -25,9 +25,8 @@ class InvoicePaymentController extends Controller
      */
     public function store(Request $request, Invoice $invoice): RedirectResponse
     {
-        // Authorization: Ensure the invoice belongs to the authenticated client
-        // and can be paid (e.g., status is 'unpaid').
-        if ($invoice->client_id !== Auth::id()) {
+        $user = Auth::user();
+        if ($invoice->client_id !== $user->id) {
             abort(403, 'Unauthorized action.');
         }
         if ($invoice->status !== 'unpaid') {
@@ -35,69 +34,94 @@ class InvoicePaymentController extends Controller
                              ->with('error', 'This invoice cannot be paid at this time. Status: ' . $invoice->status);
         }
 
+        $paymentMethod = $request->input('payment_method', 'manual_simulation'); // 'manual_simulation' or 'account_credit'
+
         DB::beginTransaction();
         try {
-            // 1. Update Invoice
-            $invoice->status = 'paid';
-            $invoice->paid_date = Carbon::now();
-            $invoice->save();
+            if ($paymentMethod === 'account_credit') {
+                if ($user->balance >= $invoice->total_amount) {
+                    // Sufficient credit to pay full invoice
+                    $user->decrement('balance', $invoice->total_amount); // Use decrement for safety
 
-            // 2. Create Financial Transaction
-            Transaction::create([
-                'invoice_id' => $invoice->id,
-                'client_id' => $invoice->client_id,
-                'reseller_id' => $invoice->reseller_id, // Carry over from invoice
-                'gateway_slug' => 'manual_simulation', // Or 'client_marked_paid'
-                'gateway_transaction_id' => 'SIM-' . strtoupper(Str::random(12)),
-                'type' => 'payment',
-                'amount' => $invoice->total_amount,
-                'currency_code' => $invoice->currency_code,
-                'status' => 'completed', // Simulated payment is instantly completed
-                'fees_amount' => 0, // No fees for simulation
-                'description' => 'Simulated payment for Invoice ' . $invoice->invoice_number,
-                'transaction_date' => Carbon::now(),
-            ]);
-
-            // 3. Update associated Order status (if exists)
-            // Ensure 'order' relationship is loaded if not automatically by route model binding enhancements
-            $invoice->loadMissing('order'); 
-            if ($invoice->order) { 
-                $order = $invoice->order;
-                // Ensure order status allows for this transition
-                if ($order->status === 'pending_payment') {
-                     // IMPORTANT: 'paid_pending_execution' must be a valid ENUM value in the 'orders' table 'status' column.
-                     // If not, this will cause a database error.
-                     $order->status = 'paid_pending_execution'; 
-                     $order->save();
-
-                     // 4. Log Order Activity for order status update
-                     OrderActivity::create([
-                        'order_id' => $order->id,
-                        'user_id' => Auth::id(), // Client initiated this via payment
-                        'type' => 'invoice_paid_by_client', // Or a more specific "order_payment_confirmed"
-                        'details' => [
-                            'invoice_id' => $invoice->id,
-                            'invoice_number' => $invoice->invoice_number,
-                            'new_order_status' => $order->status,
-                        ]
+                    Transaction::create([
+                        'invoice_id' => $invoice->id,
+                        'client_id' => $user->id,
+                        'reseller_id' => $invoice->reseller_id,
+                        'gateway_slug' => 'account_credit',
+                        'gateway_transaction_id' => 'CREDIT-USED-' . strtoupper(Str::random(10)),
+                        'type' => 'credit_used', // New transaction type
+                        'amount' => $invoice->total_amount,
+                        'currency_code' => $invoice->currency_code,
+                        'status' => 'completed',
+                        'description' => 'Payment for Invoice ' . $invoice->invoice_number . ' using account credit.',
+                        'transaction_date' => Carbon::now(),
                     ]);
+
+                    $invoice->status = 'paid';
+                    $invoice->paid_date = Carbon::now();
+                    $invoice->save();
+                    
+                    $invoice->loadMissing('order'); // Ensure order is loaded
+                    if ($invoice->order) {
+                        $order = $invoice->order;
+                        if ($order->status === 'pending_payment') {
+                            $order->status = 'paid_pending_execution';
+                            $order->save();
+                            OrderActivity::create([
+                                'order_id' => $order->id, 'user_id' => $user->id,
+                                'type' => 'invoice_paid_by_client',
+                                'details' => ['invoice_id' => $invoice->id, 'invoice_number' => $invoice->invoice_number, 'payment_method' => 'account_credit', 'new_order_status' => $order->status]
+                            ]);
+                        }
+                    }
+                    DB::commit();
+                    return redirect()->route('client.invoices.show', $invoice->id)
+                                     ->with('success', 'Invoice paid successfully using account credit.');
+                } else {
+                    DB::rollBack(); 
+                    return redirect()->route('client.invoices.show', $invoice->id)
+                                     ->with('error', 'Insufficient account credit to pay this invoice. Your balance: ' . $user->formatted_balance);
                 }
+            } elseif ($paymentMethod === 'manual_simulation') {
+                // Existing manual simulation logic
+                $invoice->status = 'paid';
+                $invoice->paid_date = Carbon::now();
+                $invoice->save();
+
+                Transaction::create([
+                    'invoice_id' => $invoice->id, 'client_id' => $user->id, 'reseller_id' => $invoice->reseller_id,
+                    'gateway_slug' => 'manual_simulation', 'gateway_transaction_id' => 'SIM-' . strtoupper(Str::random(12)),
+                    'type' => 'payment', 'amount' => $invoice->total_amount, 'currency_code' => $invoice->currency_code,
+                    'status' => 'completed', 'description' => 'Simulated payment for Invoice ' . $invoice->invoice_number,
+                    'transaction_date' => Carbon::now(),
+                ]);
+
+                $invoice->loadMissing('order'); // Ensure order is loaded
+                if ($invoice->order) {
+                    $order = $invoice->order;
+                    if ($order->status === 'pending_payment') {
+                        $order->status = 'paid_pending_execution';
+                        $order->save();
+                        OrderActivity::create([
+                            'order_id' => $order->id, 'user_id' => $user->id,
+                            'type' => 'invoice_paid_by_client',
+                            'details' => ['invoice_id' => $invoice->id, 'invoice_number' => $invoice->invoice_number, 'payment_method' => 'manual_simulation', 'new_order_status' => $order->status]
+                        ]);
+                    }
+                }
+                DB::commit();
+                return redirect()->route('client.invoices.show', $invoice->id)
+                                 ->with('success', 'Invoice marked as paid successfully (simulated). Your order will now be processed.');
             } else {
-                 // If it's a manual invoice without a direct order, log activity against invoice if needed
-                 // Or a general payment activity type. For now, focusing on order-linked invoices.
+                DB::rollBack();
+                return redirect()->route('client.invoices.show', $invoice->id)->with('error', 'Invalid payment method selected.');
             }
-
-
-            DB::commit();
-
-            return redirect()->route('client.invoices.show', $invoice->id)
-                             ->with('success', 'Invoice marked as paid successfully. Your order will now be processed.');
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Simulated payment failed for invoice ' . $invoice->id . ': ' . $e->getMessage(), ['exception' => $e]);
+            Log::error('Invoice payment failed for invoice ' . $invoice->id . ': ' . $e->getMessage(), ['exception' => $e]);
             return redirect()->route('client.invoices.show', $invoice->id)
-                             ->with('error', 'There was an issue processing the simulated payment. Please try again.');
+                             ->with('error', 'There was an issue processing your payment. Please try again.');
         }
     }
 }

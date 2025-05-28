@@ -62,7 +62,30 @@ class User extends Authenticatable implements MustVerifyEmail
             'email_verified_at' => 'datetime',
             'last_login_at' => 'datetime',
             'password' => 'hashed',
+            'balance' => 'decimal:2', // Added balance cast
         ];
+    }
+
+    /**
+     * Get the user's balance formatted as currency.
+     */
+    public function getFormattedBalanceAttribute(): string
+    {
+        $balance = $this->attributes['balance'] ?? 0;
+        // Use the user's specific currency_code if available, otherwise default to USD
+        $currencyCode = $this->currency_code ?? 'USD'; 
+
+        if (class_exists('NumberFormatter')) {
+            $locale = config('app.locale', 'en_US'); // Use app's locale
+            // Construct locale string specific for currency, e.g., en_US@currency=USD
+            // This helps ensure the correct currency symbol and formatting for the given code.
+            // However, NumberFormatter often infers well from just locale + currency code.
+            $formatter = new \NumberFormatter($locale, \NumberFormatter::CURRENCY);
+            return $formatter->formatCurrency($balance, $currencyCode);
+        }
+        
+        // Fallback basic formatting if NumberFormatter is not available
+        return $currencyCode . ' ' . number_format($balance, 2);
     }
 
     /**

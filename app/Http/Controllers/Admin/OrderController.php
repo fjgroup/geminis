@@ -339,6 +339,25 @@ class OrderController extends Controller
                         'description' => 'Credit issued for cancelled Order #' . $order->order_number . ' / Invoice #' . $invoice->invoice_number,
                         'transaction_date' => Carbon::now(),
                     ]);
+
+                    // 3.5. Update Client's Balance
+                    $client = $order->client; // Assumes 'client' relationship is eager loaded or loaded via $order->load('client') if needed
+                    if (!$client) { // Defensive check, ensure client is loaded
+                        $order->load('client');
+                        $client = $order->client;
+                    }
+
+                    if ($client) {
+                        $creditAmount = $invoice->total_amount; // Amount from the invoice
+                        if ($creditAmount > 0) {
+                            $client->increment('balance', $creditAmount); // Atomically increments
+                            // No need for $client->save() when using increment/decrement
+                        }
+                    } else {
+                        // Log a warning if client not found on order, though this should ideally not happen
+                        Log::warning("Client not found for order ID: {$order->id} during credit approval.");
+                    }
+
                 } else {
                     // If invoice wasn't 'paid' or 'overdue' but order was 'cancellation_requested_by_client'
                     // (shouldn't happen if previous logic is correct), just mark invoice as cancelled.
@@ -348,6 +367,16 @@ class OrderController extends Controller
             }
 
             // 4. Create OrderActivity Log
+            // Eager load client again to get the updated balance for logging, if $client was reloaded.
+            // Or, if $client->increment() updates the model instance, this might not be needed.
+            // $client->refresh(); // To be safe, or trust that $client->balance is updated.
+            // For simplicity, we assume $client->balance reflects the new balance after increment.
+            // If not, a $newBalance = $client->balance (before increment) + $creditAmount would be more direct for logging.
+            // However, the increment method returns a boolean, not the new balance directly.
+            // So, to log the new balance, we'd have to re-fetch or calculate.
+            // Let's fetch the client again for the new balance if needed.
+            $updatedClientForLog = $order->client()->first(); // Re-fetch the client for the latest balance
+
             OrderActivity::create([
                 'order_id' => $order->id,
                 'user_id' => Auth::id(), // Admin performing the action
@@ -357,7 +386,8 @@ class OrderController extends Controller
                     'new_order_status' => 'cancelled',
                     'invoice_id' => $order->invoice_id,
                     'invoice_status_updated_to' => $order->invoice ? $order->invoice->status : null,
-                    'credited_amount' => $order->invoice ? $order->invoice->total_amount : 0,
+                    'credited_amount' => $order->invoice && isset($creditAmount) ? $creditAmount : 0, // Use $creditAmount if set
+                    'client_new_balance' => $updatedClientForLog ? $updatedClientForLog->balance : null,
                 ]
             ]);
 

@@ -1,25 +1,58 @@
 <script setup>
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'; // Usar el layout de cliente
-import { Head, useForm } from '@inertiajs/vue3'; // Added useForm
-import PrimaryButton from '@/Components/PrimaryButton.vue'; // Added PrimaryButton
+import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import { Head, Link, useForm } from '@inertiajs/vue3'; // Added Link
+import PrimaryButton from '@/Components/PrimaryButton.vue';
+import SecondaryButton from '@/Components/SecondaryButton.vue'; // Added SecondaryButton
 
 const props = defineProps({
     invoice: {
         type: Object,
         required: true,
     },
+    auth: Object, // For auth.user.balance and auth.user.formatted_balance
 });
 
-const paymentForm = useForm({});
+// Helper for currency formatting
+const formatCurrency = (amount, currencyCode = 'USD') => {
+    if (amount === null || amount === undefined) return '';
+    // Ensure props.invoice.currency_code is used if available, otherwise fallback
+    const displayCurrency = props.invoice && props.invoice.currency_code ? props.invoice.currency_code : currencyCode;
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: displayCurrency }).format(amount);
+};
 
-const markAsPaid = () => {
-    if (confirm('This is a simulated payment. Mark this invoice as paid?')) {
-        paymentForm.post(route('client.invoices.payment.store', props.invoice.id), {
+// Form for "Pay with Account Credit"
+const creditPaymentForm = useForm({
+    payment_method: 'account_credit',
+});
+
+const payWithCredit = () => {
+    if (props.auth.user.balance < props.invoice.total_amount) {
+        if (!confirm('Your account balance is less than the invoice total. This payment will likely fail or will require partial payment logic not yet implemented. Proceed with attempt? (Note: Currently only full payment by credit is supported by backend.)')) {
+            return;
+        }
+    } else {
+        if (!confirm(`You are about to pay ${formatCurrency(props.invoice.total_amount, props.invoice.currency_code)} using your account credit. Your new balance will be approximately ${formatCurrency(props.auth.user.balance - props.invoice.total_amount, props.invoice.currency_code)}. Proceed?`)) {
+            return;
+        }
+    }
+    creditPaymentForm.post(route('client.invoices.payment.store', props.invoice.id), {
+        preserveScroll: true,
+    });
+};
+
+// Form for "Simulated Manual Payment"
+const manualPaymentForm = useForm({
+    payment_method: 'manual_simulation',
+});
+
+const markAsPaidSimulated = () => {
+    if (confirm('This is a simulated external payment. Mark this invoice as paid?')) {
+        manualPaymentForm.post(route('client.invoices.payment.store', props.invoice.id), {
             preserveScroll: true,
-            // onSuccess: () => { /* Controller handles redirect and flash message */ }
         });
     }
 };
+
 </script>
 
 <template>
