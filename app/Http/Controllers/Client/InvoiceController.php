@@ -26,20 +26,36 @@ class InvoiceController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(Request $request, Invoice $invoice)
+    public function show(Invoice $invoice) // Removed Request $request
     {
         $this->authorize('view', $invoice);
 
         $invoice->load([
-            'client',
-            'reseller', // Cargar reseller si es necesario mostrarlo
+            'client', // Already loaded by policy check if using $invoice->client_id for auth
+            'reseller', 
             'items',
-            'items.orderItem',
-            'items.clientService',
+            'items.orderItem.product', // Example: load product through orderItem
+            'items.clientService', // If applicable
+            'order' // Load the associated order if it exists
         ]);
+        
+        // Get authenticated user and explicitly include balance and formatted_balance
+        $authUser = Auth::user();
+        $userResource = null;
+        if ($authUser) {
+            $userResource = [
+                'id' => $authUser->id,
+                'name' => $authUser->name,
+                'email' => $authUser->email,
+                'balance' => $authUser->balance, // Assuming 'balance' is a direct attribute or casted
+                'formatted_balance' => $authUser->formatted_balance, // Accessor
+            ];
+        }
+
 
         return Inertia::render('Client/Invoices/Show', [
             'invoice' => $invoice,
+            'auth' => ['user' => $userResource] // Pass necessary auth user details
         ]);
     }
 }

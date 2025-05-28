@@ -4,10 +4,13 @@ namespace App\Policies;
 
 use App\Models\Invoice;
 use App\Models\User;
-use Illuminate\Auth\Access\Response;
+// use Illuminate\Auth\Access\Response; // Not strictly needed if not using Response objects
+use Illuminate\Auth\Access\HandlesAuthorization; // Added import
 
 class InvoicePolicy
 {
+    use HandlesAuthorization; // Added trait
+
     /**
      * Determine whether the user can view any models.
      */
@@ -52,7 +55,7 @@ class InvoicePolicy
      */
     public function create(User $user): bool
     {
-        return false; // O $user->isAdmin(); si se desea permitir la creación a admins
+        return $user->isAdmin(); // Assuming User model has isAdmin() method
     }
 
     /**
