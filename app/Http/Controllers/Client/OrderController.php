@@ -255,7 +255,19 @@ class OrderController extends Controller
                 $invoice->save();
             }
 
-            // 3. No OrderActivity log for this specific client action as per user feedback.
+            // 3. Create OrderActivity Log
+            OrderActivity::create([
+                'order_id' => $order->id,
+                'user_id' => Auth::id(), // Client performing the action
+                'type' => 'order_cancelled_by_client_pre_payment',
+                'details' => json_encode([ // Ensure details are JSON encoded
+                    'invoice_id' => $order->invoice_id,
+                    'invoice_number' => $order->invoice ? $order->invoice->invoice_number : null,
+                    'reason' => 'Client cancelled before payment',
+                    'cancelled_order_status' => $order->status, // Should be 'pending_payment' before soft delete
+                    'cancelled_invoice_status' => $order->invoice ? $order->invoice->status : null, // Should be 'cancelled'
+                ]),
+            ]);
 
             DB::commit();
 

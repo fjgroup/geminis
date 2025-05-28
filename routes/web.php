@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\AdminProductController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Admin\ConfigurableOptionGroupController;
 use App\Http\Controllers\Reseller\ResellerClientController;
+use App\Http\Controllers\Reseller\ResellerDashboardController; // Added for reseller dashboard
 use App\Http\Controllers\Admin\ConfigurableOptionController;
 use App\Http\Controllers\Admin\ClientServiceController; // Añadir esta línea
 use App\Http\Controllers\Admin\OrderController; // Añadir esta línea para el controlador de Admin
@@ -75,8 +76,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'verified', 'admin']
 
 // Rutas para el Panel de Revendedor
 Route::middleware(['auth', 'verified', 'role.reseller'])->prefix('reseller-panel')->name('reseller.')->group(function () {
-    // Dashboard del revendedor (ejemplo, necesitarás crear este controlador)
-    // Route::get('/dashboard', [ResellerDashboardController::class, 'index'])->name('dashboard');
+    // Dashboard del revendedor
+    Route::get('/dashboard', [ResellerDashboardController::class, 'index'])->name('dashboard');
 
     // CRUD de Clientes para el revendedor
     Route::get('/clients', [ResellerClientController::class, 'index'])->name('clients.index');
@@ -113,8 +114,8 @@ Route::prefix('client')->name('client.')->middleware(['auth'])->group(function (
     })->name('services.destroy');
 
     // Rutas para la creación de órdenes
-    Route::get('/order/product/{product}', [OrderController::class, 'showOrderForm'])->name('order.showOrderForm');
-    Route::post('/order/place/{product}', [OrderController::class, 'placeOrder'])->name('order.placeOrder');
+    Route::get('/order/product/{product}', [ClientOrderController::class, 'showOrderForm'])->name('order.showOrderForm');
+    Route::post('/order/place/{product}', [ClientOrderController::class, 'placeOrder'])->name('order.placeOrder');
 
     // Rutas para la gestión de órdenes de cliente
     Route::get('/orders', [ClientOrderController::class, 'index'])->name('orders.index');
@@ -126,8 +127,27 @@ Route::prefix('client')->name('client.')->middleware(['auth'])->group(function (
     // Rutas para la gestión de facturas de cliente
     Route::get('/invoices', [\App\Http\Controllers\Client\InvoiceController::class, 'index'])->name('invoices.index');
     Route::get('/invoices/{invoice}', [\App\Http\Controllers\Client\InvoiceController::class, 'show'])->name('invoices.show');
+    Route::post('/invoices/{invoice}/pay-with-balance', [\App\Http\Controllers\Client\InvoiceController::class, 'payWithBalance'])->name('invoices.payWithBalance');
     // Route for simulated invoice payment
     Route::post('/invoices/{invoice}/pay', [\App\Http\Controllers\Client\InvoicePaymentController::class, 'store'])->name('invoices.payment.store');
+
+    // Rutas para la gestión de transacciones de cliente
+    Route::get('/transactions', [\App\Http\Controllers\Client\TransactionController::class, 'index'])->name('transactions.index');
+
+    // Rutas para el listado de productos para clientes
+    Route::get('/products', [ClientDashboardController::class, 'listProducts'])->name('products.index');
+
+    // Ruta para solicitar cancelación de servicio
+    Route::post('/services/{service}/request-cancellation', [\App\Http\Controllers\Client\ClientServiceController::class, 'requestCancellation'])->name('services.requestCancellation');
+
+    // Ruta para mostrar opciones de upgrade/downgrade de servicio
+    Route::get('/services/{service}/upgrade-downgrade-options', [\App\Http\Controllers\Client\ClientServiceController::class, 'showUpgradeDowngradeOptions'])->name('services.showUpgradeDowngradeOptions');
+
+    // Ruta para procesar el cambio de plan de servicio
+    Route::post('/services/{service}/process-upgrade-downgrade', [\App\Http\Controllers\Client\ClientServiceController::class, 'processUpgradeDowngrade'])->name('services.processUpgradeDowngrade');
+
+    // Ruta para solicitar renovación de servicio
+    Route::post('/services/{service}/request-renewal', [\App\Http\Controllers\Client\ClientServiceController::class, 'requestRenewal'])->name('services.requestRenewal');
 });
 
 

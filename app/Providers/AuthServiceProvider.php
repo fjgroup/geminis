@@ -33,6 +33,7 @@ class AuthServiceProvider extends ServiceProvider
         Order::class => OrderPolicy::class,
         Invoice::class => InvoicePolicy::class,
         Transaction::class => TransactionPolicy::class, // Added TransactionPolicy
+        \App\Models\ClientService::class => \App\Policies\ClientServicePolicy::class,
     ];
 
     /**

@@ -50,13 +50,56 @@ const isActiveDashboard = computed(() => {
 
                             <!-- Navigation Links -->
                             <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
+                                <!-- Common Dashboard Link -->
                                 <NavLink :href="dashboardRoute" :active="isActiveDashboard">
                                     Dashboard
                                 </NavLink>
-                                <NavLink :href="route('client.services.index')"
-                                    :active="route().current('client.services.index')">
-                                    Mis Servicios
-                                </NavLink>
+
+                                <!-- Client Specific Links -->
+                                <template v-if="$page.props.auth.user.role === 'client'">
+                                    <NavLink :href="route('client.services.index')" :active="route().current('client.services.index')">
+                                        Mis Servicios
+                                    </NavLink>
+                                    <NavLink :href="route('client.invoices.index')" :active="route().current('client.invoices.index') || route().current('client.invoices.show')">
+                                        Facturas
+                                    </NavLink>
+                                    <NavLink :href="route('client.transactions.index')" :active="route().current('client.transactions.index')">
+                                        Transacciones
+                                    </NavLink>
+                                    <NavLink :href="route('client.products.index')" :active="route().current('client.products.index')">
+                                        Browse Products
+                                    </NavLink>
+                                </template>
+
+                                <!-- Reseller Specific Links -->
+                                <template v-if="$page.props.auth.user.role === 'reseller'">
+                                    <NavLink :href="route('reseller.clients.index')" :active="route().current('reseller.clients.index') || route().current('reseller.clients.create') || route().current('reseller.clients.edit') || route().current('reseller.clients.show')">
+                                        My Clients
+                                    </NavLink>
+                                    <!-- Future: Link to view client orders, reseller settings etc. -->
+                                </template>
+
+                                <!-- Admin Specific Links -->
+                                <template v-if="$page.props.auth.user.role === 'admin'">
+                                    <NavLink :href="route('admin.users.index')" :active="route().current('admin.users.index') || route().current('admin.users.show') || route().current('admin.users.edit')">
+                                        Manage Users
+                                    </NavLink>
+                                    <NavLink :href="route('admin.products.index')" :active="route().current('admin.products.index') || route().current('admin.products.show')">
+                                        Manage Products
+                                    </NavLink>
+                                    <NavLink :href="route('admin.orders.index')" :active="route().current('admin.orders.index') || route().current('admin.orders.show')">
+                                        Manage Orders
+                                    </NavLink>
+                                    <NavLink :href="route('admin.invoices.index')" :active="route().current('admin.invoices.index') || route().current('admin.invoices.show')">
+                                        Manage Invoices
+                                    </NavLink>
+                                     <NavLink :href="route('admin.configurable-option-groups.index')" :active="route().current('admin.configurable-option-groups.index')">
+                                        Configurable Groups
+                                    </NavLink>
+                                     <NavLink :href="route('admin.client-services.index')" :active="route().current('admin.client-services.index') || route().current('admin.client-services.show')">
+                                        Client Services
+                                    </NavLink>
+                                </template>
                             </div>
                         </div>
 
@@ -127,10 +170,51 @@ const isActiveDashboard = computed(() => {
                         <ResponsiveNavLink :href="dashboardRoute" :active="isActiveDashboard">
                             Dashboard
                         </ResponsiveNavLink>
-                        <ResponsiveNavLink :href="route('client.services.index')"
-                            :active="route().current('client.services.index')">
-                            Mis Servicios
-                        </ResponsiveNavLink>
+
+                        <!-- Client Specific Responsive Links -->
+                        <template v-if="$page.props.auth.user.role === 'client'">
+                            <ResponsiveNavLink :href="route('client.services.index')" :active="route().current('client.services.index')">
+                                Mis Servicios
+                            </ResponsiveNavLink>
+                            <ResponsiveNavLink :href="route('client.invoices.index')" :active="route().current('client.invoices.index') || route().current('client.invoices.show')">
+                                Facturas
+                            </ResponsiveNavLink>
+                            <ResponsiveNavLink :href="route('client.transactions.index')" :active="route().current('client.transactions.index')">
+                                Transacciones
+                            </ResponsiveNavLink>
+                            <ResponsiveNavLink :href="route('client.products.index')" :active="route().current('client.products.index')">
+                                Browse Products
+                            </ResponsiveNavLink>
+                        </template>
+
+                        <!-- Reseller Specific Responsive Links -->
+                        <template v-if="$page.props.auth.user.role === 'reseller'">
+                             <ResponsiveNavLink :href="route('reseller.clients.index')" :active="route().current('reseller.clients.index') || route().current('reseller.clients.create') || route().current('reseller.clients.edit') || route().current('reseller.clients.show')">
+                                My Clients
+                            </ResponsiveNavLink>
+                        </template>
+
+                        <!-- Admin Specific Responsive Links -->
+                        <template v-if="$page.props.auth.user.role === 'admin'">
+                            <ResponsiveNavLink :href="route('admin.users.index')" :active="route().current('admin.users.index') || route().current('admin.users.show') || route().current('admin.users.edit')">
+                                Manage Users
+                            </ResponsiveNavLink>
+                            <ResponsiveNavLink :href="route('admin.products.index')" :active="route().current('admin.products.index') || route().current('admin.products.show')">
+                                Manage Products
+                            </ResponsiveNavLink>
+                            <ResponsiveNavLink :href="route('admin.orders.index')" :active="route().current('admin.orders.index') || route().current('admin.orders.show')">
+                                Manage Orders
+                            </ResponsiveNavLink>
+                            <ResponsiveNavLink :href="route('admin.invoices.index')" :active="route().current('admin.invoices.index') || route().current('admin.invoices.show')">
+                                Manage Invoices
+                            </ResponsiveNavLink>
+                            <ResponsiveNavLink :href="route('admin.configurable-option-groups.index')" :active="route().current('admin.configurable-option-groups.index')">
+                                Configurable Groups
+                            </ResponsiveNavLink>
+                            <ResponsiveNavLink :href="route('admin.client-services.index')" :active="route().current('admin.client-services.index') || route().current('admin.client-services.show')">
+                                Client Services
+                            </ResponsiveNavLink>
+                        </template>
                     </div>
 
                     <!-- Responsive Settings Options -->
