@@ -29,7 +29,6 @@ class AuthServiceProvider extends ServiceProvider
         User::class => UserPolicy::class,
         Product::class => ProductPolicy::class,
         ProductPricing::class => ProductPricingPolicy::class,
-        // ProductPricing::class => ProductPricingPolicy::class, // Duplicate removed
         Order::class => OrderPolicy::class,
         Invoice::class => InvoicePolicy::class,
         Transaction::class => TransactionPolicy::class, // Added TransactionPolicy
