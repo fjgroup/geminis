@@ -19,7 +19,9 @@ class TransactionPolicy
      */
     public function viewAny(User $user)
     {
-        return $user->isAdmin(); // Assuming User model has isAdmin() method
+        // Admins can view any list of transactions.
+        // Clients can view lists of their own transactions.
+        return $user->isAdmin() || $user->hasRole('client');
     }
 
     /**
@@ -36,9 +38,8 @@ class TransactionPolicy
         if ($user->isAdmin()) {
             return true;
         }
-        // Add logic here if clients/resellers should see their own transactions
-        // e.g., return $user->id === $transaction->client_id;
-        return false; 
+        // Clients can view their own specific transactions.
+        return $user->hasRole('client') && $user->id === $transaction->client_id;
     }
 
     /**

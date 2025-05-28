@@ -7,11 +7,13 @@ use App\Http\Requests\Admin\StoreTransactionRequest;
 use App\Models\Invoice;
 // use App\Models\Transaction; // Already imported for store, but ensure it's here
 use Illuminate\Http\RedirectResponse;
-// use Illuminate\Support\Facades\Auth; // Not used in store, check if needed for index
 // use Illuminate\Support\Facades\DB; // Not used in store, check if needed for index
 
 // Imports for the new index method
+use App\Models\Order;
+use App\Models\OrderActivity;
 use App\Models\Transaction; // Explicitly ensuring Transaction model is imported
+use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 
@@ -75,6 +77,32 @@ class TransactionController extends Controller
         // Further refinement can be done if specific statuses like 'partially_paid' or 'refunded' are added to the ENUM.
 
         $invoice->save();
+
+        // Update order status if invoice is paid
+        if ($invoice->status === 'paid') {
+            $invoice->load('order.client'); // Load order and its client relationship
+            $order = $invoice->order;
+
+            if ($order && $order->status === 'pending_payment') {
+                $previous_status = $order->status;
+                $order->status = 'paid_pending_execution';
+                $order->save();
+
+                OrderActivity::create([
+                    'order_id' => $order->id,
+                    'user_id' => Auth::id(), // Admin user performing the action
+                    'type' => 'payment_confirmed_order_pending_execution',
+                    'details' => json_encode([
+                        'invoice_id' => $invoice->id,
+                        'invoice_number' => $invoice->invoice_number,
+                        'payment_transaction_id' => $transaction->id,
+                        'previous_order_status' => $previous_status,
+                        'client_name' => $order->client->name, // Assuming client relationship exists and has name
+                        'new_order_status' => $order->status,
+                    ]),
+                ]);
+            }
+        }
 
         // Redirect back to the invoice show page with a success message
         return redirect()->route('admin.invoices.show', $invoice->id)

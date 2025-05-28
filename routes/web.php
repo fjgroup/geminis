@@ -126,8 +126,12 @@ Route::prefix('client')->name('client.')->middleware(['auth'])->group(function (
     // Rutas para la gestión de facturas de cliente
     Route::get('/invoices', [\App\Http\Controllers\Client\InvoiceController::class, 'index'])->name('invoices.index');
     Route::get('/invoices/{invoice}', [\App\Http\Controllers\Client\InvoiceController::class, 'show'])->name('invoices.show');
+    Route::post('/invoices/{invoice}/pay-with-balance', [\App\Http\Controllers\Client\InvoiceController::class, 'payWithBalance'])->name('invoices.payWithBalance');
     // Route for simulated invoice payment
     Route::post('/invoices/{invoice}/pay', [\App\Http\Controllers\Client\InvoicePaymentController::class, 'store'])->name('invoices.payment.store');
+
+    // Rutas para la gestión de transacciones de cliente
+    Route::get('/transactions', [\App\Http\Controllers\Client\TransactionController::class, 'index'])->name('transactions.index');
 });
 
 
