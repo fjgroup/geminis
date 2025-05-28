@@ -16,8 +16,9 @@ class ClientServicePolicy
      */
     public function viewAny(User $user): bool
     {
-        // Clients can view lists of services (which will be scoped by the controller).
-        return $user->hasRole('client');
+        // Admins, Resellers, and Clients can view lists of services.
+        // Actual scoping (e.g., reseller sees only their clients' services) is done in the controller.
+        return $user->isAdmin() || $user->hasRole('reseller') || $user->hasRole('client');
     }
 
     /**
@@ -65,10 +66,20 @@ class ClientServicePolicy
     /**
      * Determine whether the user can view the model.
      */
-    public function view(User $user, ClientService $clientService): bool // Changed to bool for consistency
+    public function view(User $user, ClientService $service): bool // Parameter name changed for clarity
     {
-        // Clients can view their own services.
-        return $user->id === $clientService->client_id;
+        if ($user->isAdmin()) {
+            return true;
+        }
+        // Ensure client relationship is loaded for efficiency
+        $service->loadMissing('client'); 
+        if ($user->hasRole('reseller') && $service->client && $service->client->reseller_id === $user->id) {
+            return true;
+        }
+        if ($user->hasRole('client') && $user->id === $service->client_id) {
+            return true;
+        }
+        return false;
     }
 
     /**
