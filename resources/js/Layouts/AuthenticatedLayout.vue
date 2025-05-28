@@ -57,6 +57,14 @@ const isActiveDashboard = computed(() => {
                                     :active="route().current('client.services.index')">
                                     Mis Servicios
                                 </NavLink>
+                                <NavLink :href="route('client.invoices.index')"
+                                    :active="route().current('client.invoices.index') || route().current('client.invoices.show')">
+                                    Facturas
+                                </NavLink>
+                                <NavLink :href="route('client.transactions.index')"
+                                    :active="route().current('client.transactions.index')">
+                                    Transacciones
+                                </NavLink>
                             </div>
                         </div>
 
@@ -130,6 +138,14 @@ const isActiveDashboard = computed(() => {
                         <ResponsiveNavLink :href="route('client.services.index')"
                             :active="route().current('client.services.index')">
                             Mis Servicios
+                        </ResponsiveNavLink>
+                        <ResponsiveNavLink :href="route('client.invoices.index')"
+                            :active="route().current('client.invoices.index') || route().current('client.invoices.show')">
+                            Facturas
+                        </ResponsiveNavLink>
+                        <ResponsiveNavLink :href="route('client.transactions.index')"
+                            :active="route().current('client.transactions.index')">
+                            Transacciones
                         </ResponsiveNavLink>
                     </div>
 

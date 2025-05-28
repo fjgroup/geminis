@@ -96,4 +96,13 @@ class InvoicePolicy
     {
         return $user->isAdmin(); // Or false, to prevent force deletes via policy
     }
+
+    /**
+     * Determine whether the user can pay the invoice with their balance.
+     */
+    public function payWithBalance(User $user, Invoice $invoice): bool
+    {
+        // User must be the client of the invoice and the invoice must be unpaid.
+        return $user->id === $invoice->client_id && $invoice->status === 'unpaid';
+    }
 }
