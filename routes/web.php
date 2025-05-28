@@ -17,6 +17,7 @@ use App\Http\Controllers\Client\ClientDashboardController;
 use App\Http\Controllers\Admin\SearchController;
 use App\Http\Controllers\Client\OrderController as ClientOrderController; // Renombrar el controlador de cliente para evitar conflicto
 use App\Http\Controllers\Admin\InvoiceController; // Añadir esta línea para el controlador de Admin
+use App\Http\Controllers\Admin\TransactionController; // Added TransactionController import
 
 
 // Rutas para la administración
@@ -55,6 +56,12 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'verified', 'admin']
         // Aquí no necesitas pasar datos porque el componente los tiene o los carga de localStorage
         return Inertia::render('Admin/ProjectProgress');
     })->middleware(['auth', 'verified', /* tu middleware de admin si es necesario */])->name('project.progress');
+
+    // Route for storing transactions for an invoice
+    Route::post('/invoices/{invoice}/transactions', [TransactionController::class, 'store'])->name('invoices.transactions.store');
+
+    // Route for listing transactions
+    Route::get('/transactions', [TransactionController::class, 'index'])->name('transactions.index');
 });
 
 
