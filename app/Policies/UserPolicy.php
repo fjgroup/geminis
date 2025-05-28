@@ -3,82 +3,91 @@
 namespace App\Policies;
 
 use App\Models\User;
-use Illuminate\Auth\Access\Response;
-
+use Illuminate\Auth\Access\HandlesAuthorization; // Added for consistency
 
 class UserPolicy
 {
-    // No es estrictamente necesario si solo retornas booleanos:
-    // use Illuminate\Auth\Access\HandlesAuthorization;
+    use HandlesAuthorization; // Added
 
     /**
      * Determine whether the user can view any models.
      */
-    public function viewAny(User $adminUser): bool
+    public function viewAny(User $actingUser): bool
     {
-        return $adminUser->role === 'admin';
+        return $actingUser->role === 'admin' || $actingUser->role === 'reseller';
     }
 
     /**
      * Determine whether the user can view the model.
      */
-    public function view(User $adminUser, User $targetUser): bool
+    public function view(User $actingUser, User $targetUser): bool
     {
-        return $adminUser->role === 'admin';
+        if ($actingUser->role === 'admin') {
+            return true;
+        }
+        if ($actingUser->role === 'reseller' && $targetUser->reseller_id === $actingUser->id) {
+            return true; // Reseller can view their own client
+        }
+        // Optional: Allow user to view themselves, though typically ProfileController handles this.
+        // if ($actingUser->id === $targetUser->id) {
+        //     return true;
+        // }
+        return false;
     }
 
     /**
      * Determine whether the user can create models.
      */
-    public function create(User $adminUser): bool
+    public function create(User $actingUser): bool
     {
-        return $adminUser->role === 'admin';
+        return $actingUser->role === 'admin' || $actingUser->role === 'reseller';
     }
 
     /**
      * Determine whether the user can update the model.
      */
-    public function update(User $adminUser, User $targetUser): bool
+    public function update(User $actingUser, User $targetUser): bool
     {
-        if ($adminUser->role !== 'admin') {
-            return false;
+        if ($actingUser->role === 'admin') {
+            // Optional: Admin self-edit restriction
+            // if ($actingUser->id === $targetUser->id) { return false; /* or allow specific fields */ }
+            return true;
         }
-        // Opcional: Un admin no puede editarse a sí mismo ciertos campos sensibles aquí.
-        // if ($adminUser->id === $targetUser->id) {
-        //     return false; // O permitir solo ciertos campos
-        // }
-        return true;
+        if ($actingUser->role === 'reseller' && $targetUser->reseller_id === $actingUser->id) {
+            return true; // Reseller can update their own client
+        }
+        return false;
     }
 
     /**
      * Determine whether the user can delete the model.
      */
-    public function delete(User $adminUser, User $targetUser): bool
+    public function delete(User $actingUser, User $targetUser): bool
     {
-        if ($adminUser->role !== 'admin') {
-            return false;
+        if ($actingUser->role === 'admin') {
+            return !($actingUser->id === $targetUser->id); // Admin cannot delete self
         }
-        // Un admin no puede eliminarse a sí mismo.
-        if ($adminUser->id === $targetUser->id) {
-            return false;
+        if ($actingUser->role === 'reseller' && $targetUser->reseller_id === $actingUser->id) {
+            // Optional: Prevent reseller from deleting a client if they have active services, etc.
+            return true; // Reseller can delete their own client
         }
-        return true;
+        return false;
     }
 
     /**
      * Determine whether the user can restore the model.
      */
-    public function restore(User $adminUser, User $targetUser): bool
+    public function restore(User $actingUser, User $targetUser): bool // Parameter name changed for consistency
     {
-        return $adminUser->role === 'admin';
+        return $actingUser->role === 'admin';
     }
 
     /**
      * Determine whether the user can permanently delete the model.
      */
-    public function forceDelete(User $adminUser, User $targetUser): bool
+    public function forceDelete(User $actingUser, User $targetUser): bool // Parameter name changed for consistency
     {
         // Considera restringir esto aún más, ej. solo un superadmin
-        return $adminUser->role === 'admin';
+        return $actingUser->role === 'admin';
     }
 }
