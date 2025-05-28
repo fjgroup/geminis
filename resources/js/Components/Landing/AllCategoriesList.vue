@@ -59,7 +59,7 @@ const cleanDescription = (description: string) => {
                     @click="handleNavigate('categoryDetail', category.categoryId)"
                     class="flex flex-col items-center p-6 text-center transition-all duration-300 rounded-lg shadow-lg bg-slate-800 hover:bg-slate-700 hover:shadow-sky-600/30 animate-zoom-in group">
                     <Icon :name="category.categoryIcon"
-                        class="w-12 h-12 mb-4 transition-transform text-sky-500 group-hover:scale-110" />
+                        class="w-[4rem] h-[4rem] mb-4 transition-transform text-sky-500 group-hover:scale-110" />
                     <h3 class="mb-2 text-xl font-semibold text-slate-100">{{ category.categoryName }}</h3>
                     <p class="flex-grow text-sm text-slate-400 line-clamp-4">{{
                         cleanDescription(category.categoryDescription) }}</p>

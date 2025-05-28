@@ -11,114 +11,118 @@ import AllCategoriesList from '@/Components/Landing/AllCategoriesList.vue';
 import Footer from '@/Components/Landing/Footer.vue';
 import ContactModal from '@/Components/Landing/ContactModal.vue';
 import LoadingSpinner from '@/Components/LoadingSpinner.vue'; // Asumir que LoadingSpinner ya existe en Components
+import Icon from '@/Components/Icon.vue'; // Importar el componente Icon
 import WhatIsHostingSection from '@/Components/Landing/WhatIsHostingSection.vue';
 import GeneralFeaturesExplainedSection from '@/Components/Landing/GeneralFeaturesExplainedSection.vue';
-
+import FeatureHighlightCard from '@/Components/FeatureHighlightCard.vue'; // Importar el nuevo componente FeatureHighlightCard
 
 // Definiciones de tipos (reutilizadas de otros componentes)
 interface TrustpilotData { // Reutilizar si es necesario para props
-  ratingText: string;
-  reviewsText: string;
-  reviewUrl: string;
+    ratingText: string;
+    reviewsText: string;
+    reviewUrl: string;
 }
 
 interface FeatureHighlight { // Reutilizar si es necesario para props
-  icon: string;
-  text: string;
+    icon: string;
+    text: string;
+    backgroundColor: string; // Clase de Tailwind para el fondo del card
+    textColor: string; // Clase de Tailwind para el color del texto
+    iconColor: string; // Clase de Tailwind para el color del icono
 }
 
 interface HeroSectionData { // Reutilizar si es necesario para props
-  title: string;
-  subtitle: string;
-  ctaButtonText: string;
-  backgroundImageUrl: string;
-  trustpilot: TrustpilotData;
-  featureHighlights: FeatureHighlight[];
+    title: string;
+    subtitle: string;
+    ctaButtonText: string;
+    backgroundImageUrl: string;
+    trustpilot: TrustpilotData;
+    featureHighlights: FeatureHighlight[];
 }
 
 interface PlanFeatureObject { // Reutilizar si es necesario para props
-  text: string;
-  explanation?: string;
+    text: string;
+    explanation?: string;
 }
 type PlanFeature = string | PlanFeatureObject;
 
 interface PlanData { // Reutilizar si es necesario para props
-  id: string;
-  planIcon?: string;
-  name: string;
-  description: string;
-  accounts_limit?: string | number;
-  accounts_limit_text?: string;
-  storage_gb?: number;
-  storage_type?: string;
-  storage_gb_info?: string;
-  cpu_cores?: number;
-  cpu_cores_info?: string;
-  ram_gb?: number;
-  ram_gb_info?: string;
-  domains_limit?: number;
-  domains_limit_text?: string;
-  features: PlanFeature[];
-  price_introductory: number;
-  price_renewal: number;
-  billing_cycle: string;
-  notes?: string;
+    id: string;
+    planIcon?: string;
+    name: string;
+    description: string;
+    accounts_limit?: string | number;
+    accounts_limit_text?: string;
+    storage_gb?: number;
+    storage_type?: string;
+    storage_gb_info?: string;
+    cpu_cores?: number;
+    cpu_cores_info?: string;
+    ram_gb?: number;
+    ram_gb_info?: string;
+    domains_limit?: number;
+    domains_limit_text?: string;
+    features: PlanFeature[];
+    price_introductory: number;
+    price_renewal: number;
+    billing_cycle: string;
+    notes?: string;
 }
 
 interface ServiceCategoryData { // Reutilizar si es necesario para props
-  categoryId: string;
-  categoryName: string;
-  categoryIcon: string;
-  categoryDescription: string;
-  categoryDescriptionFontSize?: string;
-  advantagesTitle?: string;
-  advantagesList?: string[];
-  imageUrl: string;
-  plans: PlanData[];
+    categoryId: string;
+    categoryName: string;
+    categoryIcon: string;
+    categoryDescription: string;
+    categoryDescriptionFontSize?: string;
+    advantagesTitle?: string;
+    advantagesList?: string[];
+    imageUrl: string;
+    plans: PlanData[];
 }
 
 interface ContactInfo { // Reutilizar si es necesario para props
-  phone: string;
-  email: string;
-  message: string;
-  footerDescription?: string;
+    phone: string;
+    email: string;
+    message: string;
+    footerDescription?: string;
 }
 
 interface PaymentMethod { // Reutilizar si es necesario para props
-  name: string;
-  logoIcon: string;
+    name: string;
+    logoIcon: string;
 }
 
 interface HighlightedPlansSectionData { // Reutilizar si es necesario para props
-  title: string;
-  subtitle: string;
-  plansToHighlight: string[];
+    title: string;
+    subtitle: string;
+    plansToHighlight: string[];
 }
 
 interface WhatIsHostingInfoData { // Reutilizar si es necesario para props
-  title: string;
-  content: string;
+    title: string;
+    content: string;
 }
 
 interface GeneralFeatureExplainedData { // Reutilizar si es necesario para props
-  name: string;
-  icon: string;
-  explanation: string;
+    name: string;
+    icon: string;
+    explanation: string;
 }
 
 interface ServiceConfig { // Reutilizar si es necesario para props
-  appName: string;
-  currencySymbol: string;
-  markupPercentage: number;
-  heroSection: HeroSectionData;
-  whatIsHostingInfo?: WhatIsHostingInfoData;
-  generalFeaturesExplained?: GeneralFeatureExplainedData[];
-  serviceCategoriesTitle: string;
-  highlightedPlansSection?: HighlightedPlansSectionData;
-  contactInfo: ContactInfo;
-  paymentMethods: PaymentMethod[];
-  planButtonText: string;
-  serviceCategories: ServiceCategoryData[];
+    appName: string;
+    currencySymbol: string;
+    markupPercentage: number;
+    heroSection: HeroSectionData;
+    whatIsHostingInfo?: WhatIsHostingInfoData;
+    generalFeaturesExplained?: GeneralFeatureExplainedData[];
+    serviceCategoriesTitle: string;
+    highlightedPlansSection?: HighlightedPlansSectionData;
+    contactInfo: ContactInfo;
+    paymentMethods: PaymentMethod[];
+    planButtonText: string;
+    serviceCategories: ServiceCategoryData[];
 }
 
 // Definición de tipos para la navegación de página
@@ -147,7 +151,7 @@ const appMainRef = ref<HTMLElement | null>(null); // Referencia al elemento main
 
 // Para verificar los datos de autenticación
 const page = usePage();
-console.log('Datos de autenticación en LandingPage ($page.props.auth):', page.props.auth);
+
 
 
 // Fetch data on mounted (adaptado de React useEffect)
@@ -183,46 +187,46 @@ onMounted(async () => {
 // Funciones de manejo (adaptadas de React)
 
 const handleOpenModal = (planName?: string) => {
-  contactedPlanName.value = planName;
-  isModalOpen.value = true;
+    contactedPlanName.value = planName;
+    isModalOpen.value = true;
 };
 
 const handleCloseModal = () => {
-  isModalOpen.value = false;
-  contactedPlanName.value = undefined;
+    isModalOpen.value = false;
+    contactedPlanName.value = undefined;
 };
 
 const handleNavigation = (page: PageView, categoryId?: string) => {
-  currentPage.value = page;
-  selectedCategoryId.value = categoryId || null;
-   if (appMainRef.value) {
-       appMainRef.value.scrollTop = 0;
-   }
-   window.scrollTo({ top: 0, behavior: 'smooth' });
+    currentPage.value = page;
+    selectedCategoryId.value = categoryId || null;
+    if (appMainRef.value) {
+        appMainRef.value.scrollTop = 0;
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 };
 
 const handleHeroCtaClick = () => {
-  if (serviceData.value) {
-      const targetId = serviceData.value.whatIsHostingInfo ? "what-is-hosting-section"
-                     : serviceData.value.generalFeaturesExplained ? "general-features-section"
-                     : serviceData.value.highlightedPlansSection ? "highlighted-plans-section"
-                     : "all-categories-section"; // Asegúrate de que estos IDs coincidan con los de tus componentes Vue
-      const element = document.getElementById(targetId);
-      if (element) {
-        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      } else {
-        const firstCategory = serviceData.value.serviceCategories[0];
-        if (firstCategory) {
-            handleNavigation('categoryDetail', firstCategory.categoryId);
+    if (serviceData.value) {
+        const targetId = serviceData.value.whatIsHostingInfo ? "what-is-hosting-section"
+            : serviceData.value.generalFeaturesExplained ? "general-features-section"
+                : serviceData.value.highlightedPlansSection ? "highlighted-plans-section"
+                    : "all-categories-section"; // Asegúrate de que estos IDs coincidan con los de tus componentes Vue
+        const element = document.getElementById(targetId);
+        if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } else {
+            const firstCategory = serviceData.value.serviceCategories[0];
+            if (firstCategory) {
+                handleNavigation('categoryDetail', firstCategory.categoryId);
+            }
         }
-      }
     }
 };
 
 // Computed property para la categoría seleccionada
 const selectedCategoryData = computed(() => {
-  if (!serviceData.value || !selectedCategoryId.value) return null;
-  return serviceData.value.serviceCategories.find(cat => cat.categoryId === selectedCategoryId.value);
+    if (!serviceData.value || !selectedCategoryId.value) return null;
+    return serviceData.value.serviceCategories.find(cat => cat.categoryId === selectedCategoryId.value);
 });
 
 
@@ -238,6 +242,7 @@ const selectedCategoryData = computed(() => {
     <div v-else-if="error"
         class="flex flex-col items-center justify-center min-h-screen p-8 bg-slate-900 text-slate-100">
         <!-- Reutilizar Icon si tienes un componente Icon global en Vue -->
+        <Icon name="x-mark" class="w-16 h-16 mb-4 text-red-500" />
         <!-- <Icon name="x-mark" class="w-16 h-16 mb-4 text-red-500" /> -->
         <h1 class="mb-2 text-2xl font-bold">Error</h1>
         <p class="text-lg text-center">{{ error }}</p>
@@ -246,14 +251,14 @@ const selectedCategoryData = computed(() => {
     <div v-else-if="serviceData" class="flex flex-col min-h-screen bg-slate-900">
         <!-- Renderizar los componentes traducidos -->
         <Header :appName="serviceData.appName" :serviceCategories="serviceData.serviceCategories" :canLogin="canLogin"
-        :canRegister="canRegister"
-        :auth="$page.props.auth"
-        @contactClick="handleOpenModal()"
-        @navigate="handleNavigation" />
+            :canRegister="canRegister" :auth="$page.props.auth" @contactClick="handleOpenModal()"
+            @navigate="handleNavigation" />
 
         <main ref="appMainRef" class="flex-grow overflow-y-auto">
             <div v-if="currentPage === 'landing'">
                 <HeroSection :heroData="serviceData.heroSection" @ctaClick="handleHeroCtaClick" />
+
+
                 <WhatIsHostingSection :info="serviceData.whatIsHostingInfo" />
                 <GeneralFeaturesExplainedSection :features="serviceData.generalFeaturesExplained" />
                 <HighlightedPlansSection :sectionData="serviceData.highlightedPlansSection"
@@ -287,8 +292,8 @@ const selectedCategoryData = computed(() => {
             <Link :href="route('login')" class="text-sm text-gray-700 underline">Log in</Link>
             <Link v-if="canRegister" :href="route('register')" class="ml-4 text-sm text-gray-700 underline">Register</Link>
         </template>
-    </div>
-    -->
+</div>
+-->
 
 </template>
 

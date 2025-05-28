@@ -1,4 +1,6 @@
 <script setup lang="ts">
+
+
 import { ref, PropType } from 'vue';
 import Icon from '@/Components/Icon.vue'; // Asumiendo el alias @/Components apunta a ../geminis/resources/js/Components
 import { Link, usePage } from '@inertiajs/vue3'; // Importar Link y usePage
@@ -68,14 +70,40 @@ const handleContactClick = () => {
                         </button>
                     </div>
                     <div class="items-center ml-auto space-x-2 md:flex">
-                        <Link :href="route('login')" title="Login"
-                            class="p-2 transition-colors rounded-md text-slate-300 hover:bg-slate-700 hover:text-white">
+                        <template v-if="!props.auth || !props.auth.user">
+                            <Link :href="route('login')" title="Login"
+                                class="flex items-center p-2 transition-colors rounded-md text-slate-300 hover:bg-slate-700 hover:text-white">
+                            <Icon name="login" className="w-5 h-5 mr-2 text-green-400" />
                             Login
-                        </Link>
-                        <Link :href="route('register')" title="Register"
-                            class="p-2 transition-colors rounded-md text-slate-300 hover:bg-slate-700 hover:text-white">
+                            </Link>
+                            <Link :href="route('register')" title="Register"
+                                class="flex items-center p-2 transition-colors rounded-md text-slate-300 hover:bg-slate-700 hover:text-white">
+                            <Icon name="person-add" className="w-5 h-5 mr-2 text-green-400" />
                             Registrarse
-                        </Link>
+                            </Link>
+                        </template>
+                        <template v-else>
+                            <Link v-if="props.auth.user.role === 'admin'" :href="route('admin.dashboard')"
+                                title="Admin Dashboard"
+                                class="flex items-center p-2 transition-colors rounded-md text-slate-300 hover:bg-slate-700 hover:text-white">
+                            <Icon name="dashboard" className="w-5 h-5 mr-2 text-green-400" />
+
+                            Dashboard
+                            </Link>
+                            <Link v-else-if="props.auth.user.role === 'client'" href="/client/services"
+                                title="Client Dashboard"
+                                class="flex items-center p-2 transition-colors rounded-md text-slate-300 hover:bg-slate-700 hover:text-white">
+                            <Icon name="dashboard" className="w-5 h-5 mr-2 text-green-400" />
+
+                            Dashboard
+                            </Link>
+                            <Link :href="route('logout')" method="post" as="button" type="button" title="Salir"
+                                class="flex items-center p-2 transition-colors rounded-md text-slate-300 hover:bg-slate-700 hover:text-white">
+                            <Icon name="logout" className="w-5 h-5 mr-2 text-green-400" />
+
+                            Salir
+                            </Link>
+                        </template>
                     </div>
                 </div>
                 <div class="hidden space-x-1 md:flex md:flex-wrap md:items-baseline md:justify-center md:mt-2">
@@ -99,26 +127,38 @@ const handleContactClick = () => {
                 class="block w-full px-3 py-2 mt-2 text-sm font-medium text-left text-white transition-colors rounded-md bg-brand-blue hover:bg-brand-blue-dark">
                 Contacto
             </button>
-            <Link v-if="props.canLogin" :href="route('login')"
-                class="block w-full px-3 py-2 mt-1 text-sm font-medium text-left transition-colors rounded-md text-slate-300 hover:bg-slate-700 hover:text-white">
+            <!-- Menú móvil para usuarios no autenticados -->
+            <template v-if="!props.auth || !props.auth.user">
+                <Link v-if="props.canLogin" :href="route('login')"
+                    class="flex items-center w-full px-3 py-2 mt-1 text-sm font-medium text-left transition-colors rounded-md text-slate-300 hover:bg-slate-700 hover:text-white">
+                <Icon name="login" className="w-5 h-5 mr-2 text-green-400" />
                 Login
-            </Link>
-            <Link v-if="props.canRegister" :href="route('register')"
-                class="block w-full px-3 py-2 mt-1 text-sm font-medium text-left transition-colors rounded-md text-slate-300 hover:bg-slate-700 hover:text-white">
+                </Link>
+                <Link v-if="props.canRegister" :href="route('register')"
+                    class="flex items-center w-full px-3 py-2 mt-1 text-sm font-medium text-left transition-colors rounded-md text-slate-300 hover:bg-slate-700 hover:text-white">
+                <Icon name="person-add" className="w-5 h-5 mr-2 text-green-400" />
                 Registrarse
-            </Link>
+                </Link>
+            </template>
+            <!-- Menú móvil para usuarios autenticados -->
             <template v-if="props.auth && props.auth.user">
                 <Link v-if="props.auth.user.role === 'admin'" :href="route('admin.dashboard')"
-                    class="block w-full px-3 py-2 mt-1 text-sm font-medium text-left transition-colors rounded-md text-slate-300 hover:bg-slate-700 hover:text-white">
-                    Admin Panel
+                    class="flex items-center w-full px-3 py-2 mt-1 text-sm font-medium text-left transition-colors rounded-md text-slate-300 hover:bg-slate-700 hover:text-white">
+                <Icon name="dashboard" className="w-5 h-5 mr-2 text-green-400" />
+
+                Admin Panel
                 </Link>
                 <Link v-else-if="props.auth.user.role === 'client'" :href="route('client.dashboard')"
-                    class="block w-full px-3 py-2 mt-1 text-sm font-medium text-left transition-colors rounded-md text-slate-300 hover:bg-slate-700 hover:text-white">
-                    Mi Panel
+                    class="flex items-center w-full px-3 py-2 mt-1 text-sm font-medium text-left transition-colors rounded-md text-slate-300 hover:bg-slate-700 hover:text-white">
+                <Icon name="dashboard" className="w-5 h-5 mr-2 text-green-400" />
+
+                Mi Panel
                 </Link>
                 <Link :href="route('logout')" method="post" as="button" type="button"
-                    class="block w-full px-3 py-2 mt-1 text-sm font-medium text-left transition-colors rounded-md text-slate-300 hover:bg-slate-700 hover:text-white">
-                    Salir
+                    class="flex items-center w-full px-3 py-2 mt-1 text-sm font-medium text-left transition-colors rounded-md text-slate-300 hover:bg-slate-700 hover:text-white">
+                <Icon name="logout" className="w-5 h-5 mr-2 text-green-400" />
+
+                Salir
                 </Link>
             </template>
         </div>
