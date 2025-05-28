@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\AdminProductController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Admin\ConfigurableOptionGroupController;
 use App\Http\Controllers\Reseller\ResellerClientController;
+use App\Http\Controllers\Reseller\ResellerDashboardController; // Added for reseller dashboard
 use App\Http\Controllers\Admin\ConfigurableOptionController;
 use App\Http\Controllers\Admin\ClientServiceController; // Añadir esta línea
 use App\Http\Controllers\Admin\OrderController; // Añadir esta línea para el controlador de Admin
@@ -75,8 +76,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'verified', 'admin']
 
 // Rutas para el Panel de Revendedor
 Route::middleware(['auth', 'verified', 'role.reseller'])->prefix('reseller-panel')->name('reseller.')->group(function () {
-    // Dashboard del revendedor (ejemplo, necesitarás crear este controlador)
-    // Route::get('/dashboard', [ResellerDashboardController::class, 'index'])->name('dashboard');
+    // Dashboard del revendedor
+    Route::get('/dashboard', [ResellerDashboardController::class, 'index'])->name('dashboard');
 
     // CRUD de Clientes para el revendedor
     Route::get('/clients', [ResellerClientController::class, 'index'])->name('clients.index');
