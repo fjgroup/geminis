@@ -16,9 +16,7 @@ class InvoicePolicy
      */
     public function viewAny(User $user): bool
     {
-        // Admins can view any list of invoices.
-        // Clients can view lists of invoices (which will be scoped by the controller).
-        return $user->isAdmin() || $user->hasRole('client');
+        return $user->isAdmin() || $user->hasRole('reseller') || $user->hasRole('client');
     }
 
     /**
@@ -26,28 +24,18 @@ class InvoicePolicy
      */
     public function view(User $user, Invoice $invoice): bool
     {
-        // Admins can view any invoice.
         if ($user->isAdmin()) {
             return true;
         }
-
-        // Clients can view their own invoices.
-        if ($user->hasRole('client')) {
-            return $user->id === $invoice->client_id;
+        // Ensure client relationship is loaded for efficiency if not already
+        $invoice->loadMissing('client'); 
+        if ($user->hasRole('reseller') && $invoice->client && $invoice->client->reseller_id === $user->id) {
+            return true;
         }
-
-        // Resellers can view invoices of their own clients.
-        // Note: This assumes reseller_id is correctly populated on the invoice,
-        // or client relationship on invoice can be traversed to check client's reseller_id.
-        // If reseller_id is directly on the invoice:
-        // return $user->hasRole('reseller') && $user->id === $invoice->reseller_id;
-        // If checking through the client associated with the invoice:
-        // return $user->hasRole('reseller') && $invoice->client && $invoice->client->reseller_id === $user->id;
-        
-        // For now, let's stick to the original request for client and admin,
-        // but ideally, reseller logic should be here too if they can view invoices.
-        // Let's assume for now resellers viewing invoices is handled by admin view or not implemented for individual invoices.
-        return false; 
+        if ($user->hasRole('client') && $user->id === $invoice->client_id) {
+            return true;
+        }
+        return false;
     }
 
     /**
