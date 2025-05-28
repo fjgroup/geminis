@@ -34,6 +34,7 @@ return new class extends Migration
             $table->ipAddress('ip_address')->nullable();
             $table->text('notes')->nullable();
             $table->timestamps();
+            $table->softDeletes();
         });
     }
 
