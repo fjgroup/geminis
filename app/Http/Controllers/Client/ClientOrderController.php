@@ -11,13 +11,27 @@ use Inertia\Response as InertiaResponse; // Added for type hinting
 use App\Http\Requests\Admin\UpdateOrderRequest; // New
 use Illuminate\Http\RedirectResponse; // New
 use Illuminate\Support\Facades\Log; // For logging errors
-use Illuminate\Http\Request; // For existing index method
+use Illuminate\Http\Request; // For existing index method - Request is used in placeOrder, so it's fine.
 use App\Models\OrderActivity; // Added for new methods
-use App\Models\Invoice; // Added for approveCancellationRequest
+// use App\Models\Invoice; // Removed duplicate - one is enough
 use App\Models\Transaction; // Added for approveCancellationRequest
 use Illuminate\Support\Carbon; // Added for approveCancellationRequest
-use Illuminate\Support\Str; // Added for approveCancellationRequest
-use Illuminate\Support\Facades\DB; // Added for approveCancellationRequest
+use Illuminate\Support\Str; // Added for approveCancellationRequest and placeOrder
+use Illuminate\Support\Facades\DB; // Added for approveCancellationRequest and placeOrder
+use App\Models\Product; // Added for showOrderForm, placeOrder
+use App\Models\ProductPricing; // Added for placeOrder
+use App\Models\OrderItem; // Added for placeOrder
+use App\Models\Invoice; // Added for placeOrder (and approveCancellationRequest)
+use App\Models\InvoiceItem; // Added for placeOrder
+// Request is already imported higher up by uncommenting.
+// InertiaResponse and RedirectResponse are already imported.
+use Exception; // For general \Exception
+use Illuminate\Validation\ValidationException; // For specific validation exceptions
+use Illuminate\Database\QueryException; // For database query exceptions
+use Illuminate\Database\Eloquent\ModelNotFoundException; // For model not found (e.g. findOrFail)
+use Illuminate\Support\Facades\Validator; // For Validator::make()
+use App\Http\Requests\Client\PlaceOrderRequest; // Added for Form Request
+use App\Actions\Client\PlaceOrderAction; // Added for refactoring
 
 class ClientOrderController extends Controller
 {
@@ -161,7 +175,7 @@ class ClientOrderController extends Controller
             return redirect()->route('client.orders.show', $order->id) // NOTE: This might need to be 'client.orders.show'
                              ->with('success', 'Order updated successfully.');
 
-        } catch (\Illuminate\Database\QueryException $e) {
+        } catch (QueryException $e) { // Use statement applied
             // Check for ENUM constraint violation if 'completed' status isn't in DB yet
             if (str_contains($e->getMessage(), "Data truncated for column 'status'")) {
                  Log::error("Failed to update order status: Possible ENUM mismatch. Status tried: " . $validatedData['status'], ['error' => $e]);
@@ -171,10 +185,365 @@ class ClientOrderController extends Controller
             Log::error("Failed to update order: " . $e->getMessage(), ['error' => $e]);
             return redirect()->back()
                              ->with('error', 'Failed to update order due to a database error.');
-        } catch (\Exception $e) {
+        } catch (Exception $e) { // Use statement applied
             Log::error("Failed to update order: " . $e->getMessage(), ['error' => $e]);
             return redirect()->back()
                              ->with('error', 'An unexpected error occurred while updating the order.');
+        }
+    }
+
+    /**
+     * Show the form for the client to edit their own pending order.
+     *
+     * @param  Order  $order
+     * @return InertiaResponse|RedirectResponse
+     */
+    public function editOrderForm(Order $order): InertiaResponse|RedirectResponse
+    {
+        $this->authorize('update', $order);
+
+        if (Auth::id() !== $order->client_id) {
+            // This should ideally be caught by the policy.
+            Log::warning("User " . Auth::id() . " attempted to access edit form for order {$order->id} owned by client {$order->client_id}.");
+            return redirect()->route('client.orders.show', $order->id)
+                             ->with('error', 'You are not authorized to edit this order.');
+        }
+
+        if ($order->status !== 'pending_payment') {
+            return redirect()->route('client.orders.show', $order->id)
+                             ->with('error', 'This order cannot be edited at its current stage.');
+        }
+
+        // Load order with items, and for each item, its product with available pricings and their billing cycles.
+        $order->load([
+            'items.product.productPricings.billingCycle', // For billing cycle options
+            'items.productPricing.billingCycle' // For current billing cycle name
+        ]);
+
+        return Inertia::render('Client/Orders/EditOrderForm', [
+            'order' => $order,
+        ]);
+    }
+
+    /**
+     * Update the client's own pending order.
+     *
+     * @param  Request  $request
+     * @param  Order  $order
+     * @return RedirectResponse
+     */
+    public function updateOrder(Request $request, Order $order): RedirectResponse
+    {
+        $this->authorize('update', $order);
+
+        if (Auth::id() !== $order->client_id) {
+            Log::warning("User " . Auth::id() . " attempted to update order {$order->id} owned by client {$order->client_id}.");
+            return redirect()->route('client.orders.show', $order->id)
+                             ->with('error', 'You are not authorized to update this order.');
+        }
+
+        if ($order->status !== 'pending_payment') {
+            return redirect()->route('client.orders.show', $order->id)
+                             ->with('error', 'This order cannot be updated at its current stage.');
+        }
+
+        // Basic validation for items structure
+        $validatedData = $request->validate([
+            'items' => ['required', 'array', 'min:1'],
+            'items.*.id' => ['required', 'exists:order_items,id,order_id,' . $order->id],
+            'items.*.product_pricing_id' => ['required', 'exists:product_pricings,id'], // Renamed from billing_cycle_id to product_pricing_id for clarity
+            'items.*.quantity' => ['required', 'integer', 'min:1'],
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $originalOrderDetails = $order->toArray(); // For logging changes
+            $originalOrderItemsDetails = $order->items->map(fn($item) => $item->toArray())->all();
+
+
+            $newOrderTotalAmount = 0;
+            $updatedOrderItemsData = [];
+
+            foreach ($validatedData['items'] as $itemData) {
+                $orderItem = OrderItem::find($itemData['id']);
+                if (!$orderItem) {
+                    // Should be caught by 'exists' validation, but good to double check
+                    throw new Exception("Order item with ID {$itemData['id']} not found."); // Use statement applied
+                }
+
+                $newProductPricing = ProductPricing::with('billingCycle')->find($itemData['product_pricing_id']);
+                if (!$newProductPricing || $newProductPricing->product_id !== $orderItem->product_id) {
+                    // Ensure the new pricing belongs to the same product of the order item
+                    throw new ValidationException( // Use statement applied
+                        Validator::make([], []), // Use statement applied for Validator
+                        response()->json(['message' => "Invalid billing cycle selected for item {$orderItem->description}."], 422)
+                    );
+                }
+
+                $orderItem->product_pricing_id = $newProductPricing->id;
+                $orderItem->quantity = $itemData['quantity'];
+                $orderItem->unit_price = $newProductPricing->price;
+                $orderItem->total_price = $newProductPricing->price * $itemData['quantity'];
+                $orderItem->description = $orderItem->product->name . ($newProductPricing->billingCycle ? ' (' . $newProductPricing->billingCycle->name . ')' : '');
+                $orderItem->save();
+
+                $newOrderTotalAmount += $orderItem->total_price;
+                $updatedOrderItemsData[] = $orderItem->toArray();
+            }
+
+            $order->total_amount = $newOrderTotalAmount;
+            // Potentially update currency_code if it can change, though current logic assumes it's fixed from first product pricing.
+            $order->save();
+
+            // Update Associated Invoice
+            $invoice = $order->invoice; // Assumes invoice relationship is loaded or can be lazy-loaded
+            if ($invoice) {
+                $invoice->subtotal = $newOrderTotalAmount; // Assuming no taxes for now
+                $invoice->total_amount = $newOrderTotalAmount;
+
+                // Remove old invoice items
+                $invoice->items()->delete(); // Physical delete or soft delete depending on InvoiceItem model
+
+                // Create new invoice items from updated order items
+                foreach ($order->items()->get() as $updatedOrderItem) { // Fetch fresh items
+                    InvoiceItem::create([
+                        'invoice_id' => $invoice->id,
+                        'order_item_id' => $updatedOrderItem->id,
+                        'description' => $updatedOrderItem->description,
+                        'quantity' => $updatedOrderItem->quantity,
+                        'unit_price' => $updatedOrderItem->unit_price,
+                        'total_price' => $updatedOrderItem->total_price,
+                        'taxable' => $updatedOrderItem->product->taxable ?? true,
+                    ]);
+                }
+                $invoice->save();
+            } else {
+                // This case should ideally not happen if an invoice is always created with an order.
+                // If it can, an error should be logged or a new invoice created.
+                Log::error("Order {$order->id} is pending payment but has no associated invoice during update.");
+                // Potentially, create a new invoice here if that's the desired business logic.
+                // For now, we assume invoice exists.
+            }
+
+            OrderActivity::create([
+                'order_id' => $order->id,
+                'user_id' => Auth::id(),
+                'type' => 'order_edited_by_client',
+                'details' => [
+                    'reason' => 'Client updated items/quantity for pending payment order.',
+                    'previous_total' => $originalOrderDetails['total_amount'],
+                    'new_total' => $order->total_amount,
+                    'original_items' => $originalOrderItemsDetails, // Could be large, consider summarizing
+                    'updated_items' => $updatedOrderItemsData, // Could be large
+                ]
+            ]);
+
+            DB::commit();
+
+            return redirect()->route('client.orders.show', $order->id)
+                             ->with('success', 'Order updated successfully.');
+
+        } catch (ValidationException $e) { // Use statement applied
+            DB::rollBack();
+            // Laravel handles redirecting back with validation errors automatically.
+            // Log::debug("Validation exception during order update by client: " . $e->getMessage(), $e->errors());
+            return redirect()->back()->withErrors($e->errors())->withInput();
+        } catch (Exception $e) { // Use statement applied
+            DB::rollBack();
+            Log::error("Error updating order ID {$order->id} by client: " . $e->getMessage(), ['exception' => $e]);
+            return redirect()->route('client.orders.show', $order->id)
+                             ->with('error', 'An unexpected error occurred while updating your order. ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Cancel an order that is still pending payment.
+     *
+     * @param  Order  $order
+     * @return RedirectResponse
+     */
+    public function cancelPrePaymentOrder(Order $order): RedirectResponse
+    {
+        $this->authorize('update', $order); // Or a more specific policy like 'cancelPrePayment'
+
+        // Defensive check, though policy should handle ownership
+        if (Auth::id() !== $order->client_id) {
+            // This case should ideally be caught by the OrderPolicy's update method
+            // or a more specific policy method.
+            // If it reaches here, it means the policy might be too permissive or not correctly applied.
+            Log::warning("User " . Auth::id() . " attempted to cancel order {$order->id} owned by client {$order->client_id} without proper authorization (pre-payment).");
+            return redirect()->route('client.orders.show', $order->id)
+                             ->with('error', 'You are not authorized to perform this action.');
+        }
+
+        if ($order->status === 'pending_payment') {
+            DB::beginTransaction();
+            try {
+                $previousStatus = $order->status;
+                $order->status = 'cancelled';
+                $order->save();
+
+                if ($order->invoice_id) {
+                    $invoice = $order->invoice; // Assumes invoice relationship is loaded or loads automatically
+                    if ($invoice) {
+                        $invoice->status = 'cancelled';
+                        $invoice->save();
+                    }
+                }
+
+                OrderActivity::create([
+                    'order_id' => $order->id,
+                    'user_id' => Auth::id(),
+                    'type' => 'order_cancelled_by_client_prepayment',
+                    'details' => ['previous_status' => $previousStatus, 'new_status' => 'cancelled']
+                ]);
+
+                DB::commit();
+                return redirect()->route('client.orders.show', $order->id)
+                                 ->with('success', 'Order and associated invoice have been cancelled.');
+            } catch (Exception $e) { // Use statement applied
+                DB::rollBack();
+                Log::error("Error cancelling pre-payment order ID {$order->id}: " . $e->getMessage(), ['exception' => $e]);
+                return redirect()->route('client.orders.show', $order->id)
+                                 ->with('error', 'An error occurred while cancelling the order. Please try again.');
+            }
+        } else {
+            return redirect()->route('client.orders.show', $order->id)
+                             ->with('error', "This order cannot be cancelled directly as it's no longer pending payment.");
+        }
+    }
+
+    /**
+     * Request cancellation for an order that has already been paid or is in process.
+     *
+     * @param  Order  $order
+     * @return RedirectResponse
+     */
+    public function requestPostPaymentCancellation(Order $order): RedirectResponse
+    {
+        $this->authorize('update', $order); // Or a specific policy like 'requestPostPaymentCancellation'
+
+        // Defensive check for ownership
+        if (Auth::id() !== $order->client_id) {
+            Log::warning("User " . Auth::id() . " attempted to request cancellation for order {$order->id} owned by client {$order->client_id} without proper authorization (post-payment).");
+            return redirect()->route('client.orders.show', $order->id)
+                             ->with('error', 'You are not authorized to perform this action.');
+        }
+
+        $allowedStatusesForRequest = ['paid_pending_execution', 'active', 'pending_provisioning'];
+        if (in_array($order->status, $allowedStatusesForRequest)) {
+            DB::beginTransaction();
+            try {
+                $previousStatus = $order->status;
+                $order->status = 'cancellation_requested_by_client';
+                $order->save();
+
+                OrderActivity::create([
+                    'order_id' => $order->id,
+                    'user_id' => Auth::id(),
+                    'type' => 'cancellation_requested_by_client',
+                    'details' => ['previous_status' => $previousStatus, 'new_status' => 'cancellation_requested_by_client']
+                ]);
+
+                DB::commit();
+                return redirect()->route('client.orders.show', $order->id)
+                                 ->with('success', 'Your request to cancel this order has been submitted for review.');
+            } catch (Exception $e) { // Use statement applied
+                DB::rollBack();
+                Log::error("Error requesting post-payment cancellation for order ID {$order->id}: " . $e->getMessage(), ['exception' => $e]);
+                return redirect()->route('client.orders.show', $order->id)
+                                 ->with('error', 'An error occurred while submitting your cancellation request. Please try again.');
+            }
+        } else {
+            // Provide a more specific message if already requested or in a final state
+            if ($order->status === 'cancellation_requested_by_client') {
+                return redirect()->route('client.orders.show', $order->id)
+                                 ->with('info', 'A cancellation request for this order has already been submitted.');
+            }
+            if (in_array($order->status, ['cancelled', 'completed', 'fraud'])) {
+                 return redirect()->route('client.orders.show', $order->id)
+                                 ->with('error', "This order is already in a final state ({$order->status}) and cannot be cancelled.");
+            }
+            return redirect()->route('client.orders.show', $order->id)
+                             ->with('error', 'This order cannot be cancelled at its current stage.');
+        }
+    }
+
+    // New methods to be added below as per the task
+
+    /**
+     * Show the form for creating a new order for a specific product.
+     *
+     * @param  Product  $product
+     * @return InertiaResponse
+     */
+    public function showOrderForm(Product $product): InertiaResponse
+    {
+        $this->authorize('view', $product); // Assuming ProductPolicy@view exists
+
+        // Load necessary product data.
+        // configurableOptionGroups.options will load the groups and their respective options.
+        $product->load(['productPricings.billingCycle', 'configurableOptionGroups.options']);
+
+        return Inertia::render('Client/Orders/OrderForm', [
+            'product' => $product,
+        ]);
+    }
+
+    /**
+     * Place a new order for a specific product.
+     *
+     * @param  Request  $request
+     * @param  Product  $product
+     * @return RedirectResponse
+     */
+    public function placeOrder(PlaceOrderRequest $request, Product $product, PlaceOrderAction $placeOrderAction): RedirectResponse
+    {
+        $this->authorize('create', Order::class);
+
+        $validatedData = $request->validated();
+        $client = Auth::user(); // Get authenticated client
+
+        try {
+            // The PlaceOrderAction handles its own DB transaction and ModelNotFoundException for ProductPricing.
+            $order = $placeOrderAction->execute($product, $validatedData, $client);
+
+            return redirect()->route('client.orders.show', $order->id)
+                             ->with('success', 'Order placed and invoice generated successfully. Please proceed with payment.');
+
+        } catch (ValidationException $e) { 
+            // This catch block might be redundant if PlaceOrderRequest handles all validation.
+            // However, if the Action class could throw a ValidationException for some internal logic, it's fine to keep.
+            // The Action class itself does not throw ValidationException, but it re-throws exceptions it catches.
+            // FormRequest handles its own validation errors before this method is called.
+            // If PlaceOrderAction itself were to perform further validation and throw ValidationException, this would catch it.
+            // For now, as PlaceOrderAction doesn't do that, this specific catch might not be hit from the Action.
+            // DB::rollBack(); // Action handles its own rollback.
+            throw $e; // Re-throw to let Laravel handle it (usually redirects back with errors).
+        } catch (ModelNotFoundException $e) { 
+            // This is specifically for ProductPricing::findOrFail inside the Action.
+            // The Action re-throws this, so we can catch it here for specific user feedback.
+            // DB::rollBack(); // Action handles its own rollback.
+            Log::error("Product pricing not found during order placement (via Action): " . $e->getMessage(), [
+                'product_id' => $product->id,
+                'client_id' => $client->id,
+                'validated_data' => $validatedData, // Be cautious about logging sensitive data
+            ]);
+            return redirect()->back()
+                             ->withInput()
+                             ->with('error', 'Selected pricing option is not valid. Please try again.');
+        } catch (Exception $e) { 
+            // General exception catch from the Action or other issues.
+            // DB::rollBack(); // Action handles its own rollback.
+            Log::error("Error placing order for product ID {$product->id} (via Action): " . $e->getMessage(), [
+                'product_id' => $product->id,
+                'client_id' => $client->id,
+                'validated_data' => $validatedData, // Be cautious
+                'exception' => $e
+            ]);
+            return redirect()->back()
+                             ->withInput()
+                             ->with('error', 'An unexpected error occurred while placing your order. Please try again.');
         }
     }
 
@@ -201,7 +570,7 @@ class ClientOrderController extends Controller
 
             return redirect()->route('client.orders.index') // NOTE: This might need to be 'client.orders.index'
                              ->with('success', 'Order successfully deleted (soft delete).');
-        } catch (\Exception $e) {
+        } catch (Exception $e) { // Use statement applied
             Log::error("Failed to delete order: " . $e->getMessage(), ['order_id' => $order->id, 'error' => $e]);
             return redirect()->route('client.orders.show', $order->id) // NOTE: This might need to be 'client.orders.show'
                              ->with('error', 'An unexpected error occurred while deleting the order.');
@@ -237,7 +606,7 @@ class ClientOrderController extends Controller
 
             return redirect()->route('client.orders.show', $order->id) // NOTE: This might need to be 'client.orders.show'
                              ->with('success', 'Order status updated to: Processing by client.');
-        } catch (\Exception $e) {
+        } catch (Exception $e) { // Use statement applied
             Log::error("Error starting order execution for order ID: {$order->id}", ['error' => $e->getMessage()]);
             return redirect()->route('client.orders.show', $order->id) // NOTE: This might need to be 'client.orders.show'
                              ->with('error', 'Failed to start order execution.');
@@ -283,118 +652,14 @@ class ClientOrderController extends Controller
 
             return redirect()->route('client.orders.show', $order->id) // NOTE: This might need to be 'client.orders.show'
                              ->with('success', 'Order execution completed. Service is now active.');
-        } catch (\Exception $e) {
+        } catch (Exception $e) { // Use statement applied
             Log::error("Error completing order execution for order ID: {$order->id}", ['error' => $e->getMessage()]);
             return redirect()->route('client.orders.show', $order->id) // NOTE: This might need to be 'client.orders.show'
                              ->with('error', 'Failed to complete order execution.');
         }
     }
 
-    public function approveCancellationRequest(Order $order): RedirectResponse
-    {
-        $this->authorize('update', $order); // Or a more specific policy: 'approveCancellation', $order
-
-        if ($order->status !== 'cancellation_requested_by_client') {
-            return redirect()->route('client.orders.show', $order->id) // NOTE: This might need to be 'client.orders.show'
-                             ->with('error', 'Order is not awaiting cancellation approval.');
-        }
-
-        DB::beginTransaction();
-        try {
-            $previousStatus = $order->status;
-
-            // 1. Update Order Status
-            $order->status = 'cancelled'; // Final cancelled status
-            $order->save();
-
-            // 2. Update associated Invoice status (e.g., 'refunded' or 'cancelled')
-            //    And potentially create a credit note / adjustment invoice (out of scope for now)
-            if ($order->invoice) {
-                $invoice = $order->invoice;
-                if (in_array($invoice->status, ['paid', 'overdue'])) { // Only if it was actually paid
-                    $invoice->status = 'refunded'; // Or 'cancelled_credited' if you add such ENUM
-                                                  // 'refunded' is an existing ENUM for invoices
-                    // $invoice->notes_to_client = ($invoice->notes_to_client ? $invoice->notes_to_client . "\n" : '') . "Order cancelled and amount credited to account.";
-                    $invoice->save();
-
-                    // 3. Create Financial Transaction for the credit issued to client
-                    // This assumes client gets a credit to their account balance.
-                    // The actual crediting of user's balance (e.g. User::balance column) is Step 10.
-                    Transaction::create([
-                        'invoice_id' => $invoice->id, // Link to original invoice for reference
-                        'client_id' => $order->client_id,
-                        'reseller_id' => $order->reseller_id,
-                        'gateway_slug' => 'internal_credit', // Or 'account_credit'
-                        'gateway_transaction_id' => 'CREDIT-' . strtoupper(Str::random(10)),
-                        'type' => 'credit_added', // From ENUM in transactions migration
-                        'amount' => $invoice->total_amount, // Assuming full amount is credited
-                        'currency_code' => $invoice->currency_code,
-                        'status' => 'completed',
-                        'description' => 'Credit issued for cancelled Order #' . $order->order_number . ' / Invoice #' . $invoice->invoice_number,
-                        'transaction_date' => Carbon::now(),
-                    ]);
-
-                    // 3.5. Update Client's Balance
-                    $client = $order->client; // Assumes 'client' relationship is eager loaded or loaded via $order->load('client') if needed
-                    if (!$client) { // Defensive check, ensure client is loaded
-                        $order->load('client');
-                        $client = $order->client;
-                    }
-
-                    if ($client) {
-                        $creditAmount = $invoice->total_amount; // Amount from the invoice
-                        if ($creditAmount > 0) {
-                            $client->increment('balance', $creditAmount); // Atomically increments
-                            // No need for $client->save() when using increment/decrement
-                        }
-                    } else {
-                        // Log a warning if client not found on order, though this should ideally not happen
-                        Log::warning("Client not found for order ID: {$order->id} during credit approval.");
-                    }
-
-                } else {
-                    // If invoice wasn't 'paid' or 'overdue' but order was 'cancellation_requested_by_client'
-                    // (shouldn't happen if previous logic is correct), just mark invoice as cancelled.
-                    $invoice->status = 'cancelled';
-                    $invoice->save();
-                }
-            }
-
-            // 4. Create OrderActivity Log
-            // Eager load client again to get the updated balance for logging, if $client was reloaded.
-            // Or, if $client->increment() updates the model instance, this might not be needed.
-            // $client->refresh(); // To be safe, or trust that $client->balance is updated.
-            // For simplicity, we assume $client->balance reflects the new balance after increment.
-            // If not, a $newBalance = $client->balance (before increment) + $creditAmount would be more direct for logging.
-            // However, the increment method returns a boolean, not the new balance directly.
-            // So, to log the new balance, we'd have to re-fetch or calculate.
-            // Let's fetch the client again for the new balance if needed.
-            $updatedClientForLog = $order->client()->first(); // Re-fetch the client for the latest balance
-
-            OrderActivity::create([
-                'order_id' => $order->id,
-                'user_id' => Auth::id(), // client performing the action
-                'type' => 'cancellation_approved_credit_issued', // From ENUM
-                'details' => [
-                    'previous_status' => $previousStatus,
-                    'new_order_status' => 'cancelled',
-                    'invoice_id' => $order->invoice_id,
-                    'invoice_status_updated_to' => $order->invoice ? $order->invoice->status : null,
-                    'credited_amount' => $order->invoice && isset($creditAmount) ? $creditAmount : 0, // Use $creditAmount if set
-                    'client_new_balance' => $updatedClientForLog ? $updatedClientForLog->balance : null,
-                ]
-            ]);
-
-            DB::commit();
-
-            return redirect()->route('client.orders.show', $order->id) // NOTE: This might need to be 'client.orders.show'
-                             ->with('success', 'Client cancellation request approved. Order cancelled and credit issued.');
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error("Error approving cancellation for order ID: {$order->id}", ['error' => $e->getMessage()]);
-            return redirect()->route('client.orders.show', $order->id) // NOTE: This might need to be 'client.orders.show'
-                             ->with('error', 'Failed to approve cancellation request.');
-        }
-    }
+    // Method approveCancellationRequest has been removed from ClientOrderController
+    // as its functionality (approving cancellation and issuing credit)
+    // is correctly and solely handled by AdminOrderController.
 }

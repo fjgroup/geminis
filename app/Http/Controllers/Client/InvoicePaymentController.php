@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log; // For logging
 use Carbon\Carbon;
 use Illuminate\Support\Str; // For Str::random
+use Exception; // Added for general \Exception
 
 class InvoicePaymentController extends Controller
 {
@@ -64,19 +65,43 @@ class InvoicePaymentController extends Controller
                     $invoice->loadMissing('order'); // Ensure order is loaded
                     if ($invoice->order) {
                         $order = $invoice->order;
-                        if ($order->status === 'pending_payment') {
-                            $order->status = 'paid_pending_execution';
+                        if ($order->status === 'pending_payment') { // Assuming initial state is 'pending_payment'
+                            $previous_order_status = $order->status;
+                            // Correction: Set Order status to 'pending_payment' as per explicit task requirement.
+                            $order->status = 'pending_payment';
                             $order->save();
                             OrderActivity::create([
-                                'order_id' => $order->id, 'user_id' => $user->id,
-                                'type' => 'invoice_paid_by_client',
-                                'details' => ['invoice_id' => $invoice->id, 'invoice_number' => $invoice->invoice_number, 'payment_method' => 'account_credit', 'new_order_status' => $order->status]
+                                'order_id' => $order->id,
+                                'user_id' => $user->id,
+                                'type' => 'invoice_paid_awaits_processing', // Corrected type
+                                'details' => json_encode([
+                                    'invoice_id' => $invoice->id,
+                                    'invoice_number' => $invoice->invoice_number,
+                                    'payment_method' => 'account_credit',
+                                    'previous_order_status' => $previous_order_status,
+                                    'new_order_status' => $order->status, // This will be 'pending_payment'
+                                    'message' => 'Invoice paid by client using account credit. Order is now pending further processing or admin confirmation.'
+                                ])
+                            ]);
+                        } else if ($order) {
+                            // Log if order was found but not in 'pending_payment' status when invoice was paid.
+                            OrderActivity::create([
+                                'order_id' => $order->id,
+                                'user_id' => $user->id,
+                                'type' => 'invoice_paid_for_order_in_unexpected_status', // Corrected type
+                                'details' => json_encode([
+                                     'invoice_id' => $invoice->id,
+                                     'invoice_number' => $invoice->invoice_number,
+                                     'payment_method' => 'account_credit',
+                                     'order_status_at_payment' => $order->status,
+                                     'message' => 'Invoice paid using account credit, but associated order was not in the expected initial state (pending_payment).'
+                                ])
                             ]);
                         }
                     }
                     DB::commit();
                     return redirect()->route('client.invoices.show', $invoice->id)
-                                     ->with('success', 'Invoice paid successfully using account credit.');
+                                     ->with('success', 'Invoice paid successfully using account credit. Your order is now pending processing.');
                 } else {
                     DB::rollBack(); 
                     return redirect()->route('client.invoices.show', $invoice->id)
@@ -99,25 +124,49 @@ class InvoicePaymentController extends Controller
                 $invoice->loadMissing('order'); // Ensure order is loaded
                 if ($invoice->order) {
                     $order = $invoice->order;
-                    if ($order->status === 'pending_payment') {
-                        $order->status = 'paid_pending_execution';
+                    if ($order->status === 'pending_payment') { // Assuming initial state is 'pending_payment'
+                        $previous_order_status = $order->status;
+                        // Correction: Set Order status to 'pending_payment' as per explicit task requirement.
+                        $order->status = 'pending_payment';
                         $order->save();
                         OrderActivity::create([
-                            'order_id' => $order->id, 'user_id' => $user->id,
-                            'type' => 'invoice_paid_by_client',
-                            'details' => ['invoice_id' => $invoice->id, 'invoice_number' => $invoice->invoice_number, 'payment_method' => 'manual_simulation', 'new_order_status' => $order->status]
+                            'order_id' => $order->id,
+                            'user_id' => $user->id,
+                            'type' => 'invoice_paid_awaits_processing', // Corrected type
+                            'details' => json_encode([
+                                'invoice_id' => $invoice->id,
+                                'invoice_number' => $invoice->invoice_number,
+                                'payment_method' => 'manual_simulation',
+                                'previous_order_status' => $previous_order_status,
+                                'new_order_status' => $order->status, // This will be 'pending_payment'
+                                'message' => 'Invoice paid by client (simulated). Order is now pending further processing or admin confirmation.'
+                            ])
+                        ]);
+                    } else if ($order) {
+                         // Log if order was found but not in 'pending_payment' status when invoice was paid.
+                        OrderActivity::create([
+                            'order_id' => $order->id,
+                            'user_id' => $user->id,
+                            'type' => 'invoice_paid_for_order_in_unexpected_status', // Corrected type
+                            'details' => json_encode([
+                                 'invoice_id' => $invoice->id,
+                                 'invoice_number' => $invoice->invoice_number,
+                                 'payment_method' => 'manual_simulation',
+                                 'order_status_at_payment' => $order->status,
+                                 'message' => 'Invoice paid (simulated), but associated order was not in the expected initial state (pending_payment).'
+                            ])
                         ]);
                     }
                 }
                 DB::commit();
                 return redirect()->route('client.invoices.show', $invoice->id)
-                                 ->with('success', 'Invoice marked as paid successfully (simulated). Your order will now be processed.');
+                                 ->with('success', 'Invoice marked as paid successfully (simulated). Your order is now pending processing.');
             } else {
                 DB::rollBack();
                 return redirect()->route('client.invoices.show', $invoice->id)->with('error', 'Invalid payment method selected.');
             }
 
-        } catch (\Exception $e) {
+        } catch (Exception $e) { // Use statement applied
             DB::rollBack();
             Log::error('Invoice payment failed for invoice ' . $invoice->id . ': ' . $e->getMessage(), ['exception' => $e]);
             return redirect()->route('client.invoices.show', $invoice->id)

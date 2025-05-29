@@ -70,6 +70,9 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'verified', 'admin']
 
     // Order Cancellation Approval Route
     Route::post('/orders/{order}/approve-cancellation', [AdminOrderController::class, 'approveCancellationRequest'])->name('orders.approveCancellation');
+
+    // Admin Confirm Payment Route
+    Route::post('/orders/{order}/confirm-payment', [AdminOrderController::class, 'confirmPayment'])->name('orders.confirmPayment');
 });
 
 
@@ -123,6 +126,10 @@ Route::prefix('client')->name('client.')->middleware(['auth'])->group(function (
     Route::delete('/orders/{order}/cancel-prepayment', [ClientOrderController::class, 'cancelPrePaymentOrder'])->name('orders.cancelPrePayment');
     // Route for client to request cancellation for a paid order pending execution
     Route::post('/orders/{order}/request-cancellation', [ClientOrderController::class, 'requestPostPaymentCancellation'])->name('orders.requestPostPaymentCancellation');
+
+    // Routes for client to edit their pending payment orders
+    Route::get('/orders/{order}/edit-order', [ClientOrderController::class, 'editOrderForm'])->name('orders.editOrderForm'); // Changed path to avoid conflict with potential future resource controller for orders
+    Route::put('/orders/{order}/update-order', [ClientOrderController::class, 'updateOrder'])->name('orders.updateOrder'); // Changed path for clarity
 
     // Rutas para la gestión de facturas de cliente
     Route::get('/invoices', [\App\Http\Controllers\Client\InvoiceController::class, 'index'])->name('invoices.index');

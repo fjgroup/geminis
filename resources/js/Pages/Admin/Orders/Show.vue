@@ -53,6 +53,15 @@ const formatCurrency = (amount, currencyCode = 'USD') => {
     const displayCurrency = props.order.currency_code || currencyCode;
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: displayCurrency }).format(amount);
 };
+
+const triggerConfirmPayment = () => {
+  if (confirm('Are you sure you want to confirm payment for this order? This will change its status to "Paid, Pending Execution".')) {
+    router.post(route('admin.orders.confirmPayment', { order: props.order.id }), {}, {
+      preserveScroll: true,
+      // onSuccess and onError are handled by Inertia's default behavior with flash messages.
+    });
+  }
+};
 </script>
 
 <template>
@@ -148,7 +157,14 @@ const formatCurrency = (amount, currencyCode = 'USD') => {
                         <!-- Admin Actions Section -->
                         <div class="mt-6 pt-6 border-t border-gray-200">
                             <h3 class="text-lg font-medium text-gray-900 mb-3">Admin Actions</h3>
-                            <div class="flex space-x-3 items-start">
+                            <div class="flex space-x-3 items-start flex-wrap gap-y-2">
+                                <div v-if="order.status === 'pending_payment'">
+                                    <PrimaryButton @click="triggerConfirmPayment" class="bg-teal-500 hover:bg-teal-600 focus:ring-teal-400">
+                                        Confirm Payment
+                                    </PrimaryButton>
+                                    <p class="text-xs text-gray-600 mt-1">Set status to "Paid, Pending Execution".</p>
+                                </div>
+
                                 <div v-if="order.status === 'paid_pending_execution'">
                                     <PrimaryButton @click="confirmStartExecution">
                                         Start Execution (Set to Pending Provisioning)
