@@ -1,11 +1,17 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head, Link, router } from '@inertiajs/vue3'; // Or useForm
+import { Head, Link, router, usePage } from '@inertiajs/vue3'; // Added usePage
 import PrimaryButton from '@/Components/PrimaryButton.vue';
+// Assuming DangerButton and SecondaryButton exist, if not, PrimaryButton will be used with different styling.
+// import DangerButton from '@/Components/DangerButton.vue';
+// import SecondaryButton from '@/Components/SecondaryButton.vue';
 
 const props = defineProps({
-    order: Object, // Passed from a new controller method for showing client order details
+    order: Object,
 });
+
+// Use page().props to access flash messages if needed, though AuthenticatedLayout often handles this.
+const page = usePage();
 
 const formatDate = (datetime) => {
     if (!datetime) return '';
@@ -18,22 +24,26 @@ const formatCurrency = (amount, currencyCode = 'USD') => {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: displayCurrency }).format(amount);
 };
 
-const confirmRequestPostPaymentCancellation = () => {
-    if (window.confirm('Are you sure you want to request cancellation for this order? If approved by an administrator, the paid amount will be credited to your account balance for future use.')) {
-        router.post(route('client.orders.requestPostPaymentCancellation', props.order.id), {}, {
-            preserveScroll: true,
-            // onSuccess: page => { /* Controller redirects, page will update with flash message */ }
-        });
-    }
-};
+// Updated function names and logic to match the subtask description
+function confirmCancelPrePayment() {
+  if (confirm('Are you sure you want to cancel this order and its unpaid invoice? This action cannot be undone.')) {
+    router.delete(route('client.orders.cancelPrePayment', { order: props.order.id }), {
+      preserveScroll: true,
+      // onSuccess and onError can be added if specific toast notifications beyond flash messages are needed
+    });
+  }
+}
 
-const confirmCancelPrePaymentOrder = (orderId) => {
-    if (window.confirm('Are you sure you want to cancel this order request? This will also cancel the associated unpaid invoice.')) {
-        router.delete(route('client.orders.cancelPrePayment', orderId), {
-            preserveScroll: true,
-        });
-    }
-};
+function confirmRequestPostPaymentCancellation() {
+  if (confirm('Are you sure you want to request cancellation for this order? An administrator will review your request. If approved, any applicable refund or credit will be processed according to our policies.')) {
+    router.post(route('client.orders.requestPostPaymentCancellation', { order: props.order.id }), {}, {
+      preserveScroll: true,
+    });
+  }
+}
+
+// Statuses where client can request cancellation
+const cancellablePostPaymentStatuses = ['paid_pending_execution', 'active', 'pending_provisioning'];
 
 </script>
 
@@ -97,18 +107,48 @@ const confirmCancelPrePaymentOrder = (orderId) => {
                         <p v-else class="text-sm text-gray-500">No items in this order.</p>
 
                         <!-- Action Buttons -->
-                        <div class="mt-8 pt-6 border-t border-gray-200">
-                            <div v-if="order.status === 'pending_payment'" class="flex justify-end">
-                                <PrimaryButton @click="confirmCancelPrePaymentOrder(order.id)" class="bg-red-600 hover:bg-red-700 focus:ring-red-500">
+                        <div class="mt-8 pt-6 border-t border-gray-200 space-y-3">
+                            <!-- Edit Order Button -->
+                            <div v-if="order.status === 'pending_payment'" class="flex flex-col items-end">
+                                <Link :href="route('client.orders.editOrderForm', { order: order.id })">
+                                    <PrimaryButton class="bg-blue-500 hover:bg-blue-600 focus:ring-blue-400">
+                                        Edit Order
+                                    </PrimaryButton>
+                                </Link>
+                                <p class="text-xs text-gray-500 mt-1">Change quantity or billing cycle.</p>
+                            </div>
+
+                            <!-- Cancel Pre-Payment Order Button -->
+                            <div v-if="order.status === 'pending_payment'" class="flex flex-col items-end">
+                                <!-- Using PrimaryButton with red styling as DangerButton might not be defined -->
+                                <PrimaryButton @click="confirmCancelPrePayment"
+                                               class="bg-red-600 hover:bg-red-700 focus:ring-red-500">
                                     Cancel Order
                                 </PrimaryButton>
+                                <p class="text-xs text-gray-500 mt-1">This will cancel the order and its unpaid invoice.</p>
                             </div>
-                            <div v-if="order.status === 'paid_pending_execution'" class="flex justify-end">
-                                <PrimaryButton @click="confirmRequestPostPaymentCancellation" class="bg-orange-500 hover:bg-orange-600 focus:ring-orange-400">
+
+                            <!-- Request Post-Payment Cancellation Button -->
+                            <div v-if="cancellablePostPaymentStatuses.includes(order.status)" class="flex flex-col items-end">
+                                 <!-- Using PrimaryButton with orange styling as SecondaryButton might not be defined or to make it distinct -->
+                                <PrimaryButton @click="confirmRequestPostPaymentCancellation"
+                                               class="bg-orange-500 hover:bg-orange-600 focus:ring-orange-400">
                                     Request Order Cancellation
                                 </PrimaryButton>
-                                <p class="text-sm text-gray-600 mt-2 ml-4 self-center">
-                                    If your request is approved, the amount paid for this order will be credited to your account.
+                                <p class="text-xs text-gray-500 mt-1">Submit a request for cancellation. Subject to review.</p>
+                            </div>
+
+                            <!-- Display message if cancellation is already requested -->
+                            <div v-if="order.status === 'cancellation_requested_by_client'" class="text-right">
+                                <p class="text-sm text-yellow-700 bg-yellow-100 p-3 rounded-md inline-block">
+                                    Cancellation has been requested for this order and is pending review.
+                                </p>
+                            </div>
+
+                            <!-- Display message if order is already cancelled or completed -->
+                             <div v-if="['cancelled', 'completed', 'fraud'].includes(order.status) && order.status !== 'cancellation_requested_by_client'" class="text-right">
+                                <p class="text-sm text-gray-600 bg-gray-100 p-3 rounded-md inline-block">
+                                    This order is in a final state ({{ order.status.replace(/_/g, ' ') }}) and no further cancellation actions can be taken by you.
                                 </p>
                             </div>
                         </div>
