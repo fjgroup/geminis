@@ -3,10 +3,10 @@
         <Head :title="'Order ' + product.name" />
 
         <div class="py-12">
-            <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+            <div class="mx-auto max-w-7xl sm:px-6 lg:px-8">
+                <div class="overflow-hidden bg-white shadow-sm sm:rounded-lg">
                     <div class="p-6 bg-white border-b border-gray-200">
-                        <h1 class="text-2xl font-semibold mb-6">Order: {{ product.name }}</h1>
+                        <h1 class="mb-6 text-2xl font-semibold">Order: {{ product.name }}</h1>
 
                         <div v-if="product.description" class="mb-4">
                             <p class="text-gray-700">{{ product.description }}</p>
@@ -18,7 +18,7 @@
                                 <InputLabel for="billing_cycle_id" value="Billing Cycle" />
                                 <SelectInput
                                     id="billing_cycle_id"
-                                    class="mt-1 block w-full"
+                                    class="block w-full mt-1"
                                     v-model="form.billing_cycle_id"
                                     :options="billingCycleOptions"
                                     option-value="id"
@@ -34,7 +34,7 @@
                                 <TextInput
                                     id="quantity"
                                     type="number"
-                                    class="mt-1 block w-full"
+                                    class="block w-full mt-1"
                                     v-model="form.quantity"
                                     required
                                     min="1"
@@ -47,7 +47,7 @@
                                 <InputLabel for="notes_to_client" value="Notes (Optional)" />
                                 <textarea
                                     id="notes_to_client"
-                                    class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm"
+                                    class="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                                     v-model="form.notes_to_client"
                                     rows="3"
                                 ></textarea>
@@ -58,14 +58,14 @@
                             <!-- Example for configurable options:
                             <div v-for="group in product.configurable_option_groups" :key="group.id" class="mb-4">
                                 <h3 class="text-lg font-medium text-gray-900">{{ group.name }}</h3>
-                                <p v-if="group.description" class="text-sm text-gray-500 mb-2">{{ group.description }}</p>
+                                <p v-if="group.description" class="mb-2 text-sm text-gray-500">{{ group.description }}</p>
                                 <div v-for="option in group.options" :key="option.id">
                                      Display option based on its type (e.g., dropdown, radio, checkbox)
                                      Example for a dropdown:
                                     <InputLabel :for="'option_' + option.id" :value="option.name" />
                                     <SelectInput
                                         :id="'option_' + option.id"
-                                        class="mt-1 block w-full"
+                                        class="block w-full mt-1"
                                         v-model="form.configurable_options[group.id][option.id]"
                                         :options="option.values" <!- Assuming option values are structured for SelectInput ->
                                     />
@@ -102,7 +102,7 @@ const props = defineProps({
 });
 
 const form = useForm({
-  billing_cycle_id: props.product.product_pricings && props.product.product_pricings.length > 0 ? props.product.product_pricings[0].id : null,
+  billing_cycle_id: props.product.pricings && props.product.pricings.length > 0 ? props.product.pricings[0].id : null, // Usar 'pricings'
   quantity: 1,
   notes_to_client: '',
   // configurable_options: {}, // Initialize as an empty object for future use
@@ -110,15 +110,12 @@ const form = useForm({
 
 // Prepare billing cycle options for the SelectInput component
 const billingCycleOptions = computed(() => {
-  if (!props.product.product_pricings) {
+  if (!props.product.pricings) { // Usar 'pricings'
     return [];
   }
-  return props.product.product_pricings.map(pricing => ({
-    id: pricing.id,
-    // name: `${pricing.billing_cycle.name} - ${new Intl.NumberFormat('en-US', { style: 'currency', currency: pricing.currency_code || 'USD' }).format(pricing.price)}`
-    // Displaying price here might be complex if currency varies or needs symbol.
-    // For now, just the cycle name. The controller will handle the price.
-    name: `${pricing.billing_cycle.name} (${pricing.price} ${pricing.currency_code})`,
+  return props.product.pricings.map(pricing => ({
+    value: pricing.id, // Cambiar a 'value'
+    label: `${pricing.billing_cycle.name} (${pricing.price} ${pricing.currency_code})`, // Cambiar a 'label' y ajustar el formato
   }));
 });
 

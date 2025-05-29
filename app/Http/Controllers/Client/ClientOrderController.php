@@ -3,35 +3,30 @@ namespace App\Http\Controllers\Client;
 
 
 use App\Http\Controllers\Controller;
-use App\Models\Order;
-// use Illuminate\Http\Request; // Request parameter is not used in show method
-use Illuminate\Support\Facades\Auth; // Importar Auth
-use Inertia\Inertia; // Added for Inertia::render
-use Inertia\Response as InertiaResponse; // Added for type hinting
 use App\Http\Requests\Admin\UpdateOrderRequest; // New
-use Illuminate\Http\RedirectResponse; // New
-use Illuminate\Support\Facades\Log; // For logging errors
-use Illuminate\Http\Request; // For existing index method - Request is used in placeOrder, so it's fine.
-use App\Models\OrderActivity; // Added for new methods
-// use App\Models\Invoice; // Removed duplicate - one is enough
-use App\Models\Transaction; // Added for approveCancellationRequest
-use Illuminate\Support\Carbon; // Added for approveCancellationRequest
-use Illuminate\Support\Str; // Added for approveCancellationRequest and placeOrder
-use Illuminate\Support\Facades\DB; // Added for approveCancellationRequest and placeOrder
+use App\Http\Requests\Client\PlaceOrderRequest; // Added for Form Request
+use App\Actions\Client\PlaceOrderAction; // Added for refactoring
+
 use App\Models\Product; // Added for showOrderForm, placeOrder
 use App\Models\ProductPricing; // Added for placeOrder
 use App\Models\OrderItem; // Added for placeOrder
-use App\Models\Invoice; // Added for placeOrder (and approveCancellationRequest)
 use App\Models\InvoiceItem; // Added for placeOrder
-// Request is already imported higher up by uncommenting.
-// InertiaResponse and RedirectResponse are already imported.
-use Exception; // For general \Exception
+use App\Models\Order;
+use App\Models\OrderActivity; // Added for new methods
+
+use Illuminate\Support\Facades\Auth; // Importar Auth
+use Illuminate\Support\Facades\DB; // Added for approveCancellationRequest and placeOrder
+use Illuminate\Http\RedirectResponse; // New
+use Illuminate\Support\Facades\Log; // For logging errors
+use Illuminate\Http\Request; // For existing index method - Request is used in placeOrder, so it's fine.
 use Illuminate\Validation\ValidationException; // For specific validation exceptions
 use Illuminate\Database\QueryException; // For database query exceptions
 use Illuminate\Database\Eloquent\ModelNotFoundException; // For model not found (e.g. findOrFail)
 use Illuminate\Support\Facades\Validator; // For Validator::make()
-use App\Http\Requests\Client\PlaceOrderRequest; // Added for Form Request
-use App\Actions\Client\PlaceOrderAction; // Added for refactoring
+use Exception; // For general \Exception
+
+use Inertia\Response as InertiaResponse; // Added for type hinting
+use Inertia\Inertia; // Added for Inertia::render
 
 class ClientOrderController extends Controller
 {
@@ -216,7 +211,7 @@ class ClientOrderController extends Controller
 
         // Load order with items, and for each item, its product with available pricings and their billing cycles.
         $order->load([
-            'items.product.productPricings.billingCycle', // For billing cycle options
+            'items.product.pricings.billingCycle', // Corrected relationship name to match model
             'items.productPricing.billingCycle' // For current billing cycle name
         ]);
 
@@ -483,7 +478,7 @@ class ClientOrderController extends Controller
 
         // Load necessary product data.
         // configurableOptionGroups.options will load the groups and their respective options.
-        $product->load(['productPricings.billingCycle', 'configurableOptionGroups.options']);
+        $product->load(['pricings.billingCycle', 'configurableOptionGroups.options']); // Corrected relationship name to match model
 
         return Inertia::render('Client/Orders/OrderForm', [
             'product' => $product,
@@ -511,7 +506,7 @@ class ClientOrderController extends Controller
             return redirect()->route('client.orders.show', $order->id)
                              ->with('success', 'Order placed and invoice generated successfully. Please proceed with payment.');
 
-        } catch (ValidationException $e) { 
+        } catch (ValidationException $e) {
             // This catch block might be redundant if PlaceOrderRequest handles all validation.
             // However, if the Action class could throw a ValidationException for some internal logic, it's fine to keep.
             // The Action class itself does not throw ValidationException, but it re-throws exceptions it catches.
@@ -520,7 +515,7 @@ class ClientOrderController extends Controller
             // For now, as PlaceOrderAction doesn't do that, this specific catch might not be hit from the Action.
             // DB::rollBack(); // Action handles its own rollback.
             throw $e; // Re-throw to let Laravel handle it (usually redirects back with errors).
-        } catch (ModelNotFoundException $e) { 
+        } catch (ModelNotFoundException $e) {
             // This is specifically for ProductPricing::findOrFail inside the Action.
             // The Action re-throws this, so we can catch it here for specific user feedback.
             // DB::rollBack(); // Action handles its own rollback.
@@ -532,7 +527,7 @@ class ClientOrderController extends Controller
             return redirect()->back()
                              ->withInput()
                              ->with('error', 'Selected pricing option is not valid. Please try again.');
-        } catch (Exception $e) { 
+        } catch (Exception $e) {
             // General exception catch from the Action or other issues.
             // DB::rollBack(); // Action handles its own rollback.
             Log::error("Error placing order for product ID {$product->id} (via Action): " . $e->getMessage(), [

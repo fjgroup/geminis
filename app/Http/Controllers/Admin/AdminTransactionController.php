@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 
-class TransactionController extends Controller
+class AdminTransactionController extends Controller
 {
     /**
      * Store a newly created transaction in storage.
@@ -50,7 +50,7 @@ class TransactionController extends Controller
                              ->where('status', 'completed')
                              ->where('type', 'payment')
                              ->sum('amount');
-        
+
         $totalRefunded = $invoice->transactions
                                 ->where('status', 'completed')
                                 ->where('type', 'refund') // Assuming 'refund' type exists
@@ -63,7 +63,7 @@ class TransactionController extends Controller
                 $invoice->status = 'paid';
                 $invoice->paid_date = $transaction->transaction_date; // Or use Carbon::now()
             }
-        } elseif ($netPaid <= 0 && in_array($invoice->status, ['paid', 'overdue'])) { 
+        } elseif ($netPaid <= 0 && in_array($invoice->status, ['paid', 'overdue'])) {
             // If it was paid or overdue and now effectively zero or less is paid (e.g. full refund)
             $invoice->status = 'unpaid'; // Or 'refunded' if that's a more appropriate status
             $invoice->paid_date = null;

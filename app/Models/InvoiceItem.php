@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+ // Added
 
 class InvoiceItem extends Model
 {
@@ -27,18 +28,15 @@ class InvoiceItem extends Model
     }
 
     /**
-     * Get the client service associated with the invoice item (for renewals).
-     */
-    public function clientService(): BelongsTo
-    {
-        return $this->belongsTo(ClientService::class)->nullable();
-    }
-
-    /**
      * Get the order item associated with the invoice item (for items from an order).
      */
     public function orderItem(): BelongsTo
     {
         return $this->belongsTo(OrderItem::class)->nullable();
+    }
+
+    public function clientService(): BelongsTo
+    {
+        return $this->belongsTo(ClientService::class)->nullable();
     }
 }

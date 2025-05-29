@@ -58,28 +58,38 @@ const getLowestPrice = (productPricings) => {
                                 {{ product.description || 'No description available.' }}
                             </p>
 
-                            <div v-if="product.product_pricings && product.product_pricings.length > 0">
-                                <p class="mb-1 text-sm font-semibold text-gray-700 dark:text-gray-300">Pricing:</p>
-                                <ul class="mb-4 ml-4 text-xs list-disc text-gray-500 dark:text-gray-400">
-                                   <li v-for="pricing in product.product_pricings" :key="pricing.id">
+                            <div v-if="product.pricings && product.pricings.length > 0">
+                                <p class="mb-1 text-sm font-semibold text-gray-700 dark:text-gray-300">Precio:</p>
+                                <div v-if="product.pricings.length === 1">
+                                    <p class="text-lg font-bold text-gray-700 dark:text-gray-200">
+                                        {{ formatCurrency(product.pricings[0].price, product.pricings[0].currency_code) }}
+                                        <span v-if="product.pricings[0].billing_cycle"> ({{ product.pricings[0].billing_cycle.name }})</span>
+                                        <span v-else> (Pago Único)</span>
+                                    </p>
+                                </div>
+                                <div v-else>
+                                    <p class="text-lg font-bold text-gray-700 dark:text-gray-200">
+                                        Desde {{ formatCurrency(getLowestPrice(product.pricings).amount, getLowestPrice(product.pricings).currency) }}
+                                        <span class="text-xs font-normal">/ {{ getLowestPrice(product.pricings).cycle }}</span>
+                                    </p>
+                                </div>
+                                <!-- Opcional: mostrar todas las opciones de precio si es necesario -->
+                                <!-- <ul class="mb-4 ml-4 text-xs text-gray-500 list-disc dark:text-gray-400">
+                                   <li v-for="pricing in product.pricings" :key="pricing.id">
                                         {{ formatCurrency(pricing.price, pricing.currency_code) }}
                                         <span v-if="pricing.billing_cycle"> ({{ pricing.billing_cycle.name }})</span>
-                                        <span v-else> (One Time)</span>
+                                        <span v-else> (Pago Único)</span>
                                     </li>
-                                </ul>
-                                 <p class="text-gray-700 dark:text-gray-200 font-bold text-lg">
-                                    Starting at {{ formatCurrency(getLowestPrice(product.product_pricings).amount, getLowestPrice(product.product_pricings).currency) }}
-                                    <span class="text-xs font-normal">/ {{ getLowestPrice(product.product_pricings).cycle }}</span>
-                                </p>
+                                </ul> -->
                             </div>
                             <div v-else>
-                                <p class="text-sm text-gray-500 dark:text-gray-400">Pricing not available.</p>
+                                <p class="text-sm text-gray-500 dark:text-gray-400">Precio no disponible.</p>
                             </div>
                         </div>
                         <div class="p-6 bg-gray-50 dark:bg-gray-700/50">
                              <Link :href="route('client.order.showOrderForm', { product: product.id })"
                                   class="w-full">
-                                <PrimaryButton class="w-full justify-center">
+                                <PrimaryButton class="justify-center w-full">
                                     Order Now
                                 </PrimaryButton>
                             </Link>

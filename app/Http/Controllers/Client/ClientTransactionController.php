@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 
-class TransactionController extends Controller
+class ClientTransactionController extends Controller
 {
     /**
      * Display a listing of the resource.

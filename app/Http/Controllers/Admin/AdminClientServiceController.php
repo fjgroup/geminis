@@ -17,7 +17,7 @@ use Inertia\Inertia; // Importar Inertia
 use Inertia\Response; // Importar Response
 
 
-class ClientServiceController extends Controller
+class AdminClientServiceController extends Controller
 {
     /**
      * Display a listing of the resource.

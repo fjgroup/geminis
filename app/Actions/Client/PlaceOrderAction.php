@@ -83,14 +83,14 @@ class PlaceOrderAction
                 'total_price' => $orderItem->total_price,
                 'taxable' => $product->taxable ?? true,
             ]);
-            
+
             $order->invoice_id = $invoice->id;
             $order->save();
 
             OrderActivity::create([
                 'order_id' => $order->id,
                 'user_id' => $client->id,
-                'type' => 'order_placed',
+                'type' => 'order_requested_by_client', // Corrected ENUM value
                 'details' => [
                     'product_id' => $product->id,
                     'product_name' => $product->name,

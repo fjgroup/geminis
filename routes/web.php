@@ -4,22 +4,26 @@ use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
+// Importaciones de controladores
+use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Admin\AdminProductController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Admin\ConfigurableOptionGroupController;
+use App\Http\Controllers\Admin\ConfigurableOptionController;
+use App\Http\Controllers\Admin\SearchController;
+use App\Http\Controllers\Admin\AdminOrderController; // Añadir esta línea para el controlador de Admin
+use App\Http\Controllers\Admin\AdminInvoiceController; // Import the admin invoice controller
+use App\Http\Controllers\Admin\AdminTransactionController; // Import the admin transaction controller
+use App\Http\Controllers\Admin\AdminClientServiceController; // Import the admin client service controller
+use App\Http\Controllers\Client\ClientDashboardController;
+use App\Http\Controllers\Client\ClientOrderController; // Import the client order controller
+use App\Http\Controllers\Client\ClientServiceController; // Import the client service controller
+use App\Http\Controllers\Client\InvoicePaymentController as ClientInvoicePaymentController; // Import the client invoice payment controller and alias it
+use App\Http\Controllers\Client\InvoiceController as ClientInvoiceController; // Import the client invoice controller and alias it
+use App\Http\Controllers\Client\TransactionController as ClientTransactionController; // Import the client transaction controller and alias it
 use App\Http\Controllers\Reseller\ResellerClientController;
 use App\Http\Controllers\Reseller\ResellerDashboardController; // Added for reseller dashboard
-use App\Http\Controllers\Admin\ConfigurableOptionController;
-use App\Http\Controllers\Admin\ClientServiceController; // Añadir esta línea
-use App\Http\Controllers\Admin\AdminOrderController; // Añadir esta línea para el controlador de Admin
-use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\Client\ClientDashboardController;
-use App\Http\Controllers\Admin\SearchController;
-use App\Http\Controllers\Client\ClientOrderController as ClientOrderController; // Renombrar el controlador de cliente para evitar conflicto
-use App\Http\Controllers\Admin\InvoiceController; // Añadir esta línea para el controlador de Admin
-use App\Http\Controllers\Admin\TransactionController; // Added TransactionController import
-
 
 // Rutas para la administración
 // Aplicamos el middleware 'admin' para proteger estas rutas
@@ -34,13 +38,13 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'verified', 'admin']
     Route::resource('configurable-option-groups.options', ConfigurableOptionController::class)->shallow()->except(['index', 'show', 'create', 'edit']);
 
     // Rutas para Client Services
-    Route::resource('client-services', ClientServiceController::class);
+    Route::resource('client-services', AdminClientServiceController::class);
 
     // Rutas para Órdenes de Administración
     Route::resource('orders', AdminOrderController::class);
 
     // Rutas para Facturas de Administración
-    Route::resource('invoices', InvoiceController::class);
+    Route::resource('invoices', AdminInvoiceController::class);
 
     Route::resource('products', AdminProductController::class);
 
@@ -51,7 +55,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'verified', 'admin']
 
     Route::delete('products/{product}/pricing/{pricing}', [AdminProductController::class, 'destroyPricing'])->name('products.pricing.destroy');
 
-    Route::get('/products/{product}/pricings', [ClientServiceController::class, 'getProductPricings'])->name('products.getPricings');
+    Route::get('/products/{product}/pricings', [AdminClientServiceController::class, 'getProductPricings'])->name('products.getPricings');
 
     Route::get('/project-progress', function () {
         // Aquí no necesitas pasar datos porque el componente los tiene o los carga de localStorage
@@ -59,10 +63,10 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'verified', 'admin']
     })->middleware(['auth', 'verified', /* tu middleware de admin si es necesario */])->name('project.progress');
 
     // Route for storing transactions for an invoice
-    Route::post('/invoices/{invoice}/transactions', [TransactionController::class, 'store'])->name('invoices.transactions.store');
+    Route::post('/invoices/{invoice}/transactions', [AdminTransactionController::class, 'store'])->name('invoices.transactions.store');
 
     // Route for listing transactions
-    Route::get('/transactions', [TransactionController::class, 'index'])->name('transactions.index');
+    Route::get('/transactions', [AdminTransactionController::class, 'index'])->name('transactions.index');
 
     // Order Execution Routes
     Route::post('/orders/{order}/start-execution', [AdminOrderController::class, 'startExecution'])->name('orders.startExecution');
@@ -92,36 +96,45 @@ Route::middleware(['auth', 'verified', 'role.reseller'])->prefix('reseller-panel
 
 // Rutas para el área de cliente
 Route::prefix('client')->name('client.')->middleware(['auth'])->group(function () {
-    // Panel de cliente y lista de servicios
-    Route::get('/services', [ClientDashboardController::class, 'index'])->name('services.index');
+  // Ruta para el dashboard de cliente
+  Route::get('/', [ClientDashboardController::class, 'index'])->name('dashboard'); // Route for client dashboard
 
-    // Rutas placeholder para la gestión de servicios
-    Route::get('/services/create', function () {
-        return Inertia::render('Client/Services/Create');
-    })->name('services.create');
+  // Rutas de Recurso para la gestión de servicios de cliente
+  Route::resource('services', ClientServiceController::class); // Consolidated service routes using resource including index
 
-    Route::get('/services/{service}', function ($service) {
-        // En una implementación real, aquí cargarías los datos del servicio
-        return Inertia::render('Client/Services/Show', ['serviceId' => $service]);
-    })->name('services.show');
+  // Rutas para la creación de órdenes
+  Route::get('/order/product/{product}', [ClientOrderController::class, 'showOrderForm'])->name('order.showOrderForm');
+  Route::post('/order/place/{product}', [ClientOrderController::class, 'placeOrder'])->name('order.placeOrder');
 
-    Route::get('/services/{service}/edit', function ($service) {
-        // En una implementación real, aquí cargarías los datos del servicio
-        return Inertia::render('Client/Services/Edit', ['serviceId' => $service]);
-    })->name('services.edit');
+  // Rutas para la gestión de órdenes de cliente
+  Route::get('/orders', [ClientOrderController::class, 'index'])->name('orders.index');
+  Route::get('/orders/{order}', [ClientOrderController::class, 'show'])->name('orders.show'); // Added route for showing a client order
+  Route::delete('/orders/{order}/cancel-prepayment', [ClientOrderController::class, 'cancelPrePaymentOrder'])->name('orders.cancelPrePayment');
+  Route::post('/orders/{order}/request-cancellation', [ClientOrderController::class, 'requestPostPaymentCancellation'])->name('orders.requestPostPaymentCancellation');
+  Route::get('/orders/{order}/edit-order', [ClientOrderController::class, 'editOrderForm'])->name('orders.editOrderForm');
+  Route::put('/orders/{order}/update-order', [ClientOrderController::class, 'updateOrder'])->name('orders.updateOrder');
 
-    // Placeholder para eliminar servicio
-    Route::delete('/services/{service}', function ($service) {
-        // En una implementación real, aquí manejarías la eliminación
-        return back()->with('success', 'Servicio eliminado (placeholder)');
-    })->name('services.destroy');
+  // Rutas para la gestión de facturas de cliente
+  Route::resource('invoices', App\Http\Controllers\Client\ClientInvoiceController::class)->except(['create', 'store', 'edit', 'update', 'destroy']); // Use resource for invoices, exclude non-client actions
+  Route::post('/invoices/{invoice}/pay-with-balance', [ App\Http\Controllers\Client\ClientInvoiceController::class, 'payWithBalance'])->name('invoices.payWithBalance');
+  Route::post('/invoices/{invoice}/pay', [ClientInvoicePaymentController::class, 'store'])->name('invoices.payment.store');
 
-    // Rutas para la creación de órdenes
-    Route::get('/order/product/{product}', [ClientOrderController::class, 'showOrderForm'])->name('order.showOrderForm');
-    Route::post('/order/place/{product}', [ClientOrderController::class, 'placeOrder'])->name('order.placeOrder');
+  // Rutas para la gestión de transacciones de cliente
+  Route::get('/transactions', [App\Http\Controllers\Client\ClientTransactionController::class, 'index'])->name('transactions.index');
+
+  // Rutas para el listado de productos para clientes (handled by ClientDashboardController)
+  Route::get('/products', [ClientDashboardController::class, 'listProducts'])->name('products.index');
+
+  // Rutas adicionales para servicios de cliente (no incluidas en resource por defecto)
+  // These routes point to the ClientServiceController methods
+  Route::post('/services/{service}/request-cancellation', [ClientServiceController::class, 'requestCancellation'])->name('services.requestCancellation');
+  Route::get('/services/{service}/upgrade-downgrade-options', [ClientServiceController::class, 'showUpgradeDowngradeOptions'])->name('services.showUpgradeDowngradeOptions');
+  Route::post('/services/{service}/process-upgrade-downgrade', [ClientServiceController::class, 'processUpgradeDowngrade'])->name('services.processUpgradeDowngrade');
+  Route::post('/services/{service}/request-renewal', [ClientServiceController::class, 'requestRenewal'])->name('services.requestRenewal');
 
     // Rutas para la gestión de órdenes de cliente
     Route::get('/orders', [ClientOrderController::class, 'index'])->name('orders.index');
+    Route::get('/orders/{order}', [ClientOrderController::class, 'show'])->name('orders.show'); // Added route for showing a client order
     // Route for client to cancel their own order if it's pending payment
     Route::delete('/orders/{order}/cancel-prepayment', [ClientOrderController::class, 'cancelPrePaymentOrder'])->name('orders.cancelPrePayment');
     // Route for client to request cancellation for a paid order pending execution
@@ -132,29 +145,29 @@ Route::prefix('client')->name('client.')->middleware(['auth'])->group(function (
     Route::put('/orders/{order}/update-order', [ClientOrderController::class, 'updateOrder'])->name('orders.updateOrder'); // Changed path for clarity
 
     // Rutas para la gestión de facturas de cliente
-    Route::get('/invoices', [\App\Http\Controllers\Client\InvoiceController::class, 'index'])->name('invoices.index');
-    Route::get('/invoices/{invoice}', [\App\Http\Controllers\Client\InvoiceController::class, 'show'])->name('invoices.show');
-    Route::post('/invoices/{invoice}/pay-with-balance', [\App\Http\Controllers\Client\InvoiceController::class, 'payWithBalance'])->name('invoices.payWithBalance');
+    Route::get('/invoices', [App\Http\Controllers\Client\ClientInvoiceController::class, 'index'])->name('invoices.index');
+    Route::get('/invoices/{invoice}', [App\Http\Controllers\Client\ClientInvoiceController::class, 'show'])->name('invoices.show');
+    Route::post('/invoices/{invoice}/pay-with-balance', [App\Http\Controllers\Client\ClientInvoiceController::class, 'payWithBalance'])->name('invoices.payWithBalance');
     // Route for simulated invoice payment
     Route::post('/invoices/{invoice}/pay', [\App\Http\Controllers\Client\InvoicePaymentController::class, 'store'])->name('invoices.payment.store');
 
     // Rutas para la gestión de transacciones de cliente
-    Route::get('/transactions', [\App\Http\Controllers\Client\TransactionController::class, 'index'])->name('transactions.index');
+    Route::get('/transactions', [App\Http\Controllers\Client\ClientTransactionController::class, 'index'])->name('transactions.index');
 
     // Rutas para el listado de productos para clientes
     Route::get('/products', [ClientDashboardController::class, 'listProducts'])->name('products.index');
 
     // Ruta para solicitar cancelación de servicio
-    Route::post('/services/{service}/request-cancellation', [\App\Http\Controllers\Client\ClientServiceController::class, 'requestCancellation'])->name('services.requestCancellation');
+    Route::post('/services/{service}/request-cancellation', [ClientServiceController::class, 'requestCancellation'])->name('services.requestCancellation');
 
     // Ruta para mostrar opciones de upgrade/downgrade de servicio
-    Route::get('/services/{service}/upgrade-downgrade-options', [\App\Http\Controllers\Client\ClientServiceController::class, 'showUpgradeDowngradeOptions'])->name('services.showUpgradeDowngradeOptions');
+    Route::get('/services/{service}/upgrade-downgrade-options', [ClientServiceController::class, 'showUpgradeDowngradeOptions'])->name('services.showUpgradeDowngradeOptions');
 
     // Ruta para procesar el cambio de plan de servicio
-    Route::post('/services/{service}/process-upgrade-downgrade', [\App\Http\Controllers\Client\ClientServiceController::class, 'processUpgradeDowngrade'])->name('services.processUpgradeDowngrade');
+    Route::post('/services/{service}/process-upgrade-downgrade', [ClientServiceController::class, 'processUpgradeDowngrade'])->name('services.processUpgradeDowngrade');
 
     // Ruta para solicitar renovación de servicio
-    Route::post('/services/{service}/request-renewal', [\App\Http\Controllers\Client\ClientServiceController::class, 'requestRenewal'])->name('services.requestRenewal');
+    Route::post('/services/{service}/request-renewal', [ClientServiceController::class, 'requestRenewal'])->name('services.requestRenewal');
 });
 
 

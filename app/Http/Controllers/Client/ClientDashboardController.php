@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Client;
 
 use App\Http\Controllers\Controller;
-use App\Models\ClientService;
+use App\Models\Product;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -50,8 +50,8 @@ class ClientDashboardController extends Controller
         // For now, any authenticated client can view products.
         // $this->authorize('viewAny', Product::class); // Example if ProductPolicy exists
 
-        $products = \App\Models\Product::where('status', 'active') // Assuming an 'status' column for active products
-            ->with(['pricings.billingCycle'])
+        $products = Product::where('status', 'active') // Assuming an 'status' column for active products
+            ->with(['pricings.billingCycle']) // Corrected relationship name to match model
             ->paginate(10); // Paginate results
 
         return Inertia::render('Client/Products/Index', [

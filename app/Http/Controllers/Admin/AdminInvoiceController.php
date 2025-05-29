@@ -19,7 +19,7 @@ use App\Http\Requests\Admin\UpdateInvoiceRequest; // New
 // use Illuminate\Support\Carbon; // Already imported
 // use Illuminate\Support\Facades\DB; // Already imported
 
-class InvoiceController extends Controller
+class AdminInvoiceController extends Controller
 {
     /**
      * Display a listing of the resource.
@@ -55,7 +55,7 @@ class InvoiceController extends Controller
           ->select('id', 'name', 'email') // Select only necessary fields
           ->orderBy('name')
           ->get();
-          
+
         // If not using a roles package and 'role' column exists:
         // $clients = User::where('role', 'client')->select('id', 'name', 'email')->orderBy('name')->get();
 
@@ -210,7 +210,7 @@ class InvoiceController extends Controller
             // Update main invoice fields that are present in validatedData
             // The UpdateInvoiceRequest uses 'sometimes', so only present fields are validated & passed.
             $invoice->fill($request->only([
-                'client_id', 'issue_date', 'due_date', 'status', 
+                'client_id', 'issue_date', 'due_date', 'status',
                 'currency_code', 'notes_to_client', 'admin_notes'
                 // Do not include 'paid_date' here directly from fill, handle it based on status
             ]));

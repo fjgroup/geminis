@@ -41,7 +41,7 @@ class ConfigurableOptionGroup extends Model
     /**
      * Get the configurable options for the group.
      */
-    public function configurableOptions(): HasMany
+    public function options(): HasMany
     {
         return $this->hasMany(ConfigurableOption::class, 'group_id'); // Ajusta 'group_id' si es necesario
     }

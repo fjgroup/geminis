@@ -4,10 +4,10 @@ namespace App\Http\Controllers\Client;
 
 use App\Http\Controllers\Controller;
 use App\Models\Invoice;
-use App\Models\Order;
+use App\Models\User;
+
 use App\Models\OrderActivity;
 use App\Models\Transaction;
-use App\Models\User; // Assuming User model is in App\Models
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -17,7 +17,7 @@ use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Exception; // Added for general \Exception
 
-class InvoiceController extends Controller
+class ClientInvoiceController extends Controller
 {
     /**
      * Display a listing of the resource.
@@ -39,18 +39,24 @@ class InvoiceController extends Controller
     {
         $this->authorize('view', $invoice);
 
+        // Depuración: Inspeccionar un ítem de factura antes de la carga eager
+        if ($invoice->items->count() > 0) {
+
+        } else {
+
+        }
+
+
         $invoice->load([
             'client', // Already loaded by policy check if using $invoice->client_id for auth
-            'reseller', 
+            'reseller',
             'items',
-            'items.orderItem.product', // Example: load product through orderItem
+            'items.clientService.product', // Load product through clientService if applicable
             'items.clientService', // If applicable
             'order' // Load the associated order if it exists
         ]);
-        
-        // Get authenticated user and explicitly include balance and formatted_balance
-        $authUser = Auth::user();
         $userResource = null;
+        $authUser = Auth::user();
         if ($authUser) {
             $userResource = [
                 'id' => $authUser->id,
@@ -97,9 +103,10 @@ class InvoiceController extends Controller
         DB::beginTransaction();
 
         try {
+
             // 1. Decrement user balance
-            $user->balance -= $invoice->total_amount;
-            $user->save();
+            // Usar el método decrement para una operación atómica y más segura
+            $user->decrement('balance', $invoice->total_amount);
 
             // 2. Create Transaction record
             $transaction = Transaction::create([

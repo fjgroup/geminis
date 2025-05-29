@@ -22,6 +22,38 @@ use Illuminate\Support\Str; // Added for generating invoice number
 class ClientServiceController extends Controller
 {
     /**
+     * Display a listing of the client's services.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Inertia\Response
+     */
+    public function index(Request $request): InertiaResponse
+    {
+        $user = $request->user();
+
+        $clientServices = $user->clientServices()
+                                ->with(['product', 'productPricing', 'billingCycle'])
+                                ->get();
+
+        $pendingOrdersCount = $user->orders()
+                                   ->whereIn('status', ['paid_pending_execution', 'pending_provisioning'])
+                                   ->count();
+
+        $unpaidInvoicesCount = $user->invoices()
+                                    ->where('status', 'unpaid')
+                                    ->count();
+
+        // Assuming there's a view for client services list, not the full dashboard
+        return Inertia::render('Client/Services/Index', [ // NOTE: Assuming the view is Client/Services/Index
+            'clientServices' => $clientServices,
+            'pendingOrdersCount' => $pendingOrdersCount,
+            'unpaidInvoicesCount' => $unpaidInvoicesCount,
+            'accountBalance' => $user->balance,
+            'formattedAccountBalance' => $user->formatted_balance,
+        ]);
+    }
+
+    /**
      * Request cancellation for the specified service.
      *
      * @param  Request  $request
@@ -45,13 +77,13 @@ class ClientServiceController extends Controller
 
             // Logging (using OrderActivity for now)
             // Ensure service->product relationship is loaded if not already for product_name
-            $service->loadMissing('product'); 
+            $service->loadMissing('product');
 
             OrderActivity::create([
                 'client_id' => $service->client_id,
                 // order_id might be null if service was not created via an order
                 // Ensure OrderActivity's order_id column is nullable in the database schema
-                'order_id' => $service->order_id, 
+                'order_id' => $service->order_id,
                 'user_id' => Auth::id(),
                 'type' => 'service_cancellation_requested',
                 'details' => json_encode([
@@ -96,7 +128,7 @@ class ClientServiceController extends Controller
             // This should ideally not happen if data integrity is maintained
             abort(404, 'Product associated with this service not found.');
         }
-        
+
         // Fetch all other ProductPricing tiers for the current service's product
         // Eager load billingCycle for display
         $availableOptions = ProductPricing::where('product_id', $service->product_id)
@@ -104,7 +136,7 @@ class ClientServiceController extends Controller
             ->with('billingCycle')
             ->orderBy('price') // Optionally order by price or some other attribute
             ->get();
-        
+
         // You might also want to filter these options based on status (e.g., only 'active' pricings)
         // or if they are marked as "allow_upgrades_downgrades" etc. (future enhancement)
 
@@ -218,7 +250,7 @@ class ClientServiceController extends Controller
         if (!in_array($service->status, ['Active', 'Suspended'])) {
             return redirect()->back()->with('error', 'This service cannot be renewed at its current stage.');
         }
-        
+
         // Validation: Check for existing unpaid renewal invoice for this service
         // This assumes InvoiceItem has a client_service_id column.
         $existingUnpaidRenewalInvoice = Invoice::where('client_id', $service->client_id)

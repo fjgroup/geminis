@@ -33,7 +33,7 @@ const formatDate = (dateString) => {
                 <!-- Welcome Message -->
                 <div class="mb-6">
                     <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">
-                        Welcome, {{ \$page.props.auth.user.name }}!
+                        Welcome, {{ $page.props.auth.user.name }}!
                     </h3>
                 </div>
 
@@ -58,7 +58,7 @@ const formatDate = (dateString) => {
                             {{ activeServicesCount }}
                         </dd>
                     </div>
-                    
+
                     <!-- Placeholder for other stats -->
                     <!--
                     <div class="p-6 overflow-hidden bg-white rounded-lg shadow-sm dark:bg-gray-800">
@@ -66,7 +66,7 @@ const formatDate = (dateString) => {
                             Upcoming Renewals
                         </dt>
                         <dd class="mt-1 text-3xl font-semibold tracking-tight text-gray-900 dark:text-gray-100">
-                            0 
+                            0
                         </dd>
                     </div>
                     -->
@@ -76,7 +76,7 @@ const formatDate = (dateString) => {
                 <div class="mb-6">
                     <h3 class="mb-2 text-lg font-medium text-gray-900 dark:text-gray-100">Quick Actions</h3>
                     <div class="flex space-x-4">
-                        <Link :href="route('reseller.clients.index')" 
+                        <Link :href="route('reseller.clients.index')"
                               class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">
                             Manage My Clients
                         </Link>

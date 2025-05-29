@@ -13,8 +13,9 @@ class ProductPolicy
      */
     public function viewAny(User $user): bool
     {
-        // Solo los administradores pueden ver la lista de todos los productos
-        return $user->role === 'admin';
+        // Admins can view all products. Clients can view available products. Resellers view their own or resellable.
+        // For now, allow admins and clients to view the list.
+        return $user->role === 'admin' || $user->role === 'client';
     }
 
 
@@ -22,11 +23,12 @@ class ProductPolicy
      * Determine whether the user can view the model.
      */
 
-    public function view(User $user, Product $product): bool // Corregido Produc a Product
+    public function view(User $user, Product $product): bool
     {
-        // Los administradores pueden ver cualquier producto.
-        // Los revendedores pueden ver sus propios productos o los productos de plataforma que son revendibles.
+        // Admins can view any product. Clients can view any product.
+        // Resellers can view their own products or platform products that are resellable.
         return $user->role === 'admin'
+            || $user->role === 'client'
             || ($user->role === 'reseller' && $product->owner_id === $user->id)
             || ($user->role === 'reseller' && is_null($product->owner_id) && $product->is_resellable_by_default);
     }
