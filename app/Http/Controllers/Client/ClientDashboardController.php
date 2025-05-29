@@ -19,11 +19,11 @@ class ClientDashboardController extends Controller
         $clientServices = $user->clientServices()
                                 ->with(['product', 'productPricing', 'billingCycle'])
                                 ->get();
-        
+
         $pendingOrdersCount = $user->orders()
                                    ->whereIn('status', ['paid_pending_execution', 'pending_provisioning'])
                                    ->count();
-        
+
         $unpaidInvoicesCount = $user->invoices()
                                     ->where('status', 'unpaid')
                                     ->count();
@@ -51,7 +51,7 @@ class ClientDashboardController extends Controller
         // $this->authorize('viewAny', Product::class); // Example if ProductPolicy exists
 
         $products = \App\Models\Product::where('status', 'active') // Assuming an 'status' column for active products
-            ->with(['productPricings.billingCycle'])
+            ->with(['pricings.billingCycle'])
             ->paginate(10); // Paginate results
 
         return Inertia::render('Client/Products/Index', [

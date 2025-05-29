@@ -12,11 +12,11 @@ use App\Http\Controllers\Reseller\ResellerClientController;
 use App\Http\Controllers\Reseller\ResellerDashboardController; // Added for reseller dashboard
 use App\Http\Controllers\Admin\ConfigurableOptionController;
 use App\Http\Controllers\Admin\ClientServiceController; // Añadir esta línea
-use App\Http\Controllers\Admin\OrderController; // Añadir esta línea para el controlador de Admin
+use App\Http\Controllers\Admin\AdminOrderController; // Añadir esta línea para el controlador de Admin
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Client\ClientDashboardController;
 use App\Http\Controllers\Admin\SearchController;
-use App\Http\Controllers\Client\OrderController as ClientOrderController; // Renombrar el controlador de cliente para evitar conflicto
+use App\Http\Controllers\Client\ClientOrderController as ClientOrderController; // Renombrar el controlador de cliente para evitar conflicto
 use App\Http\Controllers\Admin\InvoiceController; // Añadir esta línea para el controlador de Admin
 use App\Http\Controllers\Admin\TransactionController; // Added TransactionController import
 
@@ -37,7 +37,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'verified', 'admin']
     Route::resource('client-services', ClientServiceController::class);
 
     // Rutas para Órdenes de Administración
-    Route::resource('orders', OrderController::class);
+    Route::resource('orders', AdminOrderController::class);
 
     // Rutas para Facturas de Administración
     Route::resource('invoices', InvoiceController::class);
@@ -65,11 +65,11 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'verified', 'admin']
     Route::get('/transactions', [TransactionController::class, 'index'])->name('transactions.index');
 
     // Order Execution Routes
-    Route::post('/orders/{order}/start-execution', [OrderController::class, 'startExecution'])->name('orders.startExecution');
-    Route::post('/orders/{order}/complete-execution', [OrderController::class, 'completeExecution'])->name('orders.completeExecution');
+    Route::post('/orders/{order}/start-execution', [AdminOrderController::class, 'startExecution'])->name('orders.startExecution');
+    Route::post('/orders/{order}/complete-execution', [AdminOrderController::class, 'completeExecution'])->name('orders.completeExecution');
 
     // Order Cancellation Approval Route
-    Route::post('/orders/{order}/approve-cancellation', [OrderController::class, 'approveCancellationRequest'])->name('orders.approveCancellation');
+    Route::post('/orders/{order}/approve-cancellation', [AdminOrderController::class, 'approveCancellationRequest'])->name('orders.approveCancellation');
 });
 
 

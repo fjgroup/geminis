@@ -81,7 +81,7 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         $balance = $this->attributes['balance'] ?? 0;
         // Use the user's specific currency_code if available, otherwise default to USD
-        $currencyCode = $this->currency_code ?? 'USD'; 
+        $currencyCode = $this->currency_code ?? 'USD';
 
         if (class_exists('NumberFormatter')) {
             $locale = config('app.locale', 'en_US'); // Use app's locale
@@ -91,7 +91,7 @@ class User extends Authenticatable implements MustVerifyEmail
             $formatter = new \NumberFormatter($locale, \NumberFormatter::CURRENCY);
             return $formatter->formatCurrency($balance, $currencyCode);
         }
-        
+
         // Fallback basic formatting if NumberFormatter is not available
         return $currencyCode . ' ' . number_format($balance, 2);
     }
@@ -119,12 +119,20 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
+     * Check if the user has a specific role.
+     * @param string $roleName  @return bool
+     */
+        public function hasRole(string $roleName): bool
+    {
+        return $this->role === $roleName;
+    }
+    /**
      * Get the clients for the reseller.
      * (A user with role 'reseller' can have many client users)
      *
      * @return \Illuminate\Database\Eloquent\Relations\HasMany<User>
      */
-        public function clients(): HasMany
+    public function clients(): HasMany
     {
         return $this->hasMany(User::class, 'reseller_id');
     }
@@ -135,9 +143,16 @@ class User extends Authenticatable implements MustVerifyEmail
      *
      * @return \Illuminate\Database\Eloquent\Relations\BelongsTo<User, User>
      */
-        public function reseller(): BelongsTo
+    public function reseller(): BelongsTo
     {
         return $this->belongsTo(User::class, 'reseller_id');
+    }
+    /**
+     * Get the orders for the user.
+     */
+    public function orders(): HasMany
+    {
+        return $this->hasMany(Order::class, 'client_id');
     }
 
     //Example for a future relationship (ResellerProfile)
@@ -153,22 +168,7 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         return $this->hasMany(ClientService::class, 'client_id');
     }
-    /**
-     * Get the orders for the user.
-     */
-        public function orders(): HasMany
-    {
-        return $this->hasMany(Order::class, 'client_id');
-    }
 
-    /**
-     * Check if the user has a specific role.
-     * @param string $roleName  @return bool
-     */
-        public function hasRole(string $roleName): bool
-    {
-        return $this->role === $roleName;
-    }
 
     /**
      * Check if the user has the 'admin' role.

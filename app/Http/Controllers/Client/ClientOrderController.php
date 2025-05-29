@@ -1,6 +1,6 @@
 <?php
+namespace App\Http\Controllers\Client;
 
-namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Order;
@@ -19,20 +19,18 @@ use Illuminate\Support\Carbon; // Added for approveCancellationRequest
 use Illuminate\Support\Str; // Added for approveCancellationRequest
 use Illuminate\Support\Facades\DB; // Added for approveCancellationRequest
 
-class OrderController extends Controller
+class ClientOrderController extends Controller
 {
     /**
      * Display a listing of the resource.
      */
     public function index(Request $request): InertiaResponse // Add Request type hint
     {
-        $this->authorize('viewAny', Order::class); // Assuming OrderPolicy@viewAny allows admins
+        $this->authorize('viewAny', Order::class); // Assuming OrderPolicy@viewAny allows clients to view their own orders
 
-        // $user = Auth::user(); // Not directly used in the new logic if admin sees all by default
-        
         $query = Order::with([
             'client:id,name,email,balance,currency_code', // Specific columns for client
-            'invoice', 
+            'invoice',
             'items'
         ])->latest('order_date');
 
@@ -43,7 +41,7 @@ class OrderController extends Controller
                 $query->where('status', $request->status);
             }
         }
-        
+
         // Search Filtering (Example - can be expanded)
         if ($request->filled('search')) {
             $searchTerm = $request->search;
@@ -58,17 +56,9 @@ class OrderController extends Controller
                   });
             });
         }
-        
-        // Reseller Scoping: If the authenticated user is a reseller, scope orders to their clients.
-        // This assumes admins do not have the 'reseller' role or that isAdmin() check in policy is primary.
-        $authUser = Auth::user();
-        if ($authUser->hasRole('reseller')) {
-            $query->whereHas('client', function ($q) use ($authUser) {
-                $q->where('reseller_id', $authUser->id);
-            });
-        }
 
-        $orders = $query->paginate(15)->withQueryString(); // withQueryString to append filters to pagination links
+        // Ensure only the authenticated client's orders are fetched
+        $orders = $query->where('client_id', Auth::id())->paginate(15)->withQueryString(); // withQueryString to append filters to pagination links
 
         // Get distinct statuses from the orders table for filter dropdown
         // This can be resource-intensive on large tables. Consider a predefined list or caching.
@@ -76,7 +66,7 @@ class OrderController extends Controller
         $possibleStatuses = ['pending_payment', 'paid_pending_execution', 'cancellation_requested_by_client', 'active', 'completed', 'fraud', 'cancelled', 'pending_provisioning'];
 
 
-        return Inertia::render('Admin/Orders/Index', [
+        return Inertia::render('Client/Orders/Index', [ // NOTE: This might need to be 'Client/Orders/Index'
             'orders' => $orders,
             'filters' => $request->only(['search', 'status']), // Pass current filters back to the view
             'possibleStatuses' => $possibleStatuses, // For the filter dropdown
@@ -114,7 +104,7 @@ class OrderController extends Controller
             'invoice:id,invoice_number,status,total_amount' // Load associated invoice
         ]);
 
-        return Inertia::render('Admin/Orders/Show', [
+        return Inertia::render('Client/Orders/Show', [ // NOTE: This might need to be 'Client/Orders/Show'
             'order' => $order,
         ]);
     }
@@ -133,7 +123,8 @@ class OrderController extends Controller
         $possibleStatuses = ['pending_payment', 'pending_provisioning', 'active', 'fraud', 'cancelled', 'completed'];
         // It's better to get this from the Order model if possible, e.g., Order::getPossibleStatuses()
 
-        return Inertia::render('Admin/Orders/Edit', [
+
+        return Inertia::render('Client/Orders/Edit', [ // NOTE: This might need to be 'Client/Orders/Edit'
             'order' => $order->load(['client:id,name', 'items.product']), // Load necessary data
             'possibleStatuses' => $possibleStatuses,
         ]);
@@ -160,14 +151,14 @@ class OrderController extends Controller
                 // A more sophisticated approach might involve a separate notes/history table.
                 $order->notes = ($order->notes ? $order->notes . "\n--- Admin Update ---\n" : '') . $validatedData['notes'];
             }
-            
+
             // If status changed to 'completed' or 'active' and it wasn't before,
             // consider if any provisioning logic or events should be triggered.
             // (This is out of scope for current task but a point for future).
 
             $order->save();
 
-            return redirect()->route('admin.orders.show', $order->id)
+            return redirect()->route('client.orders.show', $order->id) // NOTE: This might need to be 'client.orders.show'
                              ->with('success', 'Order updated successfully.');
 
         } catch (\Illuminate\Database\QueryException $e) {
@@ -200,25 +191,25 @@ class OrderController extends Controller
         try {
             // Check for related records that might prevent deletion, e.g., non-cancelled invoices
             // Ensure invoice relationship is loaded if not already by route model binding enhancements
-            $order->loadMissing('invoice'); 
+            $order->loadMissing('invoice');
             if ($order->invoice && !in_array($order->invoice->status, ['cancelled', 'refunded'])) {
-                 return redirect()->route('admin.orders.show', $order->id)
+                 return redirect()->route('client.orders.show', $order->id) // NOTE: This might need to be 'client.orders.show'
                                  ->with('error', 'Cannot delete order: It has an active or unpaid invoice. Please cancel or refund the invoice first.');
             }
 
             $order->delete(); // This will soft delete if the trait is used
 
-            return redirect()->route('admin.orders.index')
+            return redirect()->route('client.orders.index') // NOTE: This might need to be 'client.orders.index'
                              ->with('success', 'Order successfully deleted (soft delete).');
         } catch (\Exception $e) {
             Log::error("Failed to delete order: " . $e->getMessage(), ['order_id' => $order->id, 'error' => $e]);
-            return redirect()->route('admin.orders.show', $order->id)
+            return redirect()->route('client.orders.show', $order->id) // NOTE: This might need to be 'client.orders.show'
                              ->with('error', 'An unexpected error occurred while deleting the order.');
         }
     }
 
     /**
-     * Mark the order as being processed by admin.
+     * Mark the order as being processed by client.
      *
      * @param  Order  $order
      * @return RedirectResponse
@@ -228,27 +219,27 @@ class OrderController extends Controller
         $this->authorize('update', $order); // Or a more specific policy method like 'manageExecution'
 
         if ($order->status !== 'paid_pending_execution') {
-            return redirect()->route('admin.orders.show', $order->id)
+            return redirect()->route('client.orders.show', $order->id) // NOTE: This might need to be 'client.orders.show'
                              ->with('error', 'Order cannot be started at its current stage. Expected status: Paid, Pending Execution.');
         }
 
         try {
-            $order->status = 'pending_provisioning'; // Or 'provisioning_in_progress', 'admin_processing'
+            $order->status = 'pending_provisioning'; // Or 'provisioning_in_progress', 'client_processing'
                                                  // This 'pending_provisioning' was an original ENUM value.
             $order->save();
 
             OrderActivity::create([
                 'order_id' => $order->id,
-                'user_id' => Auth::id(), // Admin performing the action
-                'type' => 'admin_started_provisioning', // From ENUM list
+                'user_id' => Auth::id(), // client performing the action
+                'type' => 'client_started_provisioning', // From ENUM list
                 'details' => ['previous_status' => 'paid_pending_execution']
             ]);
 
-            return redirect()->route('admin.orders.show', $order->id)
-                             ->with('success', 'Order status updated to: Processing by Admin.');
+            return redirect()->route('client.orders.show', $order->id) // NOTE: This might need to be 'client.orders.show'
+                             ->with('success', 'Order status updated to: Processing by client.');
         } catch (\Exception $e) {
             Log::error("Error starting order execution for order ID: {$order->id}", ['error' => $e->getMessage()]);
-            return redirect()->route('admin.orders.show', $order->id)
+            return redirect()->route('client.orders.show', $order->id) // NOTE: This might need to be 'client.orders.show'
                              ->with('error', 'Failed to start order execution.');
         }
     }
@@ -266,8 +257,8 @@ class OrderController extends Controller
         // Typically, an order would be in 'pending_provisioning' or a similar active processing state
         if (!in_array($order->status, ['pending_provisioning', 'paid_pending_execution', 'active'])) {
              // Allow 'active' if it can be re-completed or if 'active' implies ongoing and 'completed' is final.
-             // Allow 'paid_pending_execution' to skip 'startExecution' if admin wants to mark as directly active/completed.
-            return redirect()->route('admin.orders.show', $order->id)
+             // Allow 'paid_pending_execution' to skip 'startExecution' if client wants to mark as directly active/completed.
+            return redirect()->route('client.orders.show', $order->id) // NOTE: This might need to be 'client.orders.show'
                              ->with('error', 'Order cannot be completed at its current stage.');
         }
 
@@ -283,18 +274,18 @@ class OrderController extends Controller
             OrderActivity::create([
                 'order_id' => $order->id,
                 'user_id' => Auth::id(),
-                'type' => 'service_activated', // Or 'admin_completed_provisioning' from ENUM
+                'type' => 'service_activated', // Or 'client_completed_provisioning' from ENUM
                 'details' => ['previous_status' => $previousStatus, 'new_status' => 'active']
             ]);
 
             // Potentially trigger other actions: e.g., create ClientService record, send notification
             // (These are out of scope for this specific sub-task)
 
-            return redirect()->route('admin.orders.show', $order->id)
+            return redirect()->route('client.orders.show', $order->id) // NOTE: This might need to be 'client.orders.show'
                              ->with('success', 'Order execution completed. Service is now active.');
         } catch (\Exception $e) {
             Log::error("Error completing order execution for order ID: {$order->id}", ['error' => $e->getMessage()]);
-            return redirect()->route('admin.orders.show', $order->id)
+            return redirect()->route('client.orders.show', $order->id) // NOTE: This might need to be 'client.orders.show'
                              ->with('error', 'Failed to complete order execution.');
         }
     }
@@ -304,7 +295,7 @@ class OrderController extends Controller
         $this->authorize('update', $order); // Or a more specific policy: 'approveCancellation', $order
 
         if ($order->status !== 'cancellation_requested_by_client') {
-            return redirect()->route('admin.orders.show', $order->id)
+            return redirect()->route('client.orders.show', $order->id) // NOTE: This might need to be 'client.orders.show'
                              ->with('error', 'Order is not awaiting cancellation approval.');
         }
 
@@ -382,7 +373,7 @@ class OrderController extends Controller
 
             OrderActivity::create([
                 'order_id' => $order->id,
-                'user_id' => Auth::id(), // Admin performing the action
+                'user_id' => Auth::id(), // client performing the action
                 'type' => 'cancellation_approved_credit_issued', // From ENUM
                 'details' => [
                     'previous_status' => $previousStatus,
@@ -396,13 +387,13 @@ class OrderController extends Controller
 
             DB::commit();
 
-            return redirect()->route('admin.orders.show', $order->id)
+            return redirect()->route('client.orders.show', $order->id) // NOTE: This might need to be 'client.orders.show'
                              ->with('success', 'Client cancellation request approved. Order cancelled and credit issued.');
 
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error("Error approving cancellation for order ID: {$order->id}", ['error' => $e->getMessage()]);
-            return redirect()->route('admin.orders.show', $order->id)
+            return redirect()->route('client.orders.show', $order->id) // NOTE: This might need to be 'client.orders.show'
                              ->with('error', 'Failed to approve cancellation request.');
         }
     }
