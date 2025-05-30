@@ -150,7 +150,18 @@ class AdminInvoiceController extends Controller
     {
         $this->authorize('view', $invoice); // Verificación de autorización
 
-        $invoice->load(['client', 'reseller', 'items.orderItem', 'items.clientService']); // Cargar relaciones
+        $invoice->load([
+            'client', 
+            'reseller', 
+            'items.orderItem', 
+            'items.clientService',
+            // Eager-load the latest completed transaction(s) with their payment method
+            'transactions' => function ($query) {
+                $query->where('status', 'completed')
+                      ->with('paymentMethod') // Eager load the paymentMethod relationship on Transaction
+                      ->latest('transaction_date'); // Get the most recent ones first
+            }
+        ]);
 
         return Inertia::render('Admin/Invoices/Show', [
             'invoice' => $invoice,

@@ -6,6 +6,7 @@ import InputLabel from '@/Components/InputLabel.vue';
 import TextInput from '@/Components/TextInput.vue';
 import InputError from '@/Components/InputError.vue';
 import SelectInput from '@/Components/SelectInput.vue'; // Assumed to exist now
+import { computed } from 'vue'; // Added
 
 const props = defineProps({
     invoice: {
@@ -14,6 +15,23 @@ const props = defineProps({
     },
     // flash: Object, // For displaying success/error messages from session
 });
+
+// Computed property to safely access the first completed transaction
+const completedTransaction = computed(() => {
+    if (props.invoice && props.invoice.transactions && props.invoice.transactions.length > 0) {
+        // The controller already filters for 'completed' and sorts by latest,
+        // so props.invoice.transactions[0] should be the latest completed one.
+        return props.invoice.transactions[0];
+    }
+    return null;
+});
+
+const formatDate = (datetime) => {
+    if (!datetime) return 'N/A';
+    const date = new Date(datetime);
+    // More concise date formatting for admin panel, adjust as needed
+    return date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+};
 
 const paymentForm = useForm({
     // invoice_id is part of the route, not the form data submitted
@@ -93,6 +111,46 @@ const transactionStatuses = [
                         </div>
                         <div v-if="$page.props.flash && $page.props.flash.error" class="mt-4 p-4 bg-red-100 text-red-700 rounded">
                             {{ $page.props.flash.error }}
+                        </div>
+
+                        <!-- Payment Details if Paid -->
+                        <div v-if="invoice.status === 'paid' && completedTransaction && completedTransaction.payment_method" 
+                             class="mt-6 p-4 border border-gray-200 dark:border-gray-700 rounded bg-gray-50 dark:bg-gray-700/50">
+                            <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">Detalles del Pago Confirmado</h3>
+                            <div class="text-sm text-gray-700 dark:text-gray-300 space-y-2">
+                                <p><strong>Fecha de Transacción (Cliente):</strong> {{ formatDate(completedTransaction.transaction_date) }}</p>
+                                <p><strong>Referencia del Cliente:</strong> {{ completedTransaction.gateway_transaction_id }}</p>
+                                <p><strong>Pasarela:</strong> {{ completedTransaction.gateway_slug }}</p>
+                                
+                                <div v-if="completedTransaction.payment_method.formatted_details" class="mt-2">
+                                    <h4 class="font-semibold text-gray-800 dark:text-gray-200">Método de Pago: {{ completedTransaction.payment_method.formatted_details.name }}</h4>
+                                    <div class="text-sm text-gray-600 dark:text-gray-400 mt-1 space-y-1">
+                                        <p v-if="completedTransaction.payment_method.formatted_details.type === 'bank'">
+                                            <strong>Banco:</strong> {{ completedTransaction.payment_method.formatted_details.bank_name }}<br>
+                                            <strong>Nro. Cuenta:</strong> {{ completedTransaction.payment_method.formatted_details.account_number }}<br>
+                                            <strong>Titular:</strong> {{ completedTransaction.payment_method.formatted_details.account_holder_name }}<br>
+                                            <span v-if="completedTransaction.payment_method.formatted_details.identification_number"><strong>Cédula/RIF:</strong> {{ completedTransaction.payment_method.formatted_details.identification_number }}<br></span>
+                                        </p>
+                                        <p v-else-if="completedTransaction.payment_method.formatted_details.type === 'wallet' || completedTransaction.payment_method.formatted_details.type === 'paypal_manual'">
+                                            <strong>Plataforma:</strong> {{ completedTransaction.payment_method.formatted_details.platform_name }}<br>
+                                            <span v-if="completedTransaction.payment_method.formatted_details.email_address"><strong>Email:</strong> {{ completedTransaction.payment_method.formatted_details.email_address }}<br></span>
+                                            <span v-if="completedTransaction.payment_method.formatted_details.account_holder_name"><strong>Titular/Usuario:</strong> {{ completedTransaction.payment_method.formatted_details.account_holder_name }}<br></span>
+                                            <span v-if="completedTransaction.payment_method.formatted_details.payment_link"><strong>Enlace de Pago:</strong> <a :href="completedTransaction.payment_method.formatted_details.payment_link" target="_blank" class="text-indigo-600 dark:text-indigo-400 hover:underline">{{ completedTransaction.payment_method.formatted_details.payment_link }}</a></span>
+                                        </p>
+                                        <p v-else-if="completedTransaction.payment_method.formatted_details.type === 'crypto_wallet'">
+                                            <strong>Red/Moneda:</strong> {{ completedTransaction.payment_method.formatted_details.platform_name }}<br>
+                                            <strong>Dirección:</strong> {{ completedTransaction.payment_method.formatted_details.wallet_address }} <span v-if="completedTransaction.payment_method.formatted_details.crypto_network"> (Red: {{ completedTransaction.payment_method.formatted_details.crypto_network }})</span><br>
+                                            <span v-if="completedTransaction.payment_method.formatted_details.account_holder_name"><strong>Referencia/Titular:</strong> {{ completedTransaction.payment_method.formatted_details.account_holder_name }}</span>
+                                        </p>
+                                        <p v-else-if="completedTransaction.payment_method.formatted_details.type === 'balance'">
+                                            <strong>Método:</strong> Saldo de la Cuenta
+                                        </p>
+                                        <p v-if="completedTransaction.payment_method.formatted_details.instructions" class="mt-2 whitespace-pre-wrap border-t border-gray-300 dark:border-gray-600 pt-2">
+                                            <strong>Instrucciones Adicionales:</strong><br>{{ completedTransaction.payment_method.formatted_details.instructions }}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
                     </div>

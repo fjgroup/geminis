@@ -33,21 +33,19 @@ const paymentMethodOptions = computed(() => {
     ];
 });
 
-const selectedPaymentMethod = ref(null);
-
-watch(() => form.payment_method_id, (newId) => {
-    if (newId) {
-        selectedPaymentMethod.value = props.paymentMethods.find(pm => pm.id === newId);
-    } else {
-        selectedPaymentMethod.value = null;
-    }
+// Renamed from selectedPaymentMethod to selectedMethodDetails as per plan
+const selectedMethodDetails = computed(() => {
+    if (!form.payment_method_id) return null;
+    const method = props.paymentMethods.find(m => m.id === form.payment_method_id);
+    // formatted_details should be directly available on the method object due to $appends
+    return method ? method.formatted_details : null;
 });
 
 const submitForm = () => {
     form.post(route('client.funds.store'), {
         onSuccess: () => {
             form.reset('amount', 'reference_number', 'payment_date', 'payment_method_id');
-            // selectedPaymentMethod.value = null; // Reset this as well if form.payment_method_id is reset
+            // selectedMethodDetails.value = null; // This is a computed prop, will update when form.payment_method_id resets
         },
     });
 };
@@ -104,15 +102,38 @@ const today = new Date().toISOString().split('T')[0];
               <InputError class="mt-2" :message="form.errors.payment_method_id" />
             </div>
 
-            <div v-if="selectedPaymentMethod && selectedPaymentMethod.instructions" class="p-4 mt-4 bg-gray-50 dark:bg-gray-700 rounded-md">
-              <h4 class="font-semibold text-gray-800 dark:text-gray-200">Instrucciones para {{ selectedPaymentMethod.name }}:</h4>
-              <div class="mt-2 text-sm text-gray-700 dark:text-gray-300 whitespace-pre-line" v-html="selectedPaymentMethod.instructions"></div>
+            <!-- Display Formatted Payment Method Details -->
+            <div v-if="selectedMethodDetails" class="mt-4 p-4 border border-gray-200 dark:border-gray-700 rounded bg-gray-50 dark:bg-gray-700/50">
+                <h4 class="font-semibold text-gray-700 dark:text-gray-200">Detalles para {{ selectedMethodDetails.name }}:</h4>
+                <div class="text-sm text-gray-600 dark:text-gray-300 mt-2 space-y-1">
+                    <p v-if="selectedMethodDetails.type === 'bank'">
+                        <strong class="text-gray-800 dark:text-gray-100">Banco:</strong> {{ selectedMethodDetails.bank_name }}<br>
+                        <strong class="text-gray-800 dark:text-gray-100">Nro. Cuenta:</strong> {{ selectedMethodDetails.account_number }}<br>
+                        <strong class="text-gray-800 dark:text-gray-100">Titular:</strong> {{ selectedMethodDetails.account_holder_name }}<br>
+                        <span v-if="selectedMethodDetails.identification_number"><strong class="text-gray-800 dark:text-gray-100">Cédula/RIF:</strong> {{ selectedMethodDetails.identification_number }}<br></span>
+                        <span v-if="selectedMethodDetails.swift_code"><strong class="text-gray-800 dark:text-gray-100">SWIFT:</strong> {{ selectedMethodDetails.swift_code }}<br></span>
+                        <span v-if="selectedMethodDetails.iban"><strong class="text-gray-800 dark:text-gray-100">IBAN:</strong> {{ selectedMethodDetails.iban }}<br></span>
+                        <span v-if="selectedMethodDetails.branch_name"><strong class="text-gray-800 dark:text-gray-100">Sucursal:</strong> {{ selectedMethodDetails.branch_name }}</span>
+                    </p>
+                    <p v-if="selectedMethodDetails.type === 'wallet' || selectedMethodDetails.type === 'paypal_manual'">
+                        <strong class="text-gray-800 dark:text-gray-100">Plataforma:</strong> {{ selectedMethodDetails.platform_name }}<br>
+                        <span v-if="selectedMethodDetails.email_address"><strong class="text-gray-800 dark:text-gray-100">Email:</strong> {{ selectedMethodDetails.email_address }}<br></span>
+                        <span v-if="selectedMethodDetails.account_holder_name"><strong class="text-gray-800 dark:text-gray-100">Titular/Usuario:</strong> {{ selectedMethodDetails.account_holder_name }}<br></span>
+                        <span v-if="selectedMethodDetails.payment_link"><strong class="text-gray-800 dark:text-gray-100">Enlace de Pago:</strong> <a :href="selectedMethodDetails.payment_link" target="_blank" class="text-indigo-600 dark:text-indigo-400 hover:underline">{{ selectedMethodDetails.payment_link }}</a></span>
+                    </p>
+                    <p v-if="selectedMethodDetails.type === 'crypto_wallet'">
+                        <strong class="text-gray-800 dark:text-gray-100">Red/Moneda:</strong> {{ selectedMethodDetails.platform_name }}<br>
+                        <strong class="text-gray-800 dark:text-gray-100">Dirección:</strong> {{ selectedMethodDetails.wallet_address }} <span v-if="selectedMethodDetails.crypto_network"> (Red: {{ selectedMethodDetails.crypto_network }})</span><br>
+                        <span v-if="selectedMethodDetails.account_holder_name"><strong class="text-gray-800 dark:text-gray-100">Referencia/Titular:</strong> {{ selectedMethodDetails.account_holder_name }}</span>
+                    </p>
+                    <p v-if="selectedMethodDetails.instructions" class="mt-2 whitespace-pre-wrap border-t border-gray-300 dark:border-gray-600 pt-2">
+                        <strong class="text-gray-800 dark:text-gray-100">Instrucciones Adicionales:</strong><br>{{ selectedMethodDetails.instructions }}
+                    </p>
+                     <p v-if="!selectedMethodDetails.instructions && selectedMethodDetails.type !== 'bank' && selectedMethodDetails.type !== 'wallet' && selectedMethodDetails.type !== 'paypal_manual' && selectedMethodDetails.type !== 'crypto_wallet'" class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                        No hay detalles específicos adicionales para este método de pago.
+                    </p>
+                </div>
             </div>
-            <div v-else-if="selectedPaymentMethod && !selectedPaymentMethod.instructions" class="p-4 mt-4 bg-gray-50 dark:bg-gray-700 rounded-md">
-                 <h4 class="font-semibold text-gray-800 dark:text-gray-200">Instrucciones para {{ selectedPaymentMethod.name }}:</h4>
-                <p class="mt-2 text-sm text-gray-700 dark:text-gray-300">No hay instrucciones específicas para este método de pago.</p>
-            </div>
-
 
             <div>
               <InputLabel for="reference_number" value="Número de Referencia / ID de Transacción *" />

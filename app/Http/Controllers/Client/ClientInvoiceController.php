@@ -44,7 +44,13 @@ class ClientInvoiceController extends Controller
             'reseller',
             'items.clientService', // Load clientService if applicable
             'items.orderItem.product', // Load product through orderItem if applicable
-            'order' // Load the associated order if it exists
+            'order', // Load the associated order if it exists
+            // Eager-load the latest completed transaction(s) with their payment method
+            'transactions' => function ($query) {
+                $query->where('status', 'completed')
+                      ->with('paymentMethod') // Eager load the paymentMethod relationship on Transaction
+                      ->latest('transaction_date'); // Get the most recent ones first
+            }
         ]);
 
         // Depuración: Inspeccionar la factura y sus relaciones después de la carga eager

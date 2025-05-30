@@ -57,6 +57,13 @@ const payInvoiceWithBalance = (invoiceId) => {
         });
     }
 };
+
+const formatDate = (datetime) => {
+    if (!datetime) return 'N/A';
+    // Basic date formatting, can be enhanced with a library like date-fns or moment if needed
+    const date = new Date(datetime);
+    return date.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+};
 </script>
 
 <template>
@@ -196,6 +203,46 @@ const payInvoiceWithBalance = (invoiceId) => {
                 </tr>
               </tbody>
             </table>
+
+            <!-- Payment Details if Paid -->
+            <div v-if="invoice.status === 'paid' && invoice.transactions && invoice.transactions.length > 0 && invoice.transactions[0].payment_method" 
+                 class="mt-6 p-4 border border-gray-200 dark:border-gray-700 rounded bg-gray-50 dark:bg-gray-700/50">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">Detalles del Pago Realizado</h3>
+                <div class="text-sm text-gray-700 dark:text-gray-300 space-y-2">
+                    <p><strong>Fecha de Transacción (Cliente):</strong> {{ formatDate(invoice.transactions[0].transaction_date) }}</p>
+                    <p><strong>Referencia del Cliente:</strong> {{ invoice.transactions[0].gateway_transaction_id }}</p>
+                    
+                    <div v-if="invoice.transactions[0].payment_method.formatted_details" class="mt-2">
+                        <h4 class="font-semibold text-gray-800 dark:text-gray-200">Método de Pago: {{ invoice.transactions[0].payment_method.formatted_details.name }}</h4>
+                        <div class="text-sm text-gray-600 dark:text-gray-400 mt-1 space-y-1">
+                             <p v-if="invoice.transactions[0].payment_method.formatted_details.type === 'bank'">
+                                <strong>Banco:</strong> {{ invoice.transactions[0].payment_method.formatted_details.bank_name }}<br>
+                                <strong>Nro. Cuenta:</strong> {{ invoice.transactions[0].payment_method.formatted_details.account_number }}<br>
+                                <strong>Titular:</strong> {{ invoice.transactions[0].payment_method.formatted_details.account_holder_name }}<br>
+                                <span v-if="invoice.transactions[0].payment_method.formatted_details.identification_number"><strong>Cédula/RIF:</strong> {{ invoice.transactions[0].payment_method.formatted_details.identification_number }}<br></span>
+                            </p>
+                            <p v-else-if="invoice.transactions[0].payment_method.formatted_details.type === 'wallet' || invoice.transactions[0].payment_method.formatted_details.type === 'paypal_manual'">
+                                <strong>Plataforma:</strong> {{ invoice.transactions[0].payment_method.formatted_details.platform_name }}<br>
+                                <span v-if="invoice.transactions[0].payment_method.formatted_details.email_address"><strong>Email:</strong> {{ invoice.transactions[0].payment_method.formatted_details.email_address }}<br></span>
+                                <span v-if="invoice.transactions[0].payment_method.formatted_details.account_holder_name"><strong>Titular/Usuario:</strong> {{ invoice.transactions[0].payment_method.formatted_details.account_holder_name }}<br></span>
+                                <span v-if="invoice.transactions[0].payment_method.formatted_details.payment_link"><strong>Enlace de Pago:</strong> <a :href="invoice.transactions[0].payment_method.formatted_details.payment_link" target="_blank" class="text-indigo-600 dark:text-indigo-400 hover:underline">{{ invoice.transactions[0].payment_method.formatted_details.payment_link }}</a></span>
+                            </p>
+                            <p v-else-if="invoice.transactions[0].payment_method.formatted_details.type === 'crypto_wallet'">
+                                <strong>Red/Moneda:</strong> {{ invoice.transactions[0].payment_method.formatted_details.platform_name }}<br>
+                                <strong>Dirección:</strong> {{ invoice.transactions[0].payment_method.formatted_details.wallet_address }} <span v-if="invoice.transactions[0].payment_method.formatted_details.crypto_network"> (Red: {{ invoice.transactions[0].payment_method.formatted_details.crypto_network }})</span><br>
+                                <span v-if="invoice.transactions[0].payment_method.formatted_details.account_holder_name"><strong>Referencia/Titular:</strong> {{ invoice.transactions[0].payment_method.formatted_details.account_holder_name }}</span>
+                            </p>
+                            <p v-else-if="invoice.transactions[0].payment_method.formatted_details.type === 'balance'">
+                                <strong>Método:</strong> Saldo de la Cuenta
+                            </p>
+                            <p v-if="invoice.transactions[0].payment_method.formatted_details.instructions" class="mt-2 whitespace-pre-wrap border-t border-gray-300 dark:border-gray-600 pt-2">
+                                <strong>Instrucciones Adicionales:</strong><br>{{ invoice.transactions[0].payment_method.formatted_details.instructions }}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
 
             <!-- Payment Options -->
             <div class="mt-6 space-y-4 text-center">
