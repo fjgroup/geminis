@@ -12,22 +12,19 @@ class TransactionPolicy
 
     /**
      * Determine whether the user can view any models.
-     * Only admins should be able to view a list of all transactions.
+     * Admins can view any list of transactions.
+     * Clients can view lists of their own transactions (though this controller is admin-specific).
      *
      * @param  \App\Models\User  $user
      * @return \Illuminate\Auth\Access\Response|bool
      */
     public function viewAny(User $user)
     {
-        // Admins can view any list of transactions.
-        // Clients can view lists of their own transactions.
-        return $user->isAdmin() || $user->hasRole('client');
+        return $user->isAdmin(); // For admin section, only admin
     }
 
     /**
      * Determine whether the user can view the model.
-     * For now, if a user can view any, they can view a specific one.
-     * More granular control can be added if clients/resellers need to see specific transactions.
      *
      * @param  \App\Models\User  $user
      * @param  \App\Models\Transaction  $transaction
@@ -38,8 +35,8 @@ class TransactionPolicy
         if ($user->isAdmin()) {
             return true;
         }
-        // Clients can view their own specific transactions.
-        return $user->hasRole('client') && $user->id === $transaction->client_id;
+        // Client specific logic would be here if this policy was used for client-facing parts
+        return false; 
     }
 
     /**
@@ -56,8 +53,7 @@ class TransactionPolicy
 
     /**
      * Determine whether the user can update the model.
-     * For now, disallow updates directly on transactions.
-     * Updates might happen via reversals or new related transactions.
+     * For now, specific actions like confirm/reject are used.
      *
      * @param  \App\Models\User  $user
      * @param  \App\Models\Transaction  $transaction
@@ -65,7 +61,8 @@ class TransactionPolicy
      */
     public function update(User $user, Transaction $transaction)
     {
-        return false; // Or return $user->isAdmin() if admins can edit certain fields
+        // General updates might be disallowed, using specific actions instead
+        return $user->isAdmin(); // Or false if only specific actions are allowed
     }
 
     /**
@@ -78,7 +75,31 @@ class TransactionPolicy
      */
     public function delete(User $user, Transaction $transaction)
     {
-        return false;
+        return false; // Or $user->isAdmin() if deletion is allowed under some circumstances
+    }
+
+    /**
+     * Determine whether the user can confirm the transaction.
+     *
+     * @param  \App\Models\User  $user
+     * @param  \App\Models\Transaction  $transaction
+     * @return \Illuminate\Auth\Access\Response|bool
+     */
+    public function confirm(User $user, Transaction $transaction)
+    {
+        return $user->isAdmin() && $transaction->status === 'pending';
+    }
+
+    /**
+     * Determine whether the user can reject the transaction.
+     *
+     * @param  \App\Models\User  $user
+     * @param  \App\Models\Transaction  $transaction
+     * @return \Illuminate\Auth\Access\Response|bool
+     */
+    public function reject(User $user, Transaction $transaction)
+    {
+        return $user->isAdmin() && $transaction->status === 'pending';
     }
 
     /**

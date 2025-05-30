@@ -45,6 +45,21 @@ function confirmRequestPostPaymentCancellation() {
 // Statuses where client can request cancellation
 const cancellablePostPaymentStatuses = ['paid_pending_execution', 'active', 'pending_provisioning'];
 
+const user = page.props.auth.user; // Access authenticated user
+
+const payWithBalance = (invoiceId) => {
+    if (confirm('¿Confirmas que deseas pagar esta factura utilizando tu saldo disponible?')) {
+        router.post(route('client.invoices.payment.store', { invoice: invoiceId }), {
+            payment_method: 'account_credit' // This matches the existing controller logic for balance payments
+        }, {
+            preserveScroll: true,
+            // Optional: onSuccess/onError for specific feedback
+            // onSuccess: () => { console.log('Paid with balance successfully'); },
+            // onError: (errors) => { console.error('Error paying with balance', errors); }
+        });
+    }
+};
+
 </script>
 
 <template>
@@ -150,6 +165,29 @@ const cancellablePostPaymentStatuses = ['paid_pending_execution', 'active', 'pen
                                 <p class="text-sm text-gray-600 bg-gray-100 p-3 rounded-md inline-block">
                                     This order is in a final state ({{ order.status.replace(/_/g, ' ') }}) and no further cancellation actions can be taken by you.
                                 </p>
+                            </div>
+                            
+                            <!-- Pay with Balance Button -->
+                            <div v-if="order.invoice && order.invoice.status === 'unpaid' && user && user.balance >= order.invoice.total_amount" class="mt-4 text-right">
+                                <PrimaryButton @click="payWithBalance(order.invoice.id)" class="bg-emerald-600 hover:bg-emerald-700 focus:ring-emerald-500">
+                                    Pagar con Saldo (Disponible: {{ user.formatted_balance }})
+                                </PrimaryButton>
+                                <p class="text-xs text-gray-500 mt-1">Utilizar tu crédito disponible para pagar esta factura.</p>
+                            </div>
+                             <div v-else-if="order.invoice && order.invoice.status === 'unpaid' && user && user.balance > 0 && user.balance < order.invoice.total_amount" class="mt-4 text-right">
+                                <PrimaryButton class="bg-gray-400 cursor-not-allowed" disabled>
+                                    Saldo Insuficiente (Disponible: {{ user.formatted_balance }})
+                                </PrimaryButton>
+                                <p class="text-xs text-gray-500 mt-1">Necesitas {{ formatCurrency(order.invoice.total_amount - user.balance, order.currency_code) }} más para pagar con saldo.</p>
+                            </div>
+
+
+                            <!-- Pagar Factura Button (Manual Payment) -->
+                            <div v-if="order.invoice && order.invoice.status === 'unpaid'" class="mt-4 text-right">
+                                <Link :href="route('client.invoices.manualPayment.create', { invoice: order.invoice.id })">
+                                    <PrimaryButton class="bg-blue-600 hover:bg-blue-700 focus:ring-blue-500">Informar Pago Manual</PrimaryButton>
+                                </Link>
+                                <p class="text-xs text-gray-500 mt-1">Registrar un pago realizado por otros medios.</p>
                             </div>
                         </div>
 

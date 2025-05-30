@@ -83,6 +83,12 @@ const isActiveDashboard = computed(() => {
                   >
                     Browse Products
                   </NavLink>
+                  <NavLink
+                    :href="route('client.funds.create')"
+                    :active="route().current('client.funds.create')"
+                  >
+                    Agregar Fondos
+                  </NavLink>
                 </template>
 
                 <!-- Reseller Specific Links -->
@@ -169,7 +175,10 @@ const isActiveDashboard = computed(() => {
                         type="button"
                         class="inline-flex items-center px-3 py-2 text-sm font-medium leading-4 text-gray-500 transition duration-150 ease-in-out bg-white border border-transparent rounded-md hover:text-gray-700 focus:outline-none"
                       >
-                        {{ $page.props.auth.user.name }}
+                        <span class="mr-2">{{ $page.props.auth.user.name }}</span>
+                        <span v-if="$page.props.auth.user.role === 'client' && $page.props.auth.user.formatted_balance" class="text-xs text-green-600">
+                           ({{ $page.props.auth.user.formatted_balance }})
+                        </span>
 
                         <svg
                           class="-me-0.5 ms-2 h-4 w-4"
@@ -277,6 +286,12 @@ const isActiveDashboard = computed(() => {
               >
                 Browse Products
               </ResponsiveNavLink>
+              <ResponsiveNavLink
+                :href="route('client.funds.create')"
+                :active="route().current('client.funds.create')"
+              >
+                Agregar Fondos
+              </ResponsiveNavLink>
             </template>
 
             <!-- Reseller Specific Responsive Links -->
@@ -359,6 +374,9 @@ const isActiveDashboard = computed(() => {
               </div>
               <div class="text-sm font-medium text-gray-500">
                 {{ $page.props.auth.user.email }}
+              </div>
+               <div v-if="$page.props.auth.user.role === 'client' && $page.props.auth.user.formatted_balance" class="mt-1 text-sm font-medium text-green-600">
+                Saldo: {{ $page.props.auth.user.formatted_balance }}
               </div>
             </div>
 

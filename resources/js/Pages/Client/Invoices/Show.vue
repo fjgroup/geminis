@@ -1,7 +1,7 @@
 <script setup>
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
 import { computed } from "vue"; // Importamos computed
-import { Head, Link, useForm } from "@inertiajs/vue3"; // Added Link
+import { Head, Link, router, usePage } from "@inertiajs/vue3"; // Added router, usePage
 import PrimaryButton from "@/Components/PrimaryButton.vue";
 import SecondaryButton from "@/Components/SecondaryButton.vue"; // Added SecondaryButton
 
@@ -10,8 +10,11 @@ const props = defineProps({
     type: Object,
     required: true,
   },
-  auth: Object, // For auth.user.balance and auth.user.formatted_balance
+  // auth: Object, // auth is available via usePage().props.auth
 });
+
+const page = usePage();
+const user = computed(() => page.props.auth.user);
 
 // Helper for currency formatting
 const formatCurrency = (amount, currencyCode = "USD") => {
@@ -31,38 +34,28 @@ const formatCurrency = (amount, currencyCode = "USD") => {
 const canPayWithBalance = computed(() => {
   return (
     props.invoice.status === "unpaid" &&
-    props.auth.user &&
-    props.auth.user.balance >= props.invoice.total_amount
+    user.value && // use user.value from computed
+    user.value.balance >= props.invoice.total_amount
   );
 });
 
 const hasSomeBalance = computed(() => {
   return (
     props.invoice.status === "unpaid" &&
-    props.auth.user &&
-    props.auth.user.balance > 0 &&
-    props.auth.user.balance < props.invoice.total_amount
+    user.value &&
+    user.value.balance > 0 &&
+    user.value.balance < props.invoice.total_amount
   );
 });
 
-const payWithBalanceAction = () => {
-  if (
-    confirm(
-      `You are about to pay ${formatCurrency(
-        props.invoice.total_amount,
-        props.invoice.currency_code
-      )} using your account balance. Your new balance will be approximately ${formatCurrency(
-        props.auth.user.balance - props.invoice.total_amount,
-        props.invoice.currency_code
-      )}. Proceed?`
-    )
-  ) {
-    // Inertia.post is not available directly, use Link or useForm.
-    // For simplicity with a confirmation, a simple Link with method="post" is good.
-    // However, if we want to use useForm to handle processing state, that's an option too.
-    // Let's use a simple Link approach as demonstrated in the instructions.
-    // This will be handled by the <Link> component in the template.
-  }
+const payInvoiceWithBalance = (invoiceId) => {
+    if (confirm('¿Confirmas que deseas pagar esta factura utilizando tu saldo disponible?')) {
+        router.post(route('client.invoices.payment.store', { invoice: invoiceId }), {
+            payment_method: 'account_credit'
+        }, {
+            preserveScroll: true,
+        });
+    }
 };
 </script>
 
@@ -100,11 +93,11 @@ const payWithBalanceAction = () => {
 
             <!-- Display User Balance -->
             <div
-              v-if="auth.user && auth.user.formatted_balance"
-              class="p-4 mb-6 text-lg text-center text-blue-700 bg-blue-100 rounded-md"
+              v-if="user && user.formatted_balance"
+              class="p-4 mb-6 text-lg text-center text-blue-700 bg-blue-100 rounded-md dark:bg-blue-900 dark:text-blue-200"
             >
               Tu crédito disponible:
-              <span class="font-semibold">{{ auth.user.formatted_balance }}</span>
+              <span class="font-semibold">{{ user.formatted_balance }}</span>
             </div>
 
             <div class="grid grid-cols-1 gap-4 mb-6 md:grid-cols-2">
@@ -205,50 +198,35 @@ const payWithBalanceAction = () => {
             </table>
 
             <!-- Payment Options -->
-            <div
-              v-if="invoice.status === 'unpaid' && auth.user && auth.user.balance > 0"
-              class="mt-6 text-center"
-            >
-              <Link
-                :href="route('client.invoices.payWithBalance', { invoice: invoice.id })"
-                method="post"
-                as="button"
-                class="px-6 py-3 text-white bg-green-500 rounded-md hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50 disabled:opacity-50"
-                :disabled="!canPayWithBalance"
-                @click.prevent="
-                  canPayWithBalance
-                    ? confirm(
-                        `Confirmar pago de ${formatCurrency(
-                          invoice.total_amount,
-                          invoice.currency_code
-                        )} con saldo?`
-                      )
-                      ? true
-                      : $event.preventDefault()
-                    : $event.preventDefault()
-                "
-              >
-                <span v-if="canPayWithBalance"
-                  >Pagar Factura con Saldo ({{ auth.user.formatted_balance }})</span
-                >
-                <span v-else
-                  >Saldo Insuficiente para Pago Completo (Disponible:
-                  {{ auth.user.formatted_balance }})</span
-                >
-              </Link>
-              <p
-                v-if="hasSomeBalance && !canPayWithBalance"
-                class="mt-2 text-sm text-yellow-700"
-              >
-                Tu saldo actual no es suficiente para cubrir el monto total de esta
-                factura. Se requiere el monto completo para pagar con saldo.
-              </p>
-            </div>
-            <div v-else-if="invoice.status === 'unpaid'" class="mt-6 text-center">
-              <p class="text-sm text-gray-600">
-                No tienes saldo disponible para pagar esta factura o la factura no está
-                pendiente de pago.
-              </p>
+            <div class="mt-6 space-y-4 text-center">
+                <div v-if="invoice.status === 'unpaid' && user && user.balance > 0">
+                    <PrimaryButton 
+                        @click="payInvoiceWithBalance(invoice.id)"
+                        :disabled="!canPayWithBalance"
+                        class="px-6 py-3 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-opacity-50 disabled:opacity-50"
+                        :class="canPayWithBalance ? 'bg-green-600 hover:bg-green-700 focus:ring-green-500' : 'bg-gray-400 cursor-not-allowed'"
+                    >
+                        <span v-if="canPayWithBalance">Pagar con Saldo (Disponible: {{ user.formatted_balance }})</span>
+                        <span v-else>Saldo Insuficiente (Disponible: {{ user.formatted_balance }})</span>
+                    </PrimaryButton>
+                    <p v-if="hasSomeBalance && !canPayWithBalance" class="mt-2 text-sm text-yellow-600 dark:text-yellow-400">
+                        Tu saldo actual no es suficiente para cubrir el monto total de esta factura.
+                         Necesitas {{ formatCurrency(invoice.total_amount - user.balance, invoice.currency_code) }} más.
+                    </p>
+                </div>
+
+                <!-- Manual Payment Registration Button -->
+                <div v-if="invoice.status === 'unpaid'">
+                    <hr class="my-4 dark:border-gray-700" v-if="user && user.balance > 0">
+                    <p class="text-sm text-gray-700 dark:text-gray-300 mb-2">¿O ya realizaste el pago por otro medio (transferencia, depósito)?</p>
+                    <Link :href="route('client.invoices.manualPayment.create', { invoice: invoice.id })">
+                        <PrimaryButton class="bg-blue-600 hover:bg-blue-700 focus:ring-blue-500">Informar Pago Manual</PrimaryButton>
+                    </Link>
+                </div>
+                
+                <div v-if="invoice.status !== 'unpaid'" class="text-sm text-gray-600 dark:text-gray-400">
+                    Esta factura no está pendiente de pago.
+                </div>
             </div>
 
             <div v-if="invoice.order" class="mt-6">

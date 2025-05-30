@@ -93,4 +93,13 @@ class InvoicePolicy
         // User must be the client of the invoice and the invoice must be unpaid.
         return $user->id === $invoice->client_id && $invoice->status === 'unpaid';
     }
+
+    /**
+     * Determine whether the user can initiate a payment for the invoice.
+     */
+    public function pay(User $user, Invoice $invoice): bool
+    {
+        // User must be the client of the invoice and the invoice must be unpaid.
+        return $user->id === $invoice->client_id && $invoice->status === 'unpaid';
+    }
 }

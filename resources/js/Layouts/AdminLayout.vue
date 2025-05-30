@@ -10,6 +10,7 @@ import {
     BriefcaseIcon, // Para Client Services
     // Añade más iconos según necesites
 CurrencyDollarIcon, // Para Facturas
+CreditCardIcon, // Para Métodos de Pago
 } from '@heroicons/vue/24/outline';
 import Dropdown from '@/Components/Dropdown.vue';
 import DropdownLink from '@/Components/DropdownLink.vue';
@@ -77,6 +78,10 @@ const showingNavigationDropdown = ref(false);
                                     <NavLink :href="route('admin.invoices.index')" :active="route().current('admin.invoices.*')">
                                         Facturas
                                         <CurrencyDollarIcon class="inline-block w-5 h-5 ml-2" />
+                                    </NavLink>
+                                    <NavLink :href="route('admin.payment-methods.index')" :active="route().current('admin.payment-methods.*')">
+                                        Métodos de Pago
+                                        <CreditCardIcon class="inline-block w-5 h-5 ml-2" />
                                     </NavLink>
                                 </div>
                         </div>
@@ -155,6 +160,10 @@ const showingNavigationDropdown = ref(false);
                         <ResponsiveNavLink :href="route('admin.invoices.index')"
                             :active="route().current('admin.invoices.*')">
                             Facturas
+                        </ResponsiveNavLink>
+                        <ResponsiveNavLink :href="route('admin.payment-methods.index')"
+                            :active="route().current('admin.payment-methods.*')">
+                            Métodos de Pago
                         </ResponsiveNavLink>
                     </div>
 

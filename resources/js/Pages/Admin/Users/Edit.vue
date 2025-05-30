@@ -384,6 +384,17 @@ const currencyOptions = [
                                     form.errors.currency_code }}</div>
                             </div>
 
+                            <!-- Client Balance Display -->
+                            <div class="pt-6 mt-6 border-t" v-if="props.user.role === 'client' || props.user.role === 'reseller'">
+                                <h3 class="mb-4 text-lg font-medium text-gray-900">Información Financiera</h3>
+                                <div class="mb-4">
+                                    <label class="block text-sm font-medium text-gray-700">Saldo Actual</label>
+                                    <p class="mt-1 text-lg font-semibold text-gray-900">
+                                        {{ props.user.formatted_balance }}
+                                    </p>
+                                </div>
+                            </div>
+
                             <div class="flex items-center justify-end pt-4 mt-6 border-t border-gray-200">
                                 <Link :href="route('admin.users.index')"
                                     class="px-4 py-2 mr-4 text-sm text-gray-600 border border-gray-300 rounded-md hover:text-gray-900 hover:bg-gray-50">

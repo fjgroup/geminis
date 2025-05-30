@@ -14,6 +14,7 @@ class Transaction extends Model
         'invoice_id',
         'client_id',
         'reseller_id',
+        'payment_method_id',
         'gateway_slug',
         'gateway_transaction_id',
         'type',
@@ -23,6 +24,7 @@ class Transaction extends Model
         'fees_amount',
         'description',
         'transaction_date',
+        'admin_notes', // Added for rejection reasons or other admin remarks
         // created_at and updated_at are handled by default
     ];
 
@@ -55,6 +57,14 @@ class Transaction extends Model
     public function reseller(): BelongsTo
     {
         return $this->belongsTo(User::class, 'reseller_id');
+    }
+
+    /**
+     * Get the payment method used for this transaction.
+     */
+    public function paymentMethod(): BelongsTo
+    {
+        return $this->belongsTo(PaymentMethod::class);
     }
     
     // Consider adding a relationship for related_transaction_id if that column is added later

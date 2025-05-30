@@ -16,12 +16,15 @@ use App\Http\Controllers\Admin\AdminOrderController; // Añadir esta línea para
 use App\Http\Controllers\Admin\AdminInvoiceController; // Import the admin invoice controller
 use App\Http\Controllers\Admin\AdminTransactionController; // Import the admin transaction controller
 use App\Http\Controllers\Admin\AdminClientServiceController; // Import the admin client service controller
+use App\Http\Controllers\Admin\AdminPaymentMethodController;
 use App\Http\Controllers\Client\ClientDashboardController;
 use App\Http\Controllers\Client\ClientOrderController; // Import the client order controller
 use App\Http\Controllers\Client\ClientServiceController; // Import the client service controller
 use App\Http\Controllers\Client\InvoicePaymentController as ClientInvoicePaymentController; // Import the client invoice payment controller and alias it
 use App\Http\Controllers\Client\InvoiceController as ClientInvoiceController; // Import the client invoice controller and alias it
 use App\Http\Controllers\Client\TransactionController as ClientTransactionController; // Import the client transaction controller and alias it
+use App\Http\Controllers\Client\ClientManualPaymentController; // Import the manual payment controller
+use App\Http\Controllers\Client\ClientFundAdditionController; // Import the fund addition controller
 use App\Http\Controllers\Reseller\ResellerClientController;
 use App\Http\Controllers\Reseller\ResellerDashboardController; // Added for reseller dashboard
 
@@ -67,6 +70,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'verified', 'admin']
 
     // Route for listing transactions
     Route::get('/transactions', [AdminTransactionController::class, 'index'])->name('transactions.index');
+    Route::post('transactions/{transaction}/confirm', [AdminTransactionController::class, 'confirm'])->name('transactions.confirm');
+    Route::post('transactions/{transaction}/reject', [AdminTransactionController::class, 'reject'])->name('transactions.reject');
 
     // Order Execution Routes
     Route::post('/orders/{order}/start-execution', [AdminOrderController::class, 'startExecution'])->name('orders.startExecution');
@@ -77,6 +82,9 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'verified', 'admin']
 
     // Admin Confirm Payment Route
     Route::post('/orders/{order}/confirm-payment', [AdminOrderController::class, 'confirmPayment'])->name('orders.confirmPayment');
+
+    // Payment Methods Route
+    Route::resource('payment-methods', AdminPaymentMethodController::class);
 });
 
 
@@ -117,10 +125,20 @@ Route::prefix('client')->name('client.')->middleware(['auth'])->group(function (
   // Rutas para la gestión de facturas de cliente
   Route::resource('invoices', App\Http\Controllers\Client\ClientInvoiceController::class)->except(['create', 'store', 'edit', 'update', 'destroy']); // Use resource for invoices, exclude non-client actions
   Route::post('/invoices/{invoice}/pay-with-balance', [ App\Http\Controllers\Client\ClientInvoiceController::class, 'payWithBalance'])->name('invoices.payWithBalance');
+  
+  // Manual Payment Routes for Client
+  Route::get('/invoices/{invoice}/manual-payment', [ClientManualPaymentController::class, 'showPaymentForm'])->name('invoices.manualPayment.create');
+  Route::post('/invoices/{invoice}/manual-payment', [ClientManualPaymentController::class, 'processManualPayment'])->name('invoices.manualPayment.store');
+
+  // Simulated payment route (if you keep it for other gateways)
   Route::post('/invoices/{invoice}/pay', [ClientInvoicePaymentController::class, 'store'])->name('invoices.payment.store');
 
   // Rutas para la gestión de transacciones de cliente
   Route::get('/transactions', [App\Http\Controllers\Client\ClientTransactionController::class, 'index'])->name('transactions.index');
+
+  // Rutas para Adición de Fondos
+  Route::get('/add-funds', [ClientFundAdditionController::class, 'showAddFundsForm'])->name('funds.create');
+  Route::post('/add-funds', [ClientFundAdditionController::class, 'processFundAddition'])->name('funds.store');
 
   // Rutas para el listado de productos para clientes (handled by ClientDashboardController)
   Route::get('/products', [ClientDashboardController::class, 'listProducts'])->name('products.index');
@@ -148,11 +166,20 @@ Route::prefix('client')->name('client.')->middleware(['auth'])->group(function (
     Route::get('/invoices', [App\Http\Controllers\Client\ClientInvoiceController::class, 'index'])->name('invoices.index');
     Route::get('/invoices/{invoice}', [App\Http\Controllers\Client\ClientInvoiceController::class, 'show'])->name('invoices.show');
     Route::post('/invoices/{invoice}/pay-with-balance', [App\Http\Controllers\Client\ClientInvoiceController::class, 'payWithBalance'])->name('invoices.payWithBalance');
-    // Route for simulated invoice payment
+
+    // Manual Payment Routes (already defined above, ensure correct placement relative to other invoice payment routes)
+    // Route::get('/invoices/{invoice}/manual-payment', [ClientManualPaymentController::class, 'showPaymentForm'])->name('client.invoices.manualPayment.create');
+    // Route::post('/invoices/{invoice}/manual-payment', [ClientManualPaymentController::class, 'processManualPayment'])->name('client.invoices.manualPayment.store');
+    
+    // Simulated payment route (if you keep it for other gateways)
     Route::post('/invoices/{invoice}/pay', [\App\Http\Controllers\Client\InvoicePaymentController::class, 'store'])->name('invoices.payment.store');
 
     // Rutas para la gestión de transacciones de cliente
     Route::get('/transactions', [App\Http\Controllers\Client\ClientTransactionController::class, 'index'])->name('transactions.index');
+
+    // Rutas para Adición de Fondos (already defined above, ensure correct placement and naming)
+    // Route::get('/add-funds', [ClientFundAdditionController::class, 'showAddFundsForm'])->name('client.funds.create');
+    // Route::post('/add-funds', [ClientFundAdditionController::class, 'processFundAddition'])->name('client.funds.store');
 
     // Rutas para el listado de productos para clientes
     Route::get('/products', [ClientDashboardController::class, 'listProducts'])->name('products.index');

@@ -2,129 +2,158 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Actions\Admin\ConfirmManualTransactionAction; // Import the new Action
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreTransactionRequest;
 use App\Models\Invoice;
-// use App\Models\Transaction; // Already imported for store, but ensure it's here
-use Illuminate\Http\RedirectResponse;
-// use Illuminate\Support\Facades\DB; // Not used in store, check if needed for index
-
-// Imports for the new index method
 use App\Models\Order;
 use App\Models\OrderActivity;
-use App\Models\Transaction; // Explicitly ensuring Transaction model is imported
+use App\Models\Transaction;
+use App\Models\User;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log; // Import Log facade
+use Illuminate\Support\Facades\Redirect;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
+use InvalidArgumentException; // Import specific exception
 
 class AdminTransactionController extends Controller
 {
     /**
      * Store a newly created transaction in storage.
-     *
-     * @param  StoreTransactionRequest  $request
-     * @param  Invoice  $invoice  // Route model binding for the invoice
-     * @return RedirectResponse
      */
     public function store(StoreTransactionRequest $request, Invoice $invoice): RedirectResponse
     {
-        // Authorization is handled by StoreTransactionRequest's authorize() method returning true,
-        // and then policy check here.
-        $this->authorize('create', Transaction::class); // Uses TransactionPolicy@create
-
-        // Validate request (already done by StoreTransactionRequest)
+        $this->authorize('create', Transaction::class);
         $validatedData = $request->validated();
-
-        // Add client_id and reseller_id from the invoice by default
-        // Admin making the entry is Auth::id(), but transaction is for invoice's client
         $validatedData['client_id'] = $invoice->client_id;
-        $validatedData['reseller_id'] = $invoice->reseller_id; // This might be null
+        $validatedData['reseller_id'] = $invoice->reseller_id;
 
-        // Create the transaction
         $transaction = Transaction::create($validatedData);
 
-        // Update Invoice Status
-        $invoice->load('transactions'); // Ensure transactions are loaded for accurate sum
+        // This method will use the controller's private helper
+        $this->updateInvoiceAndOrderStatusAfterStore($invoice, $transaction);
+
+        return Redirect::route('admin.invoices.show', $invoice->id)
+                         ->with('success', 'Payment registered successfully.');
+    }
+
+    /**
+     * Display a listing of the resource.
+     */
+    public function index(): InertiaResponse
+    {
+        $this->authorize('viewAny', Transaction::class);
+
+        $transactions = Transaction::with(['invoice', 'client', 'reseller', 'paymentMethod'])
+            ->latest('transaction_date')
+            ->paginate(15);
+
+        return Inertia::render('Admin/Transactions/Index', [
+            'transactions' => $transactions,
+            'filters' => request()->all('search', 'status', 'type'),
+        ]);
+    }
+
+    /**
+     * Confirm a pending transaction using the Action class.
+     */
+    public function confirm(Transaction $transaction, ConfirmManualTransactionAction $confirmAction): RedirectResponse
+    {
+        $this->authorize('confirm', $transaction);
+
+        try {
+            $success = $confirmAction->execute($transaction);
+            if ($success) {
+                return redirect()->route('admin.transactions.index')->with('success', 'Transacción confirmada exitosamente.');
+            } else {
+                // This path might not be reached if execute() throws exceptions for all failures
+                return redirect()->route('admin.transactions.index')->with('error', 'No se pudo confirmar la transacción por una razón desconocida.');
+            }
+        } catch (InvalidArgumentException $e) {
+            return redirect()->route('admin.transactions.index')->with('error', $e->getMessage());
+        } catch (\Exception $e) {
+            Log::error('Error confirming transaction: ' . $e->getMessage(), [
+                'transaction_id' => $transaction->id,
+                'trace' => $e->getTraceAsString()
+            ]);
+            return redirect()->route('admin.transactions.index')->with('error', 'Ocurrió un error al confirmar la transacción.');
+        }
+    }
+
+    /**
+     * Reject a pending transaction.
+     */
+    public function reject(Request $request, Transaction $transaction): RedirectResponse
+    {
+        $this->authorize('reject', $transaction);
+
+        if ($transaction->status !== 'pending') {
+            return Redirect::route('admin.transactions.index')->with('error', 'Transaction is not pending and cannot be rejected.');
+        }
+
+        $transaction->status = 'failed'; // or 'rejected'
+        // Optional: Add admin notes if the field exists and is sent in the request
+        // if ($request->has('rejection_reason') && Schema::hasColumn('transactions', 'admin_notes')) {
+        //     $transaction->admin_notes = $request->input('rejection_reason');
+        // }
+        $transaction->save();
+
+        return Redirect::route('admin.transactions.index')->with('success', 'Transaction rejected successfully.');
+    }
+
+    /**
+     * Helper method to update invoice and order status specifically for the store() method.
+     * The logic inside ConfirmManualTransactionAction is similar but tailored for that action's context.
+     */
+    private function updateInvoiceAndOrderStatusAfterStore(Invoice $invoice, Transaction $transaction)
+    {
+        $invoice->loadMissing('transactions', 'order.client');
 
         $totalPaid = $invoice->transactions
                              ->where('status', 'completed')
-                             ->where('type', 'payment')
                              ->sum('amount');
+        
+        $netPaid = $totalPaid;
 
-        $totalRefunded = $invoice->transactions
-                                ->where('status', 'completed')
-                                ->where('type', 'refund') // Assuming 'refund' type exists
-                                ->sum('amount');
-
-        $netPaid = $totalPaid - $totalRefunded;
-
-        if ($netPaid >= $invoice->total_amount) {
-            if ($invoice->status !== 'paid') { // Only update if not already paid
+        if (bccomp($netPaid, $invoice->total_amount, 2) >= 0) {
+            if ($invoice->status !== 'paid') {
                 $invoice->status = 'paid';
-                $invoice->paid_date = $transaction->transaction_date; // Or use Carbon::now()
+                $invoice->paid_date = $transaction->transaction_date ?? now();
             }
-        } elseif ($netPaid <= 0 && in_array($invoice->status, ['paid', 'overdue'])) {
-            // If it was paid or overdue and now effectively zero or less is paid (e.g. full refund)
-            $invoice->status = 'unpaid'; // Or 'refunded' if that's a more appropriate status
+        } elseif (bccomp($netPaid, '0', 2) <= 0 && in_array($invoice->status, ['paid', 'overdue'])) {
+            $invoice->status = 'unpaid';
             $invoice->paid_date = null;
-        } elseif ($netPaid > 0 && $netPaid < $invoice->total_amount && $invoice->status === 'paid') {
-            // If it was paid, but now a refund makes it partially paid
-            $invoice->status = 'unpaid'; // Or potentially 'overdue' if due_date has passed
-            $invoice->paid_date = null; // Remove paid_date as it's no longer fully paid
+        } elseif (bccomp($netPaid, '0', 2) > 0 && bccomp($netPaid, $invoice->total_amount, 2) < 0 && $invoice->status === 'paid') {
+            $invoice->status = 'unpaid';
+            $invoice->paid_date = null;
         }
-        // If netPaid > 0 and < total_amount, and status was 'unpaid' or 'overdue', it remains so.
-        // No 'partial' status is used.
-        // Further refinement can be done if specific statuses like 'partially_paid' or 'refunded' are added to the ENUM.
-
         $invoice->save();
 
-        // Update order status if invoice is paid
-        if ($invoice->status === 'paid') {
-            $invoice->load('order.client'); // Load order and its client relationship
-            $order = $invoice->order;
-
-            if ($order && $order->status === 'pending_payment') {
+        $order = $invoice->order;
+        if ($invoice->status === 'paid' && $order) {
+            if ($order->status === 'pending_payment') { // Condition specific to store flow
                 $previous_status = $order->status;
                 $order->status = 'paid_pending_execution';
                 $order->save();
 
                 OrderActivity::create([
                     'order_id' => $order->id,
-                    'user_id' => Auth::id(), // Admin user performing the action
-                    'type' => 'payment_confirmed_order_pending_execution',
+                    'user_id' => Auth::id(),
+                    'type' => 'payment_confirmed_order_pending_execution', // Type can be more specific for store
                     'details' => json_encode([
                         'invoice_id' => $invoice->id,
                         'invoice_number' => $invoice->invoice_number,
                         'payment_transaction_id' => $transaction->id,
+                        'transaction_status_changed_to' => $transaction->status, // This is 'completed' from store
                         'previous_order_status' => $previous_status,
-                        'client_name' => $order->client->name, // Assuming client relationship exists and has name
+                        'client_name' => $order->client->name ?? 'N/A',
                         'new_order_status' => $order->status,
                     ]),
                 ]);
             }
         }
-
-        // Redirect back to the invoice show page with a success message
-        return redirect()->route('admin.invoices.show', $invoice->id)
-                         ->with('success', 'Payment registered successfully.');
-    }
-
-    /**
-     * Display a listing of the resource.
-     *
-     * @return InertiaResponse
-     */
-    public function index(): InertiaResponse
-    {
-        $this->authorize('viewAny', Transaction::class); // Uses TransactionPolicy@viewAny
-
-        $transactions = Transaction::with(['invoice', 'client', 'reseller'])
-            ->latest('transaction_date') // Order by most recent
-            ->paginate(15); // Or your preferred pagination size
-
-        return Inertia::render('Admin/Transactions/Index', [
-            'transactions' => $transactions,
-            'filters' => request()->all('search', 'status', 'type'), // For potential filtering later
-        ]);
     }
 }
