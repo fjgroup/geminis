@@ -19,6 +19,7 @@ class InvoiceItem extends Model
         'taxable',
     ];
 
+
     /**
      * Get the invoice that owns the invoice item.
      */
@@ -30,13 +31,17 @@ class InvoiceItem extends Model
     /**
      * Get the order item associated with the invoice item (for items from an order).
      */
-    public function orderItem(): BelongsTo
+    public function orderItem(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
-        return $this->belongsTo(OrderItem::class)->nullable();
+        return $this->belongsTo(\App\Models\OrderItem::class);
     }
+    /**
+     * Get the client service associated with the invoice item (for items from a service).
+    */
 
-    public function clientService(): BelongsTo
+        public function clientService(): BelongsTo
     {
-        return $this->belongsTo(ClientService::class)->nullable();
+          return $this->belongsTo(related: ClientService::class);
     }
 }
+

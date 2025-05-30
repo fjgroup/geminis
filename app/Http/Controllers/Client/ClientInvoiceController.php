@@ -39,22 +39,18 @@ class ClientInvoiceController extends Controller
     {
         $this->authorize('view', $invoice);
 
-        // Depuración: Inspeccionar un ítem de factura antes de la carga eager
-        if ($invoice->items->count() > 0) {
-
-        } else {
-
-        }
-
-
         $invoice->load([
             'client', // Already loaded by policy check if using $invoice->client_id for auth
             'reseller',
-            'items',
-            'items.clientService.product', // Load product through clientService if applicable
-            'items.clientService', // If applicable
+            'items.clientService', // Load clientService if applicable
+            'items.orderItem.product', // Load product through orderItem if applicable
             'order' // Load the associated order if it exists
         ]);
+
+        // Depuración: Inspeccionar la factura y sus relaciones después de la carga eager
+       // dd($invoice->toArray());
+
+
         $userResource = null;
         $authUser = Auth::user();
         if ($authUser) {

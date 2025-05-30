@@ -52,4 +52,9 @@ class OrderItem extends Model
     {
         return $this->belongsTo(\App\Models\ClientService::class)->nullable();
     }
+
+    public function invoiceItems()
+    {
+        return $this->hasMany(\App\Models\InvoiceItem::class, 'order_item_id');
+    }
 }
