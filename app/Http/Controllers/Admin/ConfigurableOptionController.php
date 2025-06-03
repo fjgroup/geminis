@@ -36,7 +36,7 @@ class ConfigurableOptionController extends Controller
     public function store(StoreConfigurableOptionRequest $request, ConfigurableOptionGroup $configurableOptionGroup): RedirectResponse
     {
         // TODO: Add authorization check
-        $configurableOptionGroup->configurableOptions()->create($request->validated());
+        $configurableOptionGroup->options()->create($request->validated());
 
         return redirect()->route('admin.configurable-option-groups.edit', $configurableOptionGroup) // Aquí $configurableOptionGroup es el objeto del grupo, correcto.
             ->with('success', 'Opción configurable creada exitosamente.');
