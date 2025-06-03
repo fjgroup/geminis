@@ -401,6 +401,14 @@ const isActiveDashboard = computed(() => {
 
       <!-- Page Content -->
       <main>
+        <!-- Flash Messages -->
+        <div v-if="$page.props.flash.success" class="p-4 mb-4 text-green-800 bg-green-200 rounded">
+            {{ $page.props.flash.success }}
+        </div>
+        <div v-if="$page.props.flash.error" class="p-4 mb-4 text-red-800 bg-red-200 rounded">
+            {{ $page.props.flash.error }}
+        </div>
+
         <slot />
       </main>
     </div>

@@ -18,11 +18,11 @@ return new class extends Migration
             $table->foreignId('product_pricing_id')->constrained('product_pricings'); // Ciclo de facturación elegido
             $table->enum('item_type', ['product', 'addon', 'domain_registration', 'domain_renewal', 'domain_transfer', 'configurable_option'])->index();
             $table->string('description'); // Ej: "Web Hosting - Plan Básico (Mensual)"
+            $table->string('domain_name')->nullable(); // Si el ítem es un dominio
             $table->integer('quantity')->default(1);
             $table->decimal('unit_price', 10, 2);
             $table->decimal('setup_fee', 10, 2)->default(0.00);
             $table->decimal('total_price', 10, 2); // (unit_price * quantity) + setup_fee
-            $table->string('domain_name')->nullable(); // Si el ítem es un dominio
             $table->integer('registration_period_years')->nullable(); // Para dominios
             $table->foreignId('client_service_id')->nullable()->constrained('client_services')->onDelete('set null'); // Se llenará después de aprovisionar
             $table->timestamps();

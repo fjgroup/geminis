@@ -54,7 +54,16 @@ class OrderPolicy
      */
     public function update(User $user, Order $order): bool
     {
-        return $user->isAdmin();
+        if ($user->isAdmin()) {
+            return true; // Admins can delete (soft delete)
+        }
+        
+        // Client can delete their own order if it's pending payment
+        if ($user->id === $order->client_id && $order->status === 'pending_payment') {
+            return true;
+        }
+
+        return false;
     }
 
     /**
@@ -72,7 +81,7 @@ class OrderPolicy
         if ($user->id === $order->client_id && $order->status === 'pending_payment') {
             return true;
         }
-        
+
         return false;
     }
 

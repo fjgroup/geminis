@@ -16,6 +16,7 @@ return new class extends Migration
             $table->foreignId('invoice_id')->nullable()->constrained('invoices')->onDelete('set null');
             $table->foreignId('client_id')->constrained('users');
             $table->foreignId('reseller_id')->nullable()->constrained('users');
+            $table->foreignId('payment_method_id')->nullable()->constrained('payment_methods')->onDelete('set null');
             $table->string('gateway_slug');
             $table->string('gateway_transaction_id')->nullable()->index();
             $table->enum('type', ['payment', 'refund', 'chargeback', 'credit_added', 'credit_used'])->index();

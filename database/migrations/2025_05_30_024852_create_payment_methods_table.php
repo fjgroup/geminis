@@ -14,9 +14,14 @@ return new class extends Migration
         Schema::create('payment_methods', function (Blueprint $table) {
             $table->id();
             $table->string('name');
-            $table->string('account_holder_name');
-            $table->string('account_number');
+            $table->string('type')->default('bank');
             $table->string('bank_name');
+            $table->string('account_number');
+            $table->string('account_holder_name');
+            $table->string('identification_number')->nullable();
+            $table->string('platform_name')->nullable();
+            $table->string('email_address')->nullable();
+            $table->string('payment_link')->nullable();
             $table->string('branch_name')->nullable();
             $table->string('swift_code')->nullable();
             $table->string('iban')->nullable();

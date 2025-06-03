@@ -32,6 +32,7 @@ return new class extends Migration
             $table->string('currency_code', 3)->default('USD');
             $table->timestamp('last_login_at')->nullable();
             $table->rememberToken();
+            $table->decimal('balance', 10, 2)->default(0.00);
             $table->timestamps();
             $table->softDeletes();
         });

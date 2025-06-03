@@ -20,6 +20,7 @@ return new class extends Migration
     $table->date('due_date')->index();
     $table->date('paid_date')->nullable();
     $table->enum('status', ['unpaid', 'paid', 'overdue', 'cancelled', 'refunded', 'collections'])->default('unpaid')->index();
+    $table->string('paypal_order_id')->nullable()->unique();
     $table->decimal('subtotal', 10, 2);
     $table->string('tax1_name')->nullable();
     $table->decimal('tax1_rate', 5, 2)->nullable();

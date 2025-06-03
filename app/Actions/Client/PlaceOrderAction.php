@@ -139,7 +139,7 @@ class PlaceOrderAction
             'total_price' => $currentOrderTotalAmount, // total for this item (price + setup) * itemQuantity
             'description' => $orderItemDescription,
             'domain_name' => $domainName, // Save domain name here
-            'item_type' => $product->productType->slug ?? null, // Use slug from ProductType
+            'item_type' => Str::limit($product->productType->slug ?? 'general', 50), // Use slug from ProductType, default to 'general' if null, truncate to 50 chars
         ]);
 
         // Placeholder for Invoice Number generation (ideally move to Invoice model)
