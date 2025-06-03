@@ -16,10 +16,13 @@ const props = defineProps({
   errors: Object, // For displaying general errors if any, or handled by form.errors
 });
 
+// Get today's date in YYYY-MM-DD format for the max attribute AND default value of date input
+const today = new Date().toISOString().split('T')[0];
+
 const form = useForm({
     payment_method_id: null,
     reference_number: '',
-    payment_date: '',
+    payment_date: today, // Set default to today's date
 });
 
 const paymentMethodOptions = computed(() => {
@@ -56,9 +59,6 @@ const formatCurrency = (amount, currencyCode = 'USD') => {
     const displayCurrency = currencyCode || 'USD';
     return new Intl.NumberFormat('es-ES', { style: 'currency', currency: displayCurrency }).format(amount);
 };
-
-// Get today's date in YYYY-MM-DD format for the max attribute of date input
-const today = new Date().toISOString().split('T')[0];
 
 </script>
 

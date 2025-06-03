@@ -91,7 +91,8 @@ const formatCurrency = (amount, currencyCode = 'USD') => {
 const form = useForm({
   items: props.order.items.map(item => {
     // item.product.productPricings should be available from controller eager loading
-    const available_billing_cycles = item.product.product_pricings.map(pricing => ({
+    const productPricings = item.product && item.product.product_pricings ? item.product.product_pricings : [];
+    const available_billing_cycles = productPricings.map(pricing => ({
       id: pricing.id, // This is product_pricing_id
       name: `${pricing.billing_cycle.name} - ${formatCurrency(pricing.price, pricing.currency_code || props.order.currency_code)}`,
     }));

@@ -178,30 +178,52 @@ const formatDate = (datetime) => {
                   </th>
                 </tr>
               </thead>
-              <tbody class="bg-white divide-y divide-gray-200">
-                <tr v-for="item in invoice.items" :key="item.id">
-                  <td class="px-6 py-4 whitespace-nowrap">{{ item.description }}</td>
-                  <td class="px-6 py-4 whitespace-nowrap text-center">
-                    {{ item.quantity }}
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-right">
-                    {{
-                      new Intl.NumberFormat("en-US", {
-                        style: "currency",
-                        currency: invoice.currency_code || "USD",
-                      }).format(item.unit_price)
-                    }}
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-right">
-                    {{
-                      new Intl.NumberFormat("en-US", {
-                        style: "currency",
-                        currency: invoice.currency_code || "USD",
-                      }).format(item.total_price || item.subtotal)
-                    }}
-                  </td>
-                </tr>
-              </tbody>
+              <tbody class="bg-white divide-y divide-gray-200 dark:divide-gray-700">
+    <template v-if="invoice.items && invoice.items.length > 0">
+        <template v-for="item in invoice.items" :key="item.id">
+            <tr v-if="item.order_item && item.order_item.setup_fee && parseFloat(item.order_item.setup_fee) > 0">
+                <!-- Row for main product/service (when setup fee exists) -->
+                <td class="px-6 py-4 whitespace-nowrap">
+                    {{ item.order_item.product ? item.order_item.product.name : item.description }}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-center">{{ item.quantity }}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-right">
+                    {{ formatCurrency(item.order_item.unit_price, invoice.currency_code) }}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-right">
+                    {{ formatCurrency(parseFloat(item.order_item.unit_price) * item.quantity, invoice.currency_code) }}
+                </td>
+            </tr>
+            <tr v-if="item.order_item && item.order_item.setup_fee && parseFloat(item.order_item.setup_fee) > 0" class="bg-gray-50 dark:bg-gray-700/30">
+                <!-- Row for setup fee -->
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 pl-10">
+                    Tarifa de Configuración <span v-if="item.order_item.product">para {{ item.order_item.product.name }}</span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-500 dark:text-gray-400">{{ item.quantity }}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-500 dark:text-gray-400">
+                    {{ formatCurrency(item.order_item.setup_fee, invoice.currency_code) }}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-500 dark:text-gray-400">
+                    {{ formatCurrency(parseFloat(item.order_item.setup_fee) * item.quantity, invoice.currency_code) }}
+                </td>
+            </tr>
+            <tr v-if="!item.order_item || !item.order_item.setup_fee || parseFloat(item.order_item.setup_fee) <= 0">
+                <!-- Original row for items without setup fee or if order_item is not available -->
+                <td class="px-6 py-4 whitespace-nowrap">{{ item.description }}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-center">{{ item.quantity }}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-right">
+                    {{ formatCurrency(item.unit_price, invoice.currency_code) }}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-right">
+                    {{ formatCurrency(item.total_price, invoice.currency_code) }}
+                </td>
+            </tr>
+        </template>
+    </template>
+    <tr v-else>
+        <td colspan="4" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">No hay ítems en esta factura.</td>
+    </tr>
+</tbody>
             </table>
 
             <!-- Payment Details if Paid -->

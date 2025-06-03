@@ -23,7 +23,7 @@ const formatCurrency = (amount, currencyCode = 'USD') => {
 
 // Updated function names and logic to match the subtask description
 function confirmCancelPrePayment() {
-  if (confirm('Are you sure you want to cancel this order and its unpaid invoice? This action cannot be undone.')) {
+  if (confirm('¿Estás seguro de que deseas cancelar esta orden y su factura no pagada? Esta acción no se puede deshacer.')) {
     router.delete(route('client.orders.cancelPrePayment', { order: props.order.id }), {
       preserveScroll: true,
       // onSuccess and onError can be added if specific toast notifications beyond flash messages are needed
@@ -32,7 +32,7 @@ function confirmCancelPrePayment() {
 }
 
 function confirmRequestPostPaymentCancellation() {
-  if (confirm('Are you sure you want to request cancellation for this order? An administrator will review your request. If approved, any applicable refund or credit will be processed according to our policies.')) {
+  if (confirm('¿Estás seguro de que deseas solicitar la cancelación de esta orden? Un administrador revisará tu solicitud. Si se aprueba, cualquier reembolso o crédito aplicable se procesará de acuerdo con nuestras políticas.')) {
     router.post(route('client.orders.requestPostPaymentCancellation', { order: props.order.id }), {}, {
       preserveScroll: true,
     });
@@ -124,10 +124,10 @@ const payWithBalance = (invoiceId) => {
                             <div v-if="order.status === 'pending_payment'" class="flex flex-col items-end">
                                 <Link :href="route('client.orders.editOrderForm', { order: order.id })">
                                     <PrimaryButton class="bg-blue-500 hover:bg-blue-600 focus:ring-blue-400">
-                                        Edit Order
+                                        Editar Orden
                                     </PrimaryButton>
                                 </Link>
-                                <p class="text-xs text-gray-500 mt-1">Change quantity or billing cycle.</p>
+                                <p class="text-xs text-gray-500 mt-1">Cambiar cantidad o ciclo de facturación.</p>
                             </div>
 
                             <!-- Cancel Pre-Payment Order Button -->
@@ -135,9 +135,9 @@ const payWithBalance = (invoiceId) => {
                                 <!-- Using PrimaryButton with red styling as DangerButton might not be defined -->
                                 <PrimaryButton @click="confirmCancelPrePayment"
                                                class="bg-red-600 hover:bg-red-700 focus:ring-red-500">
-                                    Cancel Order
+                                    Cancelar Orden
                                 </PrimaryButton>
-                                <p class="text-xs text-gray-500 mt-1">This will cancel the order and its unpaid invoice.</p>
+                                <p class="text-xs text-gray-500 mt-1">Esto cancelará la orden y su factura no pagada.</p>
                             </div>
 
                             <!-- Request Post-Payment Cancellation Button -->
@@ -145,22 +145,22 @@ const payWithBalance = (invoiceId) => {
                                  <!-- Using PrimaryButton with orange styling as SecondaryButton might not be defined or to make it distinct -->
                                 <PrimaryButton @click="confirmRequestPostPaymentCancellation"
                                                class="bg-orange-500 hover:bg-orange-600 focus:ring-orange-400">
-                                    Request Order Cancellation
+                                    Solicitar Cancelación de Orden
                                 </PrimaryButton>
-                                <p class="text-xs text-gray-500 mt-1">Submit a request for cancellation. Subject to review.</p>
+                                <p class="text-xs text-gray-500 mt-1">Enviar una solicitud de cancelación. Sujeto a revisión.</p>
                             </div>
 
                             <!-- Display message if cancellation is already requested -->
                             <div v-if="order.status === 'cancellation_requested_by_client'" class="text-right">
                                 <p class="text-sm text-yellow-700 bg-yellow-100 p-3 rounded-md inline-block">
-                                    Cancellation has been requested for this order and is pending review.
+                                    Se ha solicitado la cancelación para esta orden y está pendiente de revisión.
                                 </p>
                             </div>
 
                             <!-- Display message if order is already cancelled or completed -->
                              <div v-if="['cancelled', 'completed', 'fraud'].includes(order.status) && order.status !== 'cancellation_requested_by_client'" class="text-right">
                                 <p class="text-sm text-gray-600 bg-gray-100 p-3 rounded-md inline-block">
-                                    This order is in a final state ({{ order.status.replace(/_/g, ' ') }}) and no further cancellation actions can be taken by you.
+                                    Esta orden se encuentra en un estado final ({{ order.status.replace(/_/g, ' ') }}) y no puedes realizar más acciones de cancelación.
                                 </p>
                             </div>
 
@@ -195,7 +195,7 @@ const payWithBalance = (invoiceId) => {
 
                         <div class="mt-6">
                             <Link :href="route('client.orders.index')" class="text-indigo-600 hover:text-indigo-900 text-sm">
-                                &laquo; Back to My Orders
+                                &laquo; Volver a Mis Órdenes
                             </Link>
                         </div>
                     </div>

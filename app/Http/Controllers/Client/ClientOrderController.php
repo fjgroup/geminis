@@ -416,7 +416,7 @@ class ClientOrderController extends Controller
      */
     public function requestPostPaymentCancellation(Order $order): RedirectResponse
     {
-        $this->authorize('update', $order); // Or a specific policy like 'requestPostPaymentCancellation'
+        $this->authorize('requestPostPaymentCancellation', $order);
 
         // Defensive check for ownership
         if (Auth::id() !== $order->client_id) {
