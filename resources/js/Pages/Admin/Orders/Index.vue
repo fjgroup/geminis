@@ -2,9 +2,9 @@
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { Head, Link, router } from '@inertiajs/vue3'; // Added router
 import { ref, watch } from 'vue'; // Added ref, watch
-import Pagination from '@/Components/Pagination.vue';
-import TextInput from '@/Components/TextInput.vue'; // Assuming TextInput exists
-import SelectInput from '@/Components/SelectInput.vue'; // Assuming SelectInput exists
+import Pagination from '@/Components/UI/Pagination.vue';
+import TextInput from '@/Components/Forms/TextInput.vue'; // Assuming TextInput exists
+import SelectInput from '@/Components/Forms/SelectInput.vue'; // Assuming SelectInput exists
 // import PrimaryButton from '@/Components/PrimaryButton.vue'; // Not needed for watch approach
 
 const props = defineProps({

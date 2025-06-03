@@ -84,7 +84,7 @@ class PaymentMethod extends Model
 
         // Common details always included if present
         $details['instructions'] = $this->instructions;
-        
+
         // Filter out null or empty string values from the specific fields before returning
         return array_filter($details, function($value) {
             return !is_null($value) && $value !== '';

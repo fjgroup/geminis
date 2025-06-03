@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import Icon from '../Icon.vue';
+import { Link } from '@inertiajs/vue3'; // Added Link
 
 // Definiciones de tipos (reutilizadas de otros componentes ya migrados)
 interface PlanData { // Definición completa no es necesaria aquí, solo para ServiceCategoryData
@@ -31,15 +32,14 @@ interface AllCategoriesListProps {
 // Definición de Props
 const props = defineProps<AllCategoriesListProps>();
 
-// Definición de Emits
-const emit = defineEmits<{
-  (e: 'navigate', page: PageView, categoryId?: string): void;
-}>();
+// Emits and handleNavigate are no longer needed
+// const emit = defineEmits<{
+//   (e: 'navigate', page: PageView, categoryId?: string): void;
+// }>();
 
-// Lógica para manejar el evento de navegación
-const handleNavigate = (page: PageView, categoryId?: string) => {
-  emit('navigate', page, categoryId);
-};
+// const handleNavigate = (page: PageView, categoryId?: string) => {
+//   emit('navigate', page, categoryId);
+// };
 
 // Función para limpiar el markdown (negritas) de la descripción
 const cleanDescription = (description: string) => {
@@ -55,8 +55,8 @@ const cleanDescription = (description: string) => {
                 {{ title }}
             </h2>
             <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                <button v-for="category in categories" :key="category.categoryId"
-                    @click="handleNavigate('categoryDetail', category.categoryId)"
+                <Link v-for="category in categories" :key="category.categoryId"
+                    :href="route('landing.category', { categorySlug: category.categoryId })"
                     class="flex flex-col items-center p-6 text-center transition-all duration-300 rounded-lg shadow-lg bg-slate-800 hover:bg-slate-700 hover:shadow-sky-600/30 animate-zoom-in group">
                     <Icon :name="category.categoryIcon"
                         class="w-[4rem] h-[4rem] mb-4 transition-transform text-sky-500 group-hover:scale-110" />
@@ -68,7 +68,7 @@ const cleanDescription = (description: string) => {
                         Planes
                         <Icon name="arrow-right" class="w-3 h-3 ml-1" />
                     </span>
-                </button>
+                </Link>
             </div>
         </div>
     </section>

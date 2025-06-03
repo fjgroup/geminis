@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { defineProps } from 'vue'; // Import defineProps
-import Icon from '@/Components/Icon.vue'; // Import Icon component
-import FeatureHighlightCard from '@/Components/FeatureHighlightCard.vue'; // Import FeatureHighlightCard
+import Icon from '@/Components/UI/Icon.vue'; // Import Icon component
+import FeatureHighlightCard from '@/Components/Shared/FeatureHighlightCard.vue'; // Import FeatureHighlightCard
 
 interface FeatureHighlight {
     icon: string;

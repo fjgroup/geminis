@@ -1,19 +1,23 @@
 <script setup>
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
+import InputLabel from '@/Components/Forms/InputLabel.vue'; // Assuming correct path
+import SelectInput from '@/Components/Forms/SelectInput.vue'; // Assuming correct path
+import InputError from '@/Components/Forms/InputError.vue'; // Assuming correct path
+
 
 const props = defineProps({
-    // Si necesitas pasar datos como tipos de producto o revendedores para un select
-    // productTypes: Array,
+    productTypes: Array, // Expecting array of { value: id, label: name }
     // resellers: Array,
 });
 
 const form = useForm({
     name: '',
+    slug: '', // Added slug as it's in the form/controller logic
     description: '',
-    type: 'shared_hosting', // Valor por defecto
+    product_type_id: null, // Changed from type to product_type_id
     module_name: '',
-    owner_id: null, // null para producto de plataforma, o ID de revendedor
+    owner_id: null,
     status: 'active', // Valor por defecto
     is_publicly_available: true,
     is_resellable_by_default: true,
@@ -78,16 +82,17 @@ const submit = () => {
                             <div v-if="form.errors.description" class="mt-1 text-sm text-red-600">{{ form.errors.description }}</div>
                         </div>
 
-                        <!-- Type -->
+                        <!-- Product Type ID -->
                         <div class="mb-4">
-                            <label for="type" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Tipo de Producto</label>
-                            <select v-model="form.type" id="type"
-                                    class="block w-full mt-1 border-gray-300 rounded-md shadow-sm dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-                                <option v-for="option in productTypeOptions" :key="option.value" :value="option.value">
-                                    {{ option.label }}
-                                </option>
-                            </select>
-                            <div v-if="form.errors.type" class="mt-1 text-sm text-red-600">{{ form.errors.type }}</div>
+                            <InputLabel for="product_type_id" value="Tipo de Producto *" />
+                            <SelectInput
+                                id="product_type_id"
+                                class="block w-full mt-1"
+                                v-model="form.product_type_id"
+                                :options="props.productTypes"
+                                required
+                            />
+                            <InputError class="mt-2" :message="form.errors.product_type_id" />
                         </div>
 
                         <!-- Module Name -->

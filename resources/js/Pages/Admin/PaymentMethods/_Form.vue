@@ -1,11 +1,11 @@
 <script setup>
-import InputLabel from '@/Components/InputLabel.vue';
-import TextInput from '@/Components/TextInput.vue';
-import TextareaInput from '@/Components/TextareaInput.vue';
-import SelectInput from '@/Components/SelectInput.vue'; // Added
-import InputError from '@/Components/InputError.vue';
-import PrimaryButton from '@/Components/PrimaryButton.vue';
-import Checkbox from '@/Components/Checkbox.vue';
+import InputLabel from '@/Components/Forms/InputLabel.vue';
+import TextInput from '@/Components/Forms/TextInput.vue';
+import TextareaInput from '@/Components/Forms/TextareaInput.vue';
+import SelectInput from '@/Components/Forms/SelectInput.vue'; // Added
+import InputError from '@/Components/Forms/InputError.vue';
+import PrimaryButton from '@/Components/Forms/Buttons/PrimaryButton.vue';
+import Checkbox from '@/Components/Forms/Checkbox.vue';
 import { Link } from '@inertiajs/vue3';
 import { ArrowDownTrayIcon, XMarkIcon } from '@heroicons/vue/24/outline';
 import { computed } from 'vue'; // Added
@@ -53,7 +53,7 @@ const typeOptions = computed(() => {
         <!-- Type-Specific Fields -->
         <div class="p-4 border border-gray-200 rounded-md dark:border-gray-700">
             <h3 class="mb-4 text-lg font-medium text-gray-900 dark:text-gray-100">Detalles Específicos del Tipo: {{ paymentMethodTypes[form.type] }}</h3>
-            
+
             <!-- Bank Type Fields -->
             <div v-if="form.type === 'bank'" class="space-y-6">
                 <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
@@ -152,7 +152,7 @@ const typeOptions = computed(() => {
 
         <div>
             <InputLabel for="instructions" value="Instrucciones Adicionales (Opcional)" />
-            <TextareaInput id="instructions" class="block w-full mt-1" v-model="form.instructions" :rows="4" 
+            <TextareaInput id="instructions" class="block w-full mt-1" v-model="form.instructions" :rows="4"
                            placeholder="Ej: Por favor, incluya el número de factura en la referencia del pago."/>
             <InputError class="mt-2" :message="form.errors.instructions" />
         </div>

@@ -7,7 +7,7 @@ import SecondaryButton from '@/Components/SecondaryButton.vue';
 import DangerButton from '@/Components/DangerButton.vue';
 import { ref, watch } from 'vue';
 
-import TextInput from '@/Components/TextInput.vue'; // O tu componente de input
+import TextInput from '@/Components/Forms/TextInput.vue'; // O tu componente de input
 
 import { PlusIcon, PencilSquareIcon, TrashIcon, EyeIcon } from '@heroicons/vue/24/outline';
 

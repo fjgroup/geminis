@@ -4,8 +4,8 @@ import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import DangerButton from '@/Components/DangerButton.vue';
-import ConfirmationModal from '@/Components/ConfirmationModal.vue';
-import Alert from '@/Components/Alert.vue';
+import ConfirmationModal from '@/Components/UI/ConfirmationModal.vue';
+import Alert from '@/Components/UI/Alert.vue';
 import { ref, computed } from 'vue';
 import { PlusIcon, PencilSquareIcon, TrashIcon } from '@heroicons/vue/24/outline';
 

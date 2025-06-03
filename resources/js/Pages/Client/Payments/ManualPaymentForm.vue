@@ -1,11 +1,11 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
-import InputLabel from '@/Components/InputLabel.vue';
-import TextInput from '@/Components/TextInput.vue';
-import PrimaryButton from '@/Components/PrimaryButton.vue';
-import InputError from '@/Components/InputError.vue';
-import SelectInput from '@/Components/SelectInput.vue'; // Assuming this component exists for consistency
+import InputLabel from '@/Components/Forms/InputLabel.vue';
+import TextInput from '@/Components/Forms/TextInput.vue';
+import PrimaryButton from '@/Components/Forms/Buttons/PrimaryButton.vue';
+import InputError from '@/Components/Forms/InputError.vue';
+import SelectInput from '@/Components/Forms/SelectInput.vue'; // Assuming this component exists for consistency
 import { computed, ref, watch } from 'vue';
 import { ArrowLeftIcon } from '@heroicons/vue/24/outline';
 
@@ -37,7 +37,7 @@ const selectedMethodDetails = computed(() => {
     if (!form.payment_method_id) return null;
     const method = props.paymentMethods.find(m => m.id === form.payment_method_id);
     // formatted_details should be directly available on the method object due to $appends
-    return method ? method.formatted_details : null; 
+    return method ? method.formatted_details : null;
 });
 
 
@@ -124,7 +124,7 @@ const today = new Date().toISOString().split('T')[0];
                     </p>
                     <p v-if="selectedMethodDetails.type === 'crypto_wallet'">
                         <strong class="text-gray-800 dark:text-gray-100">Red/Moneda:</strong> {{ selectedMethodDetails.platform_name }}<br>
-                        <strong class="text-gray-800 dark:text-gray-100">Dirección:</strong> {{ selectedMethodDetails.wallet_address }} <span v-if="selectedMethodDetails.crypto_network"> (Red: {{ selectedMethodDetails.crypto_network }})</span><br> 
+                        <strong class="text-gray-800 dark:text-gray-100">Dirección:</strong> {{ selectedMethodDetails.wallet_address }} <span v-if="selectedMethodDetails.crypto_network"> (Red: {{ selectedMethodDetails.crypto_network }})</span><br>
                         <span v-if="selectedMethodDetails.account_holder_name"><strong class="text-gray-800 dark:text-gray-100">Referencia/Titular:</strong> {{ selectedMethodDetails.account_holder_name }}</span>
                     </p>
                     <p v-if="selectedMethodDetails.instructions" class="mt-2 whitespace-pre-wrap border-t border-gray-300 dark:border-gray-600 pt-2">
@@ -157,11 +157,11 @@ const today = new Date().toISOString().split('T')[0];
                 class="mt-1 block w-full"
                 v-model="form.payment_date"
                 required
-                :max="today" 
+                :max="today"
               />
               <InputError class="mt-2" :message="form.errors.payment_date" />
             </div>
-            
+
             <!-- Placeholder for future file upload
             <div>
               <InputLabel for="payment_receipt" value="Comprobante de Pago (Opcional)" />

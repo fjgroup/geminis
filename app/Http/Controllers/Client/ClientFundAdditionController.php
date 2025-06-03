@@ -21,7 +21,7 @@ class ClientFundAdditionController extends Controller
         $paymentMethods = PaymentMethod::where('is_active', true)
             ->orderBy('name')
             ->get(['id', 'name', 'account_holder_name', 'account_number', 'bank_name', 'branch_name', 'swift_code', 'iban', 'instructions', 'logo_url']);
-        
+
         $client = Auth::user();
         $currencyCode = $client->currency_code ?? 'USD'; // Default to USD if not set
 

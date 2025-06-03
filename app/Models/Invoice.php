@@ -25,6 +25,7 @@ class Invoice extends Model
         'due_date',
         'paid_date',
         'status',
+        'paypal_order_id', // Added
         'subtotal',
         'tax1_name',
         'tax1_rate',

@@ -120,12 +120,12 @@ const triggerConfirmPayment = () => {
                             <p><strong>Invoice Total:</strong> {{ formatCurrency(order.invoice.total_amount, order.currency_code) }}</p>
                         </div>
                         
-                        <div v-if="order.notes" class="mt-6">
-                            <h3 class="text-lg font-medium text-gray-900 mb-2">Order Notes</h3>
-                            <p class="whitespace-pre-wrap">{{ order.notes }}</p>
+                        <div v-if="order.notes && order.notes.trim() !== ''" class="mt-6 pt-6 border-t dark:border-gray-700">
+                            <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">Notas del Cliente:</h3>
+                            <p class="text-sm text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-700/50 p-4 rounded-md whitespace-pre-wrap">{{ order.notes }}</p>
                         </div>
 
-                        <div class="mt-6">
+                        <div class="mt-6 pt-6 border-t dark:border-gray-700">
                             <h3 class="text-lg font-medium text-gray-900 mb-2">Order Items</h3>
                             <div class="overflow-x-auto">
                                 <table class="min-w-full divide-y divide-gray-200">

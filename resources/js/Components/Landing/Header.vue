@@ -2,7 +2,7 @@
 
 
 import { ref, PropType } from 'vue';
-import Icon from '@/Components/Icon.vue'; // Asumiendo el alias @/Components apunta a ../geminis/resources/js/Components
+import Icon from '@/Components/UI/Icon.vue'; // Asumiendo el alias @/Components apunta a ../geminis/resources/js/Components
 import { Link, usePage } from '@inertiajs/vue3'; // Importar Link y usePage
 
 interface ServiceCategoryData {
@@ -17,14 +17,11 @@ const props = defineProps({
         type: String,
         required: true
     },
-    onContactClick: {
+    onContactClick: { // Renamed to contactClick to match usage in LandingPage.vue
         type: Function as PropType<() => void>,
         required: true
     },
-    onNavigate: {
-        type: Function as PropType<(page: PageView, categoryId?: string) => void>,
-        required: true
-    },
+    // onNavigate prop is removed
     serviceCategories: {
         type: Array as PropType<ServiceCategoryData[]>,
         required: true
@@ -48,13 +45,10 @@ const page = usePage(); // Para acceder a $page.props si auth no se pasa directa
 
 const isMobileMenuOpen = ref(false);
 
-const handleNavigate = (page: PageView, categoryId?: string) => {
-    props.onNavigate(page, categoryId);
-    isMobileMenuOpen.value = false;
-};
+// handleNavigate method is removed
 
-const handleContactClick = () => {
-    props.onContactClick();
+const handleContactClick = () => { // This now directly calls the prop passed as contactClick
+    props.onContactClick(); // Or props.contactClick if you rename the prop
     isMobileMenuOpen.value = false;
 };
 </script>
@@ -65,9 +59,9 @@ const handleContactClick = () => {
             <div class="md:py-3">
                 <div class="flex items-center justify-between h-16 md:h-auto">
                     <div class="flex-shrink-0">
-                        <button @click="handleNavigate('landing')" class="flex-shrink-0 text-xl font-bold text-white">
+                        <Link :href="route('landing.home')" class="flex-shrink-0 text-xl font-bold text-white">
                             {{ appName }}
-                        </button>
+                        </Link>
                     </div>
                     <div class="items-center ml-auto space-x-2 md:flex">
                         <template v-if="!props.auth || !props.auth.user">
@@ -107,22 +101,23 @@ const handleContactClick = () => {
                     </div>
                 </div>
                 <div class="hidden space-x-1 md:flex md:flex-wrap md:items-baseline md:justify-center md:mt-2">
-                    <button v-for="item in serviceCategories" :key="item.categoryId"
-                        @click="handleNavigate('categoryDetail', item.categoryId)"
+                    <Link v-for="item in serviceCategories" :key="item.categoryId"
+                        :href="route('landing.category', { categorySlug: item.categoryId })"
                         :class="`px-3 py-2 rounded-md text-sm font-medium text-slate-300 hover:bg-slate-700 hover:text-white transition-colors text-left`">
                         {{ item.categoryName }}
-                    </button>
+                    </Link>
                 </div>
             </div>
         </div>
         <div v-if="isMobileMenuOpen"
             class="absolute inset-x-0 z-40 p-2 space-y-1 shadow-xl md:hidden top-16 bg-slate-800 sm:px-3 animate-fade-in-down"
             id="mobile-menu">
-            <button v-for="item in serviceCategories" :key="item.categoryId"
-                @click="handleNavigate('categoryDetail', item.categoryId)"
+            <Link v-for="item in serviceCategories" :key="item.categoryId"
+                :href="route('landing.category', { categorySlug: item.categoryId })"
+                @click="isMobileMenuOpen = false" <!-- Close menu on click -->
                 :class="`block w-full px-3 py-2 rounded-md text-sm font-medium text-slate-300 hover:bg-slate-700 hover:text-white transition-colors text-left`">
                 {{ item.categoryName }}
-            </button>
+            </Link>
             <button @click="handleContactClick"
                 class="block w-full px-3 py-2 mt-2 text-sm font-medium text-left text-white transition-colors rounded-md bg-brand-blue hover:bg-brand-blue-dark">
                 Contacto

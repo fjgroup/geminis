@@ -115,7 +115,7 @@ class AdminTransactionController extends Controller
         $totalPaid = $invoice->transactions
                              ->where('status', 'completed')
                              ->sum('amount');
-        
+
         $netPaid = $totalPaid;
 
         if (bccomp($netPaid, $invoice->total_amount, 2) >= 0) {

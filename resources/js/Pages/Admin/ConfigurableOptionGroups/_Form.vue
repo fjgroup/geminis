@@ -1,9 +1,9 @@
 <script setup>
-import InputLabel from '@/Components/InputLabel.vue';
-import TextInput from '@/Components/TextInput.vue';
-import TextareaInput from '@/Components/TextareaInput.vue'; // Asumiendo que tienes este componente
-import SelectInput from '@/Components/SelectInput.vue';
-import InputError from '@/Components/InputError.vue';
+import InputLabel from '@/Components/Forms/InputLabel.vue';
+import TextInput from '@/Components/Forms/TextInput.vue';
+import TextareaInput from '@/Components/Forms/TextareaInput.vue'; // Asumiendo que tienes este componente
+import SelectInput from '@/Components/Forms/SelectInput.vue';
+import InputError from '@/Components/Forms/InputError.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import { Link } from '@inertiajs/vue3';
 import { computed } from 'vue';

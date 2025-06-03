@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { defineProps } from 'vue';
-import Icon from '@/Components/Icon.vue'; // Importar el componente Icon
+import Icon from '@/Components/UI/Icon.vue'; // Importar el componente Icon
 
 interface FeatureHighlightCardProps {
     iconName: string; // Nombre del icono a mostrar

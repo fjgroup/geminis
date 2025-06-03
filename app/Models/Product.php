@@ -27,6 +27,7 @@ class Product extends Model
         'is_publicly_available',
         'is_resellable_by_default',
         'display_order',
+        'product_type_id', // Added
       //  'welcome_email_template_id',
     ];
 
@@ -56,6 +57,13 @@ class Product extends Model
         return $this->hasMany(ProductPricing::class);
     }
 
+    /**
+     * Get the product type that this product belongs to.
+     */
+    public function productType(): BelongsTo
+    {
+        return $this->belongsTo(ProductType::class, 'product_type_id');
+    }
     
     // Otros métodos y relaciones del modelo Product...
 }

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'; // Import necessary Vue reactivity and lifecycle functions
+import { ref, computed, watchEffect } from 'vue'; // Added watchEffect, removed onMounted
 import { Head, Link, usePage, router } from '@inertiajs/vue3'; // Import Head, Link, usePage, and router from Inertia
 
 // Importar los componentes Landing traducidos
@@ -10,11 +10,11 @@ import HighlightedPlansSection from '@/Components/Landing/HighlightedPlansSectio
 import AllCategoriesList from '@/Components/Landing/AllCategoriesList.vue';
 import Footer from '@/Components/Landing/Footer.vue';
 import ContactModal from '@/Components/Landing/ContactModal.vue';
-import LoadingSpinner from '@/Components/LoadingSpinner.vue'; // Asumir que LoadingSpinner ya existe en Components
-import Icon from '@/Components/Icon.vue'; // Importar el componente Icon
+import LoadingSpinner from '@/Components/UI/LoadingSpinner.vue'; // Asumir que LoadingSpinner ya existe en Components
+import Icon from '@/Components/UI/Icon.vue'; // Importar el componente Icon
 import WhatIsHostingSection from '@/Components/Landing/WhatIsHostingSection.vue';
 import GeneralFeaturesExplainedSection from '@/Components/Landing/GeneralFeaturesExplainedSection.vue';
-import FeatureHighlightCard from '@/Components/FeatureHighlightCard.vue'; // Importar el nuevo componente FeatureHighlightCard
+import FeatureHighlightCard from '@/Components/Shared/FeatureHighlightCard.vue'; // Importar el nuevo componente FeatureHighlightCard
 
 // Definiciones de tipos (reutilizadas de otros componentes)
 interface TrustpilotData { // Reutilizar si es necesario para props
@@ -128,64 +128,72 @@ interface ServiceConfig { // Reutilizar si es necesario para props
 // Definición de tipos para la navegación de página
 type PageView = 'landing' | 'categoryDetail';
 
-// Define props (mantener las props de Inertia si son necesarias en esta página)
-defineProps({
-    canLogin: Boolean,
-    canRegister: Boolean,
-    laravelVersion: String, // No se usa en la landing view final, puede ser eliminado
-    phpVersion: String, // No se usa en la landing view final, puede ser eliminado
+// Define props
+const props = defineProps({
+    serviceData: Object, // Data now comes from controller
+    activeCategorySlug: {
+        type: String,
+        default: null,
+    },
+    // canLogin, canRegister are available via $page.props if needed by Header/Footer directly
 });
 
-
 // Define reactive state
-const serviceData = ref<ServiceConfig | null>(null); // Tipado añadido
-const isLoading = ref(true);
-const error = ref<string | null>(null); // Tipado añadido
+const serviceConfig = computed(() => props.serviceData as ServiceConfig | null); // Use props
+const isLoading = ref(false); // Data is pre-loaded
+const error = computed(() => { // Error based on prop
+    if (!props.serviceData) {
+        return "No se pudo cargar la información de los servicios desde el servidor.";
+    }
+    // Could also check for a specific error structure within props.serviceData if controller sends it
+    return null;
+});
 const isModalOpen = ref(false);
-const contactedPlanName = ref<string | undefined>(undefined); // Tipado añadido
+const contactedPlanName = ref<string | undefined>(undefined);
 
-const currentPage = ref<PageView>('landing'); // Estado para controlar la vista actual
-const selectedCategoryId = ref<string | null>(null); // Estado para la categoría seleccionada
+const currentPage = ref<PageView>('landing');
+const selectedCategoryId = ref<string | null>(null);
 
-const appMainRef = ref<HTMLElement | null>(null); // Referencia al elemento main para el scroll
+const appMainRef = ref<HTMLElement | null>(null);
 
-// Para verificar los datos de autenticación
+// Para verificar los datos de autenticación (canLogin, canRegister are in $page.props)
 const page = usePage();
 
 
-
-// Fetch data on mounted (adaptado de React useEffect)
-onMounted(async () => {
-    try {
-        const response = await fetch('/data/services.json'); // Ajusta la ruta si es necesario
-        // TEMPORALMENTE COMENTADO PARA EVITAR ERROR DE RUTA ZIGGY
-        // // Redirección si el usuario ya está logueado
-        // if (page.props.auth && page.props.auth.user) {
-        //     const userRole = page.props.auth.user.role; // Asume que el objeto user tiene una propiedad 'role'
-        //     if (userRole === 'client') {
-        //         router.replace(route('client.dashboard'));
-        //         return; // Detener la ejecución adicional si se redirige
-        //     } else if (userRole === 'admin') { // O cualquier otro rol de administrador
-        //         router.replace(route('admin.dashboard'));
-        //         return; // Detener la ejecución adicional si se redirige
-        //     }
-        // }
-
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+// Watch for activeCategorySlug changes to set current page and selected category
+watchEffect(() => {
+    if (props.activeCategorySlug && serviceConfig.value && serviceConfig.value.serviceCategories) {
+        const categoryExists = serviceConfig.value.serviceCategories.some(
+            // Assuming categoryId is used as slug. Adjust if a 'slug' field exists.
+            cat => cat.categoryId === props.activeCategorySlug
+        );
+        if (categoryExists) {
+            currentPage.value = 'categoryDetail';
+            selectedCategoryId.value = props.activeCategorySlug;
+        } else {
+            // Slug doesn't match any category, show main landing content
+            // This could happen if user navigates to a non-existent category slug
+            currentPage.value = 'landing';
+            selectedCategoryId.value = null;
+            // Optional: Redirect to home if slug is invalid and not already on home
+            // This check might be complex if '/' also uses a controller that sets activeCategorySlug to null.
+            // For now, just show landing. A 404 might be better handled by Laravel routes/controller.
+            // if (route().current() !== 'landing.home' && props.activeCategorySlug) {
+            //    router.replace(route('landing.home'));
+            // }
         }
-        const data: ServiceConfig = await response.json();
-        serviceData.value = data;
-    } catch (e: any) { // Captura el error como 'any' o con un tipo más específico si es posible
-        console.error("Failed to fetch service data:", e);
-        error.value = "No se pudo cargar la información de los servicios. Por favor, inténtalo de nuevo más tarde.";
-    } finally {
-        isLoading.value = false;
+    } else {
+        // No slug, or no service data, so default to landing page view
+        currentPage.value = 'landing';
+        selectedCategoryId.value = null;
     }
+    // Scroll to top when page/category changes
+    if (appMainRef.value) appMainRef.value.scrollTop = 0;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 });
 
-// Funciones de manejo (adaptadas de React)
 
+// Funciones de manejo (adaptadas de React)
 const handleOpenModal = (planName?: string) => {
     contactedPlanName.value = planName;
     isModalOpen.value = true;
@@ -196,17 +204,10 @@ const handleCloseModal = () => {
     contactedPlanName.value = undefined;
 };
 
-const handleNavigation = (page: PageView, categoryId?: string) => {
-    currentPage.value = page;
-    selectedCategoryId.value = categoryId || null;
-    if (appMainRef.value) {
-        appMainRef.value.scrollTop = 0;
-    }
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-};
+// REMOVED handleNavigation function as navigation is now via Inertia links
 
 const handleHeroCtaClick = () => {
-    if (serviceData.value) {
+    if (serviceConfig.value) { // Use serviceConfig computed prop
         const targetId = serviceData.value.whatIsHostingInfo ? "what-is-hosting-section"
             : serviceData.value.generalFeaturesExplained ? "general-features-section"
                 : serviceData.value.highlightedPlansSection ? "highlighted-plans-section"

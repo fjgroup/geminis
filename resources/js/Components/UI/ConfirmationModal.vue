@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onMounted, onUnmounted, watch } from 'vue';
-import Modal from '@/Components/Modal.vue'; // Usaremos el Modal base de Jetstream/Breeze si existe, o uno simple
+import Modal from '@/Components/UI/Modal.vue'; // Usaremos el Modal base de Jetstream/Breeze si existe, o uno simple
 
 const props = defineProps({
     show: {

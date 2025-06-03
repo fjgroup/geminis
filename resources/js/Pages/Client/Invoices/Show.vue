@@ -205,13 +205,13 @@ const formatDate = (datetime) => {
             </table>
 
             <!-- Payment Details if Paid -->
-            <div v-if="invoice.status === 'paid' && invoice.transactions && invoice.transactions.length > 0 && invoice.transactions[0].payment_method" 
+            <div v-if="invoice.status === 'paid' && invoice.transactions && invoice.transactions.length > 0 && invoice.transactions[0].payment_method"
                  class="mt-6 p-4 border border-gray-200 dark:border-gray-700 rounded bg-gray-50 dark:bg-gray-700/50">
                 <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">Detalles del Pago Realizado</h3>
                 <div class="text-sm text-gray-700 dark:text-gray-300 space-y-2">
                     <p><strong>Fecha de Transacción (Cliente):</strong> {{ formatDate(invoice.transactions[0].transaction_date) }}</p>
                     <p><strong>Referencia del Cliente:</strong> {{ invoice.transactions[0].gateway_transaction_id }}</p>
-                    
+
                     <div v-if="invoice.transactions[0].payment_method.formatted_details" class="mt-2">
                         <h4 class="font-semibold text-gray-800 dark:text-gray-200">Método de Pago: {{ invoice.transactions[0].payment_method.formatted_details.name }}</h4>
                         <div class="text-sm text-gray-600 dark:text-gray-400 mt-1 space-y-1">
@@ -247,7 +247,7 @@ const formatDate = (datetime) => {
             <!-- Payment Options -->
             <div class="mt-6 space-y-4 text-center">
                 <div v-if="invoice.status === 'unpaid' && user && user.balance > 0">
-                    <PrimaryButton 
+                    <PrimaryButton
                         @click="payInvoiceWithBalance(invoice.id)"
                         :disabled="!canPayWithBalance"
                         class="px-6 py-3 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-opacity-50 disabled:opacity-50"
@@ -266,11 +266,18 @@ const formatDate = (datetime) => {
                 <div v-if="invoice.status === 'unpaid'">
                     <hr class="my-4 dark:border-gray-700" v-if="user && user.balance > 0">
                     <p class="text-sm text-gray-700 dark:text-gray-300 mb-2">¿O ya realizaste el pago por otro medio (transferencia, depósito)?</p>
-                    <Link :href="route('client.invoices.manualPayment.create', { invoice: invoice.id })">
+                    <Link :href="route('client.invoices.manualPayment.create', { invoice: invoice.id })" class="mr-2">
                         <PrimaryButton class="bg-blue-600 hover:bg-blue-700 focus:ring-blue-500">Informar Pago Manual</PrimaryButton>
                     </Link>
                 </div>
-                
+                 <!-- PayPal Payment Button -->
+                <div v-if="invoice.status === 'unpaid'" class="mt-2">
+                     <Link :href="route('paypal.checkout', { invoice: invoice.id })"
+                          class="inline-flex items-center px-4 py-2 bg-paypal-blue border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-paypal-darkblue active:bg-paypal-darkerblue focus:outline-none focus:ring-2 focus:ring-paypal-blue focus:ring-offset-2 transition ease-in-out duration-150">
+                        Pagar con PayPal
+                    </Link>
+                </div>
+
                 <div v-if="invoice.status !== 'unpaid'" class="text-sm text-gray-600 dark:text-gray-400">
                     Esta factura no está pendiente de pago.
                 </div>

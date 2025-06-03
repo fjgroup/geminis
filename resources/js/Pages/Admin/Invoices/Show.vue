@@ -1,12 +1,13 @@
 <script setup>
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { useForm } from '@inertiajs/vue3';
-import PrimaryButton from '@/Components/PrimaryButton.vue';
-import InputLabel from '@/Components/InputLabel.vue';
-import TextInput from '@/Components/TextInput.vue';
-import InputError from '@/Components/InputError.vue';
-import SelectInput from '@/Components/SelectInput.vue'; // Assumed to exist now
+import PrimaryButton from '@/Components/Forms/Buttons/PrimaryButton.vue';
+import InputLabel from '@/Components/Forms/InputLabel.vue';
+import TextInput from '@/Components/Forms/TextInput.vue';
+import InputError from '@/Components/Forms/InputError.vue';
+import SelectInput from '@/Components/Forms/SelectInput.vue'; // Assumed to exist now
 import { computed } from 'vue'; // Added
+import { Link } from '@inertiajs/vue3'; // Added Link for order notes section
 
 const props = defineProps({
     invoice: {
@@ -113,15 +114,26 @@ const transactionStatuses = [
                             {{ $page.props.flash.error }}
                         </div>
 
+                        <!-- Client Notes from Order -->
+                        <div v-if="invoice.order && invoice.order.notes && invoice.order.notes.trim() !== ''" class="mt-6 pt-6 border-t dark:border-gray-700">
+                            <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">
+                                Notas del Cliente (del Pedido Asociado
+                                <Link v-if="invoice.order" :href="route('admin.orders.show', invoice.order.id)" class="text-indigo-600 hover:text-indigo-900">
+                                    #{{ invoice.order.order_number }}
+                                </Link>):
+                            </h3>
+                            <p class="text-sm text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-700/50 p-4 rounded-md whitespace-pre-wrap">{{ invoice.order.notes }}</p>
+                        </div>
+
                         <!-- Payment Details if Paid -->
-                        <div v-if="invoice.status === 'paid' && completedTransaction && completedTransaction.payment_method" 
-                             class="mt-6 p-4 border border-gray-200 dark:border-gray-700 rounded bg-gray-50 dark:bg-gray-700/50">
+                        <div v-if="invoice.status === 'paid' && completedTransaction && completedTransaction.payment_method"
+                             class="mt-6 pt-6 border-t dark:border-gray-700 p-4 bg-gray-50 dark:bg-gray-700/50 rounded"> {/* Added pt-6, border-t, rounded for consistency */}
                             <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">Detalles del Pago Confirmado</h3>
                             <div class="text-sm text-gray-700 dark:text-gray-300 space-y-2">
                                 <p><strong>Fecha de Transacción (Cliente):</strong> {{ formatDate(completedTransaction.transaction_date) }}</p>
                                 <p><strong>Referencia del Cliente:</strong> {{ completedTransaction.gateway_transaction_id }}</p>
                                 <p><strong>Pasarela:</strong> {{ completedTransaction.gateway_slug }}</p>
-                                
+
                                 <div v-if="completedTransaction.payment_method.formatted_details" class="mt-2">
                                     <h4 class="font-semibold text-gray-800 dark:text-gray-200">Método de Pago: {{ completedTransaction.payment_method.formatted_details.name }}</h4>
                                     <div class="text-sm text-gray-600 dark:text-gray-400 mt-1 space-y-1">

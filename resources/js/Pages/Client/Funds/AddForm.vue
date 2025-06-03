@@ -1,11 +1,11 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
-import InputLabel from '@/Components/InputLabel.vue';
-import TextInput from '@/Components/TextInput.vue';
-import PrimaryButton from '@/Components/PrimaryButton.vue';
-import InputError from '@/Components/InputError.vue';
-import SelectInput from '@/Components/SelectInput.vue';
+import InputLabel from '@/Components/Forms/InputLabel.vue';
+import TextInput from '@/Components/Forms/TextInput.vue';
+import PrimaryButton from '@/Components/Forms/Buttons/PrimaryButton.vue';
+import InputError from '@/Components/Forms/InputError.vue';
+import SelectInput from '@/Components/Forms/SelectInput.vue';
 import { computed, ref, watch } from 'vue';
 import { ArrowLeftIcon } from '@heroicons/vue/24/outline';
 
@@ -74,7 +74,7 @@ const today = new Date().toISOString().split('T')[0];
       <div class="max-w-2xl mx-auto sm:px-6 lg:px-8">
         <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
           <form @submit.prevent="submitForm" class="p-6 space-y-6">
-            
+
             <div>
               <InputLabel for="amount">Monto a Agregar ({{ currencyCode }}) *</InputLabel>
               <TextInput
@@ -83,7 +83,7 @@ const today = new Date().toISOString().split('T')[0];
                 class="mt-1 block w-full"
                 v-model="form.amount"
                 step="0.01"
-                min="0.01" 
+                min="0.01"
                 required
                 autofocus
               />
@@ -160,7 +160,7 @@ const today = new Date().toISOString().split('T')[0];
               />
               <InputError class="mt-2" :message="form.errors.payment_date" />
             </div>
-            
+
             <!-- Placeholder for future file upload
             <div>
               <InputLabel for="payment_receipt" value="Comprobante de Pago (Opcional)" />

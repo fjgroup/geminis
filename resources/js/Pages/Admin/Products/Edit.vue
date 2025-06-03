@@ -23,6 +23,7 @@ const props = defineProps({
     resellers: Array, // Lista de revendedores para el select
     all_option_groups: Array, // Todos los grupos de opciones disponibles
     billingCycles: Array, // Nueva prop para ciclos de facturación
+    productTypes: Array, // Added: Esperando array de { value: id, label: name }
 });
 
 // Paso de depuración: Imprimir los billingCycles que llegan como props
@@ -33,8 +34,9 @@ console.log('Props billingCycles en Edit.vue:', JSON.parse(JSON.stringify(props.
 const form = useForm({
     _method: "PUT",
     name: props.product.name,
+    slug: props.product.slug, // Added slug
     description: props.product.description,
-    type: props.product.type,
+    product_type_id: props.product.product_type_id || null, // Changed from type
     module_name: props.product.module_name,
     owner_id: props.product.owner_id,
     status: props.product.status,
@@ -271,19 +273,17 @@ const getBillingCycleName = (pricing) => {
                             </div>
                         </div>
 
-                        <!-- Type -->
+                        <!-- Product Type ID -->
                         <div class="mb-4">
-                            <label for="type" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Tipo de
-                                Producto</label>
-                            <select v-model="form.type" id="type"
-                                class="block w-full mt-1 border-gray-300 rounded-md shadow-sm dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-                                <option v-for="option in productTypeOptions" :key="option.value" :value="option.value">
-                                    {{ option.label }}
-                                </option>
-                            </select>
-                            <div v-if="form.errors.type" class="mt-1 text-sm text-red-600">
-                                {{ form.errors.type }}
-                            </div>
+                            <InputLabel for="product_type_id" value="Tipo de Producto *" />
+                            <SelectInput
+                                id="product_type_id"
+                                class="block w-full mt-1"
+                                v-model="form.product_type_id"
+                                :options="props.productTypes"
+                                required
+                            />
+                            <InputError class="mt-2" :message="form.errors.product_type_id" />
                         </div>
 
                         <!-- Module Name -->

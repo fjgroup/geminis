@@ -478,7 +478,7 @@ class ClientOrderController extends Controller
 
         // Load necessary product data.
         // configurableOptionGroups.options will load the groups and their respective options.
-        $product->load(['pricings.billingCycle', 'configurableOptionGroups.options']); // Corrected relationship name to match model
+        $product->load(['pricings.billingCycle', 'configurableOptionGroups.options', 'productType']); // Corrected relationship name to match model
 
         return Inertia::render('Client/Orders/OrderForm', [
             'product' => $product,

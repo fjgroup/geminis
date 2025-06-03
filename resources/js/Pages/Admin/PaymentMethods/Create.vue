@@ -54,9 +54,9 @@ const submit = () => {
         <div class="py-12">
             <div class="mx-auto max-w-3xl sm:px-6 lg:px-8"> {/* Adjusted max-width for better form layout */}
                 <div class="p-6 overflow-hidden bg-white shadow-sm sm:rounded-lg dark:bg-gray-800">
-                    <PaymentMethodForm 
-                        :form="form" 
-                        @submit="submit" 
+                    <PaymentMethodForm
+                        :form="form"
+                        @submit="submit"
                         :is-edit="false"
                         :paymentMethodTypes="props.paymentMethodTypes"
                     />

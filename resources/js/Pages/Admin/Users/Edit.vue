@@ -1,7 +1,7 @@
 <script setup>
 import AdminLayout from '@/Layouts/AdminLayout.vue'; // Importar AdminLayout
 import { Head, Link, useForm } from '@inertiajs/vue3';
-import Checkbox from '@/Components/Checkbox.vue';
+import Checkbox from '@/Components/Forms/Checkbox.vue';
 import {
     ArrowDownTrayIcon, // Para guardar/actualizar
     XMarkIcon,         // Para cancelar

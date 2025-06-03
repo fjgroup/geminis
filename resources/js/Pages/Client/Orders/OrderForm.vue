@@ -42,6 +42,24 @@
                                 <InputError class="mt-2" :message="form.errors.quantity" />
                             </div>
 
+                            <!-- Domain Name Inputs (Conditional) -->
+                            <div v-if="props.product.product_type && props.product.product_type.requires_domain && form.quantity > 0 && form.domainNames.length > 0" class="mb-4 p-4 border border-gray-200 dark:border-gray-700 rounded-md space-y-3">
+                                <h3 class="text-md font-medium text-gray-900 dark:text-gray-100">Nombres de Dominio Asociados:</h3>
+                                <div v-for="(domain, index) in form.domainNames" :key="index" class="space-y-1">
+                                    <InputLabel :for="'domain_name_' + index">Nombre de Dominio {{ index + 1 }} <span class="text-red-500">*</span></InputLabel>
+                                    <TextInput
+                                        :id="'domain_name_' + index"
+                                        type="text"
+                                        class="block w-full"
+                                        v-model="form.domainNames[index]"
+                                        placeholder="ej: sudominio.com"
+                                        required
+                                    />
+                                    <!-- Adjust error message key based on backend validation structure for arrays -->
+                                    <InputError class="mt-1" :message="form.errors['domainNames.' + index] || form.errors.domainNames" />
+                                </div>
+                            </div>
+
                             <!-- Notes to Client (Optional) -->
                             <div class="mb-4">
                                 <InputLabel for="notes_to_client" value="Notes (Optional)" />
@@ -89,12 +107,12 @@
 <script setup>
 import { Head, useForm } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import InputLabel from '@/Components/InputLabel.vue';
-import TextInput from '@/Components/TextInput.vue';
-import SelectInput from '@/Components/SelectInput.vue'; // Assuming you have or will create this generic component
-import InputError from '@/Components/InputError.vue';
-import PrimaryButton from '@/Components/PrimaryButton.vue';
-import { computed } from 'vue';
+import InputLabel from '@/Components/Forms/InputLabel.vue';
+import TextInput from '@/Components/Forms/TextInput.vue';
+import SelectInput from '@/Components/Forms/SelectInput.vue'; // Assuming you have or will create this generic component
+import InputError from '@/Components/Forms/InputError.vue';
+import PrimaryButton from '@/Components/Forms/Buttons/PrimaryButton.vue';
+import { computed, watch } from 'vue'; // Added watch
 
 const props = defineProps({
   product: Object,
@@ -105,8 +123,35 @@ const form = useForm({
   billing_cycle_id: props.product.pricings && props.product.pricings.length > 0 ? props.product.pricings[0].id : null, // Usar 'pricings'
   quantity: 1,
   notes_to_client: '',
+  domainNames: [''], // Added
   // configurable_options: {}, // Initialize as an empty object for future use
 });
+
+watch(() => form.quantity, (newQuantity, oldQuantity) => {
+    const currentLength = form.domainNames.length;
+    const targetQuantity = Math.max(1, Number(newQuantity) || 1); // Ensure quantity is at least 1
+
+    // Use ProductType property
+    if (props.product.product_type && props.product.product_type.requires_domain) {
+        if (targetQuantity > currentLength) {
+            // Add new empty strings
+            for (let i = 0; i < targetQuantity - currentLength; i++) {
+                form.domainNames.push('');
+            }
+        } else if (targetQuantity < currentLength) {
+            // Remove excess domain names
+            form.domainNames.splice(targetQuantity);
+        }
+        // Ensure at least one input if quantity is 1 or more
+        if (targetQuantity >= 1 && form.domainNames.length === 0) {
+            form.domainNames.push('');
+        }
+    } else {
+        // If not a hosting product, clear domain names
+        form.domainNames = [];
+    }
+}, { immediate: true });
+
 
 // Prepare billing cycle options for the SelectInput component
 const billingCycleOptions = computed(() => {

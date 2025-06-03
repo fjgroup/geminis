@@ -151,9 +151,9 @@ class AdminInvoiceController extends Controller
         $this->authorize('view', $invoice); // Verificación de autorización
 
         $invoice->load([
-            'client', 
-            'reseller', 
-            'items.orderItem', 
+            'client',
+            'reseller',
+            'items.orderItem',
             'items.clientService',
             // Eager-load the latest completed transaction(s) with their payment method
             'transactions' => function ($query) {

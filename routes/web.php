@@ -25,6 +25,9 @@ use App\Http\Controllers\Client\InvoiceController as ClientInvoiceController; //
 use App\Http\Controllers\Client\TransactionController as ClientTransactionController; // Import the client transaction controller and alias it
 use App\Http\Controllers\Client\ClientManualPaymentController; // Import the manual payment controller
 use App\Http\Controllers\Client\ClientFundAdditionController; // Import the fund addition controller
+use App\Http\Controllers\Client\PayPalController; // Import the PayPalController
+use App\Http\Controllers\Admin\AdminProductTypeController; // Import the new ProductTypeController
+use App\Http\Controllers\LandingPageController; // Import the new LandingPageController
 use App\Http\Controllers\Reseller\ResellerClientController;
 use App\Http\Controllers\Reseller\ResellerDashboardController; // Added for reseller dashboard
 
@@ -85,6 +88,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'verified', 'admin']
 
     // Payment Methods Route
     Route::resource('payment-methods', AdminPaymentMethodController::class);
+    // Product Types Route
+    Route::resource('product-types', AdminProductTypeController::class);
 });
 
 
@@ -125,13 +130,18 @@ Route::prefix('client')->name('client.')->middleware(['auth'])->group(function (
   // Rutas para la gestión de facturas de cliente
   Route::resource('invoices', App\Http\Controllers\Client\ClientInvoiceController::class)->except(['create', 'store', 'edit', 'update', 'destroy']); // Use resource for invoices, exclude non-client actions
   Route::post('/invoices/{invoice}/pay-with-balance', [ App\Http\Controllers\Client\ClientInvoiceController::class, 'payWithBalance'])->name('invoices.payWithBalance');
-  
+
   // Manual Payment Routes for Client
   Route::get('/invoices/{invoice}/manual-payment', [ClientManualPaymentController::class, 'showPaymentForm'])->name('invoices.manualPayment.create');
   Route::post('/invoices/{invoice}/manual-payment', [ClientManualPaymentController::class, 'processManualPayment'])->name('invoices.manualPayment.store');
 
   // Simulated payment route (if you keep it for other gateways)
   Route::post('/invoices/{invoice}/pay', [ClientInvoicePaymentController::class, 'store'])->name('invoices.payment.store');
+
+  // PayPal Routes
+  Route::get('/paypal/checkout/{invoice}', [PayPalController::class, 'checkout'])->name('paypal.checkout');
+  Route::get('/paypal/return/{invoice}', [PayPalController::class, 'success'])->name('paypal.success'); // Changed from PayerReturn to success
+  Route::get('/paypal/cancel/{invoice}', [PayPalController::class, 'cancel'])->name('paypal.cancel');
 
   // Rutas para la gestión de transacciones de cliente
   Route::get('/transactions', [App\Http\Controllers\Client\ClientTransactionController::class, 'index'])->name('transactions.index');
@@ -170,9 +180,14 @@ Route::prefix('client')->name('client.')->middleware(['auth'])->group(function (
     // Manual Payment Routes (already defined above, ensure correct placement relative to other invoice payment routes)
     // Route::get('/invoices/{invoice}/manual-payment', [ClientManualPaymentController::class, 'showPaymentForm'])->name('client.invoices.manualPayment.create');
     // Route::post('/invoices/{invoice}/manual-payment', [ClientManualPaymentController::class, 'processManualPayment'])->name('client.invoices.manualPayment.store');
-    
+
     // Simulated payment route (if you keep it for other gateways)
-    Route::post('/invoices/{invoice}/pay', [\App\Http\Controllers\Client\InvoicePaymentController::class, 'store'])->name('invoices.payment.store');
+    // Route::post('/invoices/{invoice}/pay', [\App\Http\Controllers\Client\InvoicePaymentController::class, 'store'])->name('invoices.payment.store'); // This is duplicated if PayPal routes are primary for /pay
+
+    // PayPal Routes (already defined above, ensure correct placement and naming for client context)
+    // Route::get('/paypal/checkout/{invoice}', [PayPalController::class, 'checkout'])->name('client.paypal.checkout');
+    // Route::get('/paypal/return/{invoice}', [PayPalController::class, 'success'])->name('client.paypal.success');
+    // Route::get('/paypal/cancel/{invoice}', [PayPalController::class, 'cancel'])->name('client.paypal.cancel');
 
     // Rutas para la gestión de transacciones de cliente
     Route::get('/transactions', [App\Http\Controllers\Client\ClientTransactionController::class, 'index'])->name('transactions.index');
@@ -197,14 +212,23 @@ Route::prefix('client')->name('client.')->middleware(['auth'])->group(function (
     Route::post('/services/{service}/request-renewal', [ClientServiceController::class, 'requestRenewal'])->name('services.requestRenewal');
 });
 
+// Comment out or remove the existing landing page route
+// Route::get('/', function () {
+//     // Opcionalmente, podrías cargar services.json aquí y pasarlo como prop
+//      $servicesData = json_decode(file_get_contents(public_path('data/services.json')), true);
+//     return Inertia::render('LandingPage', [ // Cambiado de 'Welcome' a 'LandingPage'
+//         'canLogin' => Route::has('login'),
+//         'canRegister' => Route::has('register'),
+//         'laravelVersion' => Application::VERSION,
+//         'phpVersion' => PHP_VERSION,
+//         // Pass serviceData directly here if not using controller
+//         // 'serviceData' => $servicesData,
+//     ]);
+// });
 
-Route::get('/', function () {
-
-    // Opcionalmente, podrías cargar services.json aquí y pasarlo como prop
-     $servicesData = json_decode(file_get_contents(public_path('data/services.json')), true);
-    return Inertia::render('LandingPage', [ // Cambiado de 'Welcome' a 'LandingPage' 'canLogin' => Route::has('login'), 'canRegister' => Route::has('register'), 'laravelVersion' => Application::VERSION, 'phpVersion' => PHP_VERSION,
-    ]);
-});
+// New Landing Page Routes
+Route::get('/', [LandingPageController::class, 'showHome'])->name('landing.home');
+Route::get('/servicios/{categorySlug}', [LandingPageController::class, 'showCategory'])->name('landing.category');
 
 
 

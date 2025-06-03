@@ -4,27 +4,29 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Order;
-use App\Models\OrderActivity; // Added for new methods
-use App\Models\Invoice; // Added for approveCancellationRequest
-use App\Models\Transaction; // Added for approveCancellationRequest
-use App\Http\Requests\Admin\UpdateOrderRequest; // New
-use Illuminate\Http\Request; // For existing index method
-use Illuminate\Http\RedirectResponse; // New
-use Illuminate\Support\Facades\Log; // For logging errors
-use Illuminate\Support\Facades\Auth; // Importar Auth
-use Illuminate\Support\Carbon; // Added for approveCancellationRequest
-use Illuminate\Support\Str; // Added for approveCancellationRequest
-use Illuminate\Support\Facades\DB; // Added for approveCancellationRequest
-use Inertia\Inertia; // Added for Inertia::render
-use Inertia\Response as InertiaResponse; // Added for type hinting
-use Illuminate\Database\QueryException; // Added
-use Exception; // Added
-use App\Actions\Admin\ConfirmOrderPaymentAction; // Added for refactoring
-use App\Actions\Admin\ApproveOrderCancellationAction; // Added for refactoring
+use App\Models\OrderActivity;
+use App\Models\Invoice;
+use App\Models\Transaction;
+use App\Models\ClientService; // Added ClientService model
+use App\Http\Requests\Admin\UpdateOrderRequest;
+use Illuminate\Http\Request;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB;
+use Inertia\Inertia;
+use Inertia\Response as InertiaResponse;
+use Illuminate\Database\QueryException;
+use Exception;
+use App\Actions\Admin\ConfirmOrderPaymentAction;
+use App\Actions\Admin\ApproveOrderCancellationAction;
 
 class AdminOrderController extends Controller
 {
-    /**
+    // ... (index, create, store, show, edit, update, confirmPayment, destroy, startExecution methods remain unchanged) ...
+        /**
      * Display a listing of the resource.
      */
     public function index(Request $request): InertiaResponse // Add Request type hint
@@ -266,20 +268,19 @@ class AdminOrderController extends Controller
         }
 
         try {
-            $order->status = 'pending_provisioning'; // Or 'provisioning_in_progress', 'admin_processing'
-                                                 // This 'pending_provisioning' was an original ENUM value.
+            $order->status = 'pending_provisioning';
             $order->save();
 
             OrderActivity::create([
                 'order_id' => $order->id,
-                'user_id' => Auth::id(), // Admin performing the action
-                'type' => 'admin_started_provisioning', // From ENUM list
+                'user_id' => Auth::id(),
+                'type' => 'admin_started_provisioning',
                 'details' => ['previous_status' => 'paid_pending_execution']
             ]);
 
             return redirect()->route('admin.orders.show', $order->id)
                              ->with('success', 'Order status updated to: Processing by Admin.');
-        } catch (Exception $e) { // Use statement applied
+        } catch (Exception $e) {
             Log::error("Error starting order execution for order ID: {$order->id}", ['error' => $e->getMessage()]);
             return redirect()->route('admin.orders.show', $order->id)
                              ->with('error', 'Failed to start order execution.');
@@ -294,47 +295,92 @@ class AdminOrderController extends Controller
      */
     public function completeExecution(Order $order): RedirectResponse
     {
-        $this->authorize('update', $order); // Or 'manageExecution'
+        $this->authorize('update', $order);
 
-        // Typically, an order would be in 'pending_provisioning' or a similar active processing state
         if (!in_array($order->status, ['pending_provisioning', 'paid_pending_execution', 'active'])) {
-             // Allow 'active' if it can be re-completed or if 'active' implies ongoing and 'completed' is final.
-             // Allow 'paid_pending_execution' to skip 'startExecution' if admin wants to mark as directly active/completed.
             return redirect()->route('admin.orders.show', $order->id)
                              ->with('error', 'Order cannot be completed at its current stage.');
         }
 
+        DB::beginTransaction();
         try {
-            // Decide if it goes to 'active' first or directly to 'completed'
-            // For a service that runs, 'active' is good.
-            // If it's a one-time provisioning, 'completed' might be fine.
-            // Let's use 'active' as a general "service is now usable" state.
             $previousStatus = $order->status;
-            $order->status = 'active'; // Or 'completed' if that's the final state post-provisioning
-            $order->save();
+            $order->status = 'active'; // Or 'completed'
+
+            $order->loadMissing('items.product.productType', 'items.productPricing.billingCycle', 'client.reseller'); // Ensure client.reseller and productType for items
+
+            $orderItem = $order->items->first();
+            $clientService = null;
+            $activityDetails = ['previous_status' => $previousStatus, 'new_status' => 'active'];
+
+            // Check if a service instance should be created based on ProductType
+            if ($orderItem && $orderItem->product && $orderItem->product->productType && $orderItem->product->productType->creates_service_instance) {
+                $registrationDate = Carbon::now();
+                $nextDueDate = $registrationDate->copy();
+                $billingCycle = $orderItem->productPricing->billingCycle ?? null;
+
+                if ($billingCycle) {
+                    switch ($billingCycle->type) {
+                        case 'day': $nextDueDate->addDays($billingCycle->multiplier); break;
+                        case 'month': $nextDueDate->addMonthsNoOverflow($billingCycle->multiplier); break;
+                        case 'year': $nextDueDate->addYearsNoOverflow($billingCycle->multiplier); break;
+                        default:
+                            Log::warning("Unknown billing cycle type '{$billingCycle->type}' for ProductPricing ID: {$orderItem->product_pricing_id}. Defaulting to 1 month.");
+                            $nextDueDate->addMonth();
+                    }
+                } else {
+                    Log::warning("BillingCycle not found for ProductPricing ID: {$orderItem->product_pricing_id}. Defaulting next due date to 1 month.");
+                    $nextDueDate->addMonth();
+                }
+
+                $clientService = ClientService::create([
+                    'client_id' => $order->client_id,
+                    'reseller_id' => $order->client->reseller_id, // Access reseller_id from loaded client
+                    'order_id' => $order->id,
+                    'product_id' => $orderItem->product_id,
+                    'product_pricing_id' => $orderItem->product_pricing_id,
+                    'billing_cycle_id' => $billingCycle->id ?? null, // Save billing_cycle_id
+                    'domain_name' => $orderItem->domain_name,
+                    'status' => 'Active', // ClientService status
+                    'registration_date' => $registrationDate->toDateString(),
+                    'next_due_date' => $nextDueDate->toDateString(),
+                    'billing_amount' => $orderItem->unit_price, // Assuming unit_price is the recurring amount
+                    'notes' => "Servicio activado desde Pedido #" . $order->order_number,
+                ]);
+
+                $orderItem->client_service_id = $clientService->id;
+                $orderItem->save();
+
+                $activityDetails['client_service_id'] = $clientService->id;
+                $activityDetails['domain_name'] = $clientService->domain_name;
+            } elseif (!$orderItem) {
+                Log::error("Order {$order->id} has no items, cannot create ClientService.");
+            }
+
+            $order->save(); // Save order status
 
             OrderActivity::create([
                 'order_id' => $order->id,
                 'user_id' => Auth::id(),
-                'type' => 'service_activated', // Or 'admin_completed_provisioning' from ENUM
-                'details' => ['previous_status' => $previousStatus, 'new_status' => 'active']
+                'type' => 'service_activated',
+                'details' => $activityDetails
             ]);
 
-            // Potentially trigger other actions: e.g., create ClientService record, send notification
-            // (These are out of scope for this specific sub-task)
+            DB::commit();
 
             return redirect()->route('admin.orders.show', $order->id)
                              ->with('success', 'Order execution completed. Service is now active.');
-        } catch (Exception $e) { // Use statement applied
-            Log::error("Error completing order execution for order ID: {$order->id}", ['error' => $e->getMessage()]);
+        } catch (Exception $e) {
+            DB::rollBack();
+            Log::error("Error completing order execution for order ID: {$order->id}", ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             return redirect()->route('admin.orders.show', $order->id)
-                             ->with('error', 'Failed to complete order execution.');
+                             ->with('error', 'Failed to complete order execution. ' . $e->getMessage());
         }
     }
 
     public function approveCancellationRequest(Order $order, ApproveOrderCancellationAction $approveOrderCancellationAction): RedirectResponse
     {
-        $this->authorize('update', $order); // Or a more specific policy: 'approveCancellation', $order
+        $this->authorize('update', $order);
 
         if ($order->status !== 'cancellation_requested_by_client') {
             return redirect()->route('admin.orders.show', $order->id)
@@ -342,14 +388,12 @@ class AdminOrderController extends Controller
         }
 
         try {
-            // The ApproveOrderCancellationAction handles its own DB transaction.
             $approveOrderCancellationAction->execute($order);
             
             return redirect()->route('admin.orders.show', $order->id)
                              ->with('success', 'Client cancellation request approved. Order cancelled and credit issued.');
 
-        } catch (Exception $e) { // Use statement applied
-            // The action class already rolls back its transaction on failure.
+        } catch (Exception $e) {
             Log::error("Error approving cancellation for order ID: {$order->id} (via Action): " . $e->getMessage(), ['exception' => $e]);
             return redirect()->route('admin.orders.show', $order->id)
                              ->with('error', 'Failed to approve cancellation request. ' . $e->getMessage());

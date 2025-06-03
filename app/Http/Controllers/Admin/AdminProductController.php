@@ -14,6 +14,7 @@ use App\Models\Product;
 use App\Models\ProductPricing; // Asegúrate que el namespace y nombre de clase son correctos
 use App\Models\ConfigurableOptionGroup; // Añadir
 use App\Models\User; // Para cargar revendedores si es necesario
+use App\Models\ProductType; // Added for ProductType
 
 use App\Models\BillingCycle; // Añadir importación para BillingCycle
 use Illuminate\Http\RedirectResponse;
@@ -55,10 +56,11 @@ class AdminProductController extends Controller
         // Aquí podrías pasar datos adicionales si fueran necesarios (ej: tipos de producto, usuarios revendedores)
         // $productTypes = [['value' => 'shared_hosting', 'label' => 'Shared Hosting'], ...];
         // $resellers = User::where('role', 'reseller')->pluck('name', 'id');
-        return Inertia::render('Admin/Products/Create'/*, [
-            // 'productTypes' => $productTypes,
+        $productTypes = ProductType::orderBy('name')->get(['id', 'name']);
+        return Inertia::render('Admin/Products/Create', [
+            'productTypes' => $productTypes->map(fn($pt) => ['value' => $pt->id, 'label' => $pt->name]),
             // 'resellers' => $resellers,
-        ]*/);
+        ]);
     }
 
     /**
@@ -74,7 +76,11 @@ class AdminProductController extends Controller
         if (empty($validatedData['slug']) && !empty($validatedData['name'])) {
             $validatedData['slug'] = Str::slug($validatedData['name']);
         }
-        // Considerar verificar unicidad del slug si se genera aquí y no se valida como unique en el FormRequest
+        // Remove old 'type' field if product_type_id is present, to avoid confusion
+        // The actual deprecation/removal of the 'type' column is a separate migration task.
+        if (isset($validatedData['product_type_id'])) {
+            unset($validatedData['type']);
+        }
         Product::create($validatedData);
         return redirect()->route('admin.products.index')->with('success', 'Producto creado exitosamente.');
     }
@@ -97,8 +103,8 @@ class AdminProductController extends Controller
     public function edit(Product $product): Response
     {
         $this->authorize('update', $product);
-        // Cargar product.pricings con la relación billingCycle
-        $product->load('pricings.billingCycle', 'configurableOptionGroups');
+        // Cargar product.pricings con la relación billingCycle, productType
+        $product->load('pricings.billingCycle', 'configurableOptionGroups', 'productType');
 
         // Obtener todos los ciclos de facturación
         $billingCyclesFromDB = BillingCycle::orderBy('name')->get(['id', 'name']);
@@ -107,6 +113,7 @@ class AdminProductController extends Controller
         $resellers = User::where('role', 'reseller')->orderBy('name')->get(['id', 'name', 'company_name']);
         // Incluir product_id para saber si un grupo es global o específico de un producto
         $allOptionGroups = ConfigurableOptionGroup::orderBy('name')->get(['id', 'name', 'product_id']);
+        $productTypes = ProductType::orderBy('name')->get(['id', 'name']);
 
         $allOptionGroupsData = $allOptionGroups->map(fn ($group) => [
             'id' => $group->id,
@@ -119,7 +126,7 @@ class AdminProductController extends Controller
         return Inertia::render('Admin/Products/Edit', [
             'product' => $product->toArray() + [
                 // pricings ya está en $product->toArray() si la relación está cargada
-                // 'pricings' => $product->pricings ? $product->pricings->toArray() : [],
+                // 'productType' ya está cargado y se incluirá en toArray()
                 'associated_option_groups' => $product->configurableOptionGroups->mapWithKeys(function ($group) {
                     return [$group->id => ['display_order' => $group->pivot->display_order ?? 0]];
                 })->toArray(),
@@ -129,7 +136,7 @@ class AdminProductController extends Controller
                 'label' => $reseller->name . ($reseller->company_name ? " ({$reseller->company_name})" : "")
             ])->toArray(),
             'all_option_groups' => $allOptionGroupsData, // Usar la variable depurada
-            
+            'productTypes' => $productTypes->map(fn($pt) => ['value' => $pt->id, 'label' => $pt->name]),
             'billingCycles' => $billingCyclesFromDB->map(fn($cycle) => [
                 'value' => $cycle->id,
                 'label' => $cycle->name
@@ -153,12 +160,15 @@ class AdminProductController extends Controller
         // Si el slug fue enviado explícitamente y es diferente al generado por el nuevo nombre,
         // se podría dar prioridad al slug enviado (si esa es la lógica deseada y el form lo permite).
         // Por ahora, si el nombre cambia, el slug se regenera basado en el nuevo nombre.
-        if (isset($productData['name']) && $productData['name'] !== $product->name) {
+        if (isset($productData['name']) && (!isset($productData['slug']) || empty($productData['slug']) || $productData['name'] !== $product->name) ) {
             $productData['slug'] = Str::slug($productData['name']);
         }
-        elseif (isset($productData['name']) && empty($productData['slug'])) { // Si el slug no vino del form o vino vacío pero el nombre sí
-            $productData['slug'] = Str::slug($productData['name']);
+        // Remove old 'type' field if product_type_id is present, to avoid confusion
+        // The actual deprecation/removal of the 'type' column is a separate migration task.
+        if (isset($productData['product_type_id'])) {
+            unset($productData['type']);
         }
+
 
         $product->update($productData);
 

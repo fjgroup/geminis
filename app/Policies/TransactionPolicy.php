@@ -36,7 +36,7 @@ class TransactionPolicy
             return true;
         }
         // Client specific logic would be here if this policy was used for client-facing parts
-        return false; 
+        return false;
     }
 
     /**

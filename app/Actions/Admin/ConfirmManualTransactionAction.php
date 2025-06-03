@@ -58,7 +58,7 @@ class ConfirmManualTransactionAction
             DB::rollBack();
             // Log the error or handle it as needed
             // For now, rethrow to be caught by the controller
-            throw $e; 
+            throw $e;
         }
     }
 
@@ -75,7 +75,7 @@ class ConfirmManualTransactionAction
                              ->where('status', 'completed')
                              // ->where('type', 'payment') // Consider if 'fund_addition' can also pay invoices
                              ->sum('amount');
-        
+
         // Assuming $transaction being processed is now 'completed' and part of the sum
         // If $transaction is not yet saved when this is called, its amount might need to be added manually to $totalPaid for this calculation
         // However, the action saves it before commit, so it should be included in the sum if relations are reloaded or sum is on the DB.

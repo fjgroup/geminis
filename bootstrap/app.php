@@ -18,11 +18,13 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'admin' => \App\Http\Middleware\EnsureUserIsAdmin::class,
-
             'role.reseller' => \App\Http\Middleware\EnsureUserIsReseller::class,
         ]);
 
-        //
+        // Add CSRF token validation exception for PayPal webhook
+        $middleware->validateCsrfTokens(except: [
+            'webhooks/paypal',
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //

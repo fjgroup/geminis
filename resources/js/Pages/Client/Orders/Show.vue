@@ -166,7 +166,7 @@ const payWithBalance = (invoiceId) => {
                                     This order is in a final state ({{ order.status.replace(/_/g, ' ') }}) and no further cancellation actions can be taken by you.
                                 </p>
                             </div>
-                            
+
                             <!-- Pay with Balance Button -->
                             <div v-if="order.invoice && order.invoice.status === 'unpaid' && user && user.balance >= order.invoice.total_amount" class="mt-4 text-right">
                                 <PrimaryButton @click="payWithBalance(order.invoice.id)" class="bg-emerald-600 hover:bg-emerald-700 focus:ring-emerald-500">
@@ -184,10 +184,15 @@ const payWithBalance = (invoiceId) => {
 
                             <!-- Pagar Factura Button (Manual Payment) -->
                             <div v-if="order.invoice && order.invoice.status === 'unpaid'" class="mt-4 text-right">
-                                <Link :href="route('client.invoices.manualPayment.create', { invoice: order.invoice.id })">
+                                <Link :href="route('client.invoices.manualPayment.create', { invoice: order.invoice.id })" class="mr-2">
                                     <PrimaryButton class="bg-blue-600 hover:bg-blue-700 focus:ring-blue-500">Informar Pago Manual</PrimaryButton>
                                 </Link>
-                                <p class="text-xs text-gray-500 mt-1">Registrar un pago realizado por otros medios.</p>
+                                <!-- PayPal Payment Button -->
+                                <Link :href="route('paypal.checkout', { invoice: order.invoice.id })"
+                                      class="inline-flex items-center px-4 py-2 bg-paypal-blue border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-paypal-darkblue active:bg-paypal-darkerblue focus:outline-none focus:ring-2 focus:ring-paypal-blue focus:ring-offset-2 transition ease-in-out duration-150">
+                                    Pagar con PayPal
+                                </Link>
+                                <p class="text-xs text-gray-500 mt-1">Pagar de forma segura con PayPal o registrar un pago manual.</p>
                             </div>
                         </div>
 

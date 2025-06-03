@@ -86,7 +86,7 @@ class AdminPaymentMethodController extends Controller
         }
         return $typeSpecificRules;
     }
-    
+
     private function prepareValidatedData(array $validatedData, string $type): array
     {
         $dataToSave = [
@@ -106,7 +106,7 @@ class AdminPaymentMethodController extends Controller
         foreach ($allTypeSpecificFields as $field) {
             $dataToSave[$field] = null;
         }
-        
+
         if ($type === 'bank') {
             $dataToSave['bank_name'] = $validatedData['bank_name'] ?? null;
             $dataToSave['account_number'] = $validatedData['account_number'] ?? null;
@@ -146,7 +146,7 @@ class AdminPaymentMethodController extends Controller
         $rules = array_merge($this->getCommonRules(), $this->getTypeSpecificRules($request));
         $validatedData = $request->validate($rules);
         $preparedData = $this->prepareValidatedData($validatedData, $request->input('type'));
-        
+
         PaymentMethod::create($preparedData);
 
         return Redirect::route('admin.payment-methods.index')->with('success', 'Payment method created successfully.');
@@ -172,7 +172,7 @@ class AdminPaymentMethodController extends Controller
     {
         $rules = array_merge($this->getCommonRules(), $this->getTypeSpecificRules($request));
         $validatedData = $request->validate($rules);
-        
+
         // Ensure 'is_active' is set, as unchecked checkboxes might not be sent if false
         $validatedData['is_active'] = $request->has('is_active') && $request->input('is_active');
 

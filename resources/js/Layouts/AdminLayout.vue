@@ -1,21 +1,21 @@
 <script setup>
 import { ref } from 'vue';
 import { Head, Link, router } from '@inertiajs/vue3'; // router es necesario para logout
-import NavLink from '@/Components/NavLink.vue';
+import NavLink from '@/Components/Shared/NavLink.vue';
 import {
     HomeIcon,
     UsersIcon,
     CubeIcon,
     CogIcon, // O WrenchScrewdriverIcon si prefieres para "Configurable"
     BriefcaseIcon, // Para Client Services
-    // Añade más iconos según necesites
-CurrencyDollarIcon, // Para Facturas
-CreditCardIcon, // Para Métodos de Pago
+    CurrencyDollarIcon, // Para Facturas
+    CreditCardIcon, // Para Métodos de Pago
+    TagIcon, // Para Tipos de Producto
 } from '@heroicons/vue/24/outline';
-import Dropdown from '@/Components/Dropdown.vue';
-import DropdownLink from '@/Components/DropdownLink.vue';
-import ResponsiveNavLink from '@/Components/ResponsiveNavLink.vue';
-// import ApplicationLogo from '@/Components/ApplicationLogo.vue'; // Descomenta si tienes y quieres usar un logo SVG
+import Dropdown from '@/Components/Shared/Dropdown.vue';
+import DropdownLink from '@/Components/Shared/DropdownLink.vue';
+import ResponsiveNavLink from '@/Components/Shared/ResponsiveNavLink.vue';
+// import ApplicationLogo from '@/Components/UI/ApplicationLogo.vue'; // Descomenta si tienes y quieres usar un logo SVG
 
 defineProps({
     title: String,
@@ -57,6 +57,10 @@ const showingNavigationDropdown = ref(false);
                                     :active="route().current('admin.products.*')">
                                     Productos
                                     <CubeIcon class="inline-block w-5 h-5 ml-2" />
+                                </NavLink>
+                                <NavLink :href="route('admin.product-types.index')" :active="route().current('admin.product-types.*')">
+                                    Tipos de Producto
+                                    <TagIcon class="inline-block w-5 h-5 ml-2" />
                                 </NavLink>
                                 <NavLink :href="route('admin.configurable-option-groups.index')"
                                     :active="route().current('admin.configurable-option-groups.*')">
@@ -152,6 +156,9 @@ const showingNavigationDropdown = ref(false);
                         <ResponsiveNavLink :href="route('admin.products.index')"
                             :active="route().current('admin.products.*')">
                             Productos
+                        </ResponsiveNavLink>
+                        <ResponsiveNavLink :href="route('admin.product-types.index')" :active="route().current('admin.product-types.*')">
+                            Tipos de Producto
                         </ResponsiveNavLink>
                         <ResponsiveNavLink :href="route('admin.client-services.index')"
                             :active="route().current('admin.client-services.*')">

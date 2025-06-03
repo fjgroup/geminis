@@ -4,10 +4,10 @@ import { Head, Link, router } from '@inertiajs/vue3';
 import PrimaryButton from '@/Components/PrimaryButton.vue'; // Asumiendo nueva ruta
 import SecondaryButton from '@/Components/SecondaryButton.vue'; // Asumiendo nueva ruta
 import DangerButton from '@/Components/DangerButton.vue'; // Asumiendo nueva ruta
-import Pagination from '@/Components/Pagination.vue';
+import Pagination from '@/Components/UI/Pagination.vue';
 import { ref, computed } from 'vue';
-import ConfirmationModal from '@/Components/ConfirmationModal.vue';
-import Alert from '@/Components/Alert.vue';
+import ConfirmationModal from '@/Components/UI/ConfirmationModal.vue';
+import Alert from '@/Components/UI/Alert.vue';
 import { usePage } from '@inertiajs/vue3';
 import { PlusIcon, PencilSquareIcon, TrashIcon, EyeIcon } from '@heroicons/vue/24/outline';
 

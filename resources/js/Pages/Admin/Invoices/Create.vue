@@ -2,14 +2,14 @@
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
 import { ref, computed } from 'vue';
-import PrimaryButton from '@/Components/PrimaryButton.vue';
-import SecondaryButton from '@/Components/SecondaryButton.vue';
-import InputLabel from '@/Components/InputLabel.vue';
-import TextInput from '@/Components/TextInput.vue';
-import SelectInput from '@/Components/SelectInput.vue';
-import TextareaInput from '@/Components/TextareaInput.vue';
-import InputError from '@/Components/InputError.vue';
-import DangerButton from '@/Components/DangerButton.vue';
+import PrimaryButton from '@/Components/Forms/Buttons/PrimaryButton.vue';
+import SecondaryButton from '@/Components/Forms/Buttons/SecondaryButton.vue';
+import InputLabel from '@/Components/Forms/InputLabel.vue';
+import TextInput from '@/Components/Forms/TextInput.vue';
+import SelectInput from '@/Components/Forms/SelectInput.vue';
+import TextareaInput from '@/Components/Forms/TextareaInput.vue';
+import InputError from '@/Components/Forms/InputError.vue';
+import DangerButton from '@/Components/Forms/Buttons/DangerButton.vue';
 
 
 const props = defineProps({

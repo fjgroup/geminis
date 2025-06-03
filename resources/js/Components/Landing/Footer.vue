@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import Icon from '../Icon.vue';
+import { Link } from '@inertiajs/vue3'; // Added Link
 
 // Definiciones de tipos (reutilizadas de otros componentes o definidas localmente)
 interface ContactInfo {
@@ -46,15 +47,14 @@ interface FooterProps {
 // Definición de Props
 const props = defineProps<FooterProps>();
 
-// Definición de Emits
-const emit = defineEmits<{
-  (e: 'navigate', page: PageView, categoryId?: string): void;
-}>();
+// Emits and handleNavigate are no longer needed
+// const emit = defineEmits<{
+//   (e: 'navigate', page: PageView, categoryId?: string): void;
+// }>();
 
-// Lógica para manejar el evento de navegación
-const handleNavigate = (page: PageView, categoryId?: string) => {
-  emit('navigate', page, categoryId);
-};
+// const handleNavigate = (page: PageView, categoryId?: string) => {
+//   emit('navigate', page, categoryId);
+// };
 
 // Lógica para manejar el markdown en la descripción del footer
 const footerDescriptionHtml = computed(() => {
@@ -87,9 +87,9 @@ const cleanCategoryDescription = (description: string) => {
           <h3 class="mb-3 text-lg font-semibold text-slate-200">Enlaces Rápidos</h3>
           <ul class="space-y-2 text-sm">
             <li v-for="cat in serviceCategories" :key="cat.categoryId">
-              <button @click="handleNavigate('categoryDetail', cat.categoryId)" class="transition-colors hover:text-brand-blue">
-                {{ cat.categoryName }} <!-- Usar categoryName según el código React -->
-              </button>
+              <Link :href="route('landing.category', { categorySlug: cat.categoryId })" class="transition-colors hover:text-brand-blue">
+                {{ cat.categoryName }}
+              </Link>
             </li>
           </ul>
         </div>

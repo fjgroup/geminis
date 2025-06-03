@@ -5,11 +5,11 @@ import ConfigurableOptionGroupForm from './_Form.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import DangerButton from '@/Components/DangerButton.vue';
-import InputLabel from '@/Components/InputLabel.vue';
-import TextInput from '@/Components/TextInput.vue';
-import InputError from '@/Components/InputError.vue';
-import ConfirmationModal from '@/Components/ConfirmationModal.vue';
-import Alert from '@/Components/Alert.vue';
+import InputLabel from '@/Components/Forms/InputLabel.vue';
+import TextInput from '@/Components/Forms/TextInput.vue';
+import InputError from '@/Components/Forms/InputError.vue';
+import ConfirmationModal from '@/Components/UI/ConfirmationModal.vue';
+import Alert from '@/Components/UI/Alert.vue';
 import { ref, computed } from 'vue';
 import { PlusCircleIcon, PencilSquareIcon, TrashIcon } from '@heroicons/vue/24/outline'; // Asegúrate de tener estos iconos instalados
 

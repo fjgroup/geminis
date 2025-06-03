@@ -70,11 +70,11 @@
 <script setup>
 import { Head, Link, useForm } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import InputLabel from '@/Components/InputLabel.vue';
-import TextInput from '@/Components/TextInput.vue';
-import SelectInput from '@/Components/SelectInput.vue';
-import PrimaryButton from '@/Components/PrimaryButton.vue';
-import InputError from '@/Components/InputError.vue';
+import InputLabel from '@/Components/Forms/InputLabel.vue';
+import TextInput from '@/Components/Forms/TextInput.vue';
+import SelectInput from '@/Components/Forms/SelectInput.vue';
+import PrimaryButton from '@/Components/Forms/Buttons/PrimaryButton.vue';
+import InputError from '@/Components/Forms/InputError.vue';
 
 const props = defineProps({
   order: Object, // Includes items.product.productPricings.billingCycle and items.productPricing.billingCycle
