@@ -1,47 +1,45 @@
 <script setup>
 import AdminLayout from '@/Layouts/AdminLayout.vue';
-import { Head } from '@inertiajs/vue3';
-// import { Link, router, usePage } from '@inertiajs/vue3';
-// import PrimaryButton from '@/Components/PrimaryButton.vue';
-// import SecondaryButton from '@/Components/SecondaryButton.vue';
-// import DangerButton from '@/Components/DangerButton.vue';
-// import ConfirmationModal from '@/Components/UI/ConfirmationModal.vue';
-// import Alert from '@/Components/UI/Alert.vue';
-// import { ref, computed } from 'vue';
-// import { PlusIcon, PencilSquareIcon, TrashIcon } from '@heroicons/vue/24/outline';
+import { Head, Link, router, usePage } from '@inertiajs/vue3';
+import PrimaryButton from '@/Components/PrimaryButton.vue'; // Using path from original PaymentMethods/Index.vue
+import SecondaryButton from '@/Components/SecondaryButton.vue'; // Using path from original PaymentMethods/Index.vue
+import DangerButton from '@/Components/DangerButton.vue'; // Using path from original PaymentMethods/Index.vue
+import ConfirmationModal from '@/Components/UI/ConfirmationModal.vue';
+import Alert from '@/Components/UI/Alert.vue';
+import { ref, computed } from 'vue';
+import { PlusIcon, PencilSquareIcon, TrashIcon } from '@heroicons/vue/24/outline';
 
-// const props = defineProps({
-//     paymentMethods: Array,
-// });
+const props = defineProps({
+    paymentMethods: Array,
+});
 
-// const page = usePage();
-// const flashSuccess = computed(() => page.props.flash.success);
-// const flashError = computed(() => page.props.flash.error);
+const page = usePage();
+const flashSuccess = computed(() => page.props.flash.success);
+const flashError = computed(() => page.props.flash.error);
 
 
-// const showConfirmDeleteModal = ref(false);
-// const methodToDelete = ref(null);
+const showConfirmDeleteModal = ref(false);
+const methodToDelete = ref(null);
 
-// const confirmDeleteMethod = (method) => {
-//     methodToDelete.value = method;
-//     showConfirmDeleteModal.value = true;
-// };
+const confirmDeleteMethod = (method) => {
+    methodToDelete.value = method;
+    showConfirmDeleteModal.value = true;
+};
 
-// const closeModal = () => {
-//     showConfirmDeleteModal.value = false;
-//     methodToDelete.value = null;
-// };
+const closeModal = () => {
+    showConfirmDeleteModal.value = false;
+    methodToDelete.value = null;
+};
 
-// const deleteMethod = () => {
-//     if (methodToDelete.value) {
-//         router.delete(route('admin.payment-methods.destroy', { payment_method: methodToDelete.value.id }), {
-//             preserveScroll: true,
-//             onSuccess: () => closeModal(),
-//             // onError: () => { /* Handle error if needed */ },
-//         });
-//     }
-// };
-
+const deleteMethod = () => {
+    if (methodToDelete.value) {
+        router.delete(route('admin.payment-methods.destroy', { payment_method: methodToDelete.value.id }), {
+            preserveScroll: true,
+            onSuccess: () => closeModal(),
+            // onError: () => { /* Handle error if needed */ },
+        });
+    }
+};
 </script>
 
 <template>
