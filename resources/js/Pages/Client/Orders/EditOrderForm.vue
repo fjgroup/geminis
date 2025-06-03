@@ -90,12 +90,26 @@ const formatCurrency = (amount, currencyCode = 'USD') => {
 
 const form = useForm({
   items: props.order.items.map(item => {
-    // item.product.productPricings should be available from controller eager loading
+    console.log('Processing item:', item); // Log the whole item
+    console.log('Item product:', item.product); // Log the product part
+    if (item.product) {
+        console.log('Item product pricings:', item.product.product_pricings); // Log the pricings array
+    }
+
     const productPricings = item.product && item.product.product_pricings ? item.product.product_pricings : [];
-    const available_billing_cycles = productPricings.map(pricing => ({
-      id: pricing.id, // This is product_pricing_id
-      name: `${pricing.billing_cycle.name} - ${formatCurrency(pricing.price, pricing.currency_code || props.order.currency_code)}`,
-    }));
+    const available_billing_cycles = productPricings.map(pricing => {
+      console.log('Processing pricing option for SelectInput:', pricing); // Log each pricing option
+      if (pricing.billing_cycle) {
+        console.log('Billing cycle name:', pricing.billing_cycle.name);
+      } else {
+        console.log('Pricing option MISSING billing_cycle:', pricing);
+      }
+      return {
+        id: pricing.id,
+        name: `${pricing.billing_cycle ? pricing.billing_cycle.name : 'N/A'} - ${formatCurrency(pricing.price, pricing.currency_code || props.order.currency_code)}`,
+      };
+    });
+    console.log('Generated available_billing_cycles for item:', available_billing_cycles);
 
     // item.product_pricing also available from controller for current details
     const currentBillingCycleName = item.product_pricing?.billing_cycle?.name || 'N/A';
@@ -104,7 +118,7 @@ const form = useForm({
 
     return {
       id: item.id, // OrderItem ID
-      product_name: item.product.name,
+      product_name: item.product?.name || 'Producto Desconocido', // Safer access
       quantity: item.quantity,
       product_pricing_id: item.product_pricing_id, // Current product_pricing_id
       available_billing_cycles: available_billing_cycles,
