@@ -2,9 +2,9 @@
 import AdminLayout from '@/Layouts/AdminLayout.vue'; // Ajusta tu layout
 import { Head, useForm, router, Link, usePage } from '@inertiajs/vue3'; //
 import ConfigurableOptionGroupForm from './_Form.vue';
-import PrimaryButton from '@/Components/PrimaryButton.vue';
-import SecondaryButton from '@/Components/SecondaryButton.vue';
-import DangerButton from '@/Components/DangerButton.vue';
+import PrimaryButton from '@/Components/Forms/Buttons/PrimaryButton.vue';
+import SecondaryButton from '@/Components/Forms/Buttons/SecondaryButton.vue';
+import DangerButton from '@/Components/Forms/Buttons/DangerButton.vue';
 import InputLabel from '@/Components/Forms/InputLabel.vue';
 import TextInput from '@/Components/Forms/TextInput.vue';
 import InputError from '@/Components/Forms/InputError.vue';

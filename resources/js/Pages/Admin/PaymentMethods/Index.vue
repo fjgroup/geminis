@@ -14,8 +14,8 @@ const props = defineProps({
 });
 
 const page = usePage();
-const flashSuccess = computed(() => page.props.flash.success);
-const flashError = computed(() => page.props.flash.error);
+const flashSuccess = computed(() => page.props.flash?.success);
+const flashError = computed(() => page.props.flash?.error);
 
 
 const showConfirmDeleteModal = ref(false);

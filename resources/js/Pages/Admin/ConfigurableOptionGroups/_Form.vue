@@ -4,7 +4,7 @@ import TextInput from '@/Components/Forms/TextInput.vue';
 import TextareaInput from '@/Components/Forms/TextareaInput.vue'; // Asumiendo que tienes este componente
 import SelectInput from '@/Components/Forms/SelectInput.vue';
 import InputError from '@/Components/Forms/InputError.vue';
-import PrimaryButton from '@/Components/PrimaryButton.vue';
+import PrimaryButton from '@/Components/Forms/Buttons/PrimaryButton.vue';
 import { Link } from '@inertiajs/vue3';
 import { computed } from 'vue';
 import { ArrowDownTrayIcon, XMarkIcon } from '@heroicons/vue/24/outline';
