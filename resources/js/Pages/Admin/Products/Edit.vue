@@ -59,15 +59,6 @@ const pricingForm = useForm({
     id: null, // Para la actualización
 });
 
-const productTypeOptions = [
-    { value: "shared_hosting", label: "Shared Hosting" },
-    { value: "vps", label: "VPS" },
-    { value: "dedicated_server", label: "Dedicated Server" },
-    { value: "domain_registration", label: "Domain Registration" },
-    { value: "ssl_certificate", label: "SSL Certificate" },
-    { value: "other", label: "Other" },
-];
-
 const productStatusOptions = [
     { value: "active", label: "Active" },
     { value: "inactive", label: "Inactive" },
