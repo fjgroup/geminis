@@ -185,7 +185,7 @@ const payWithBalance = (invoiceId) => {
                                     <PrimaryButton class="bg-blue-600 hover:bg-blue-700 focus:ring-blue-500">Informar Pago Manual</PrimaryButton>
                                 </Link>
                                 <!-- PayPal Payment Button -->
-                                <Link :href="route('paypal.checkout', { invoice: order.invoice.id })"
+                                <Link :href="route('client.paypal.checkout', { invoice: order.invoice.id })"
                                       class="inline-flex items-center px-4 py-2 bg-paypal-blue border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-paypal-darkblue active:bg-paypal-darkerblue focus:outline-none focus:ring-2 focus:ring-paypal-blue focus:ring-offset-2 transition ease-in-out duration-150">
                                     Pagar con PayPal
                                 </Link>

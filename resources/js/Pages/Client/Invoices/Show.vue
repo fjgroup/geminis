@@ -272,7 +272,7 @@ const formatDate = (datetime) => {
                 </div>
                  <!-- PayPal Payment Button -->
                 <div v-if="invoice.status === 'unpaid'" class="mt-2">
-                     <Link :href="route('paypal.checkout', { invoice: invoice.id })"
+                     <Link :href="route('client.paypal.checkout', { invoice: invoice.id })"
                           class="inline-flex items-center px-4 py-2 bg-paypal-blue border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-paypal-darkblue active:bg-paypal-darkerblue focus:outline-none focus:ring-2 focus:ring-paypal-blue focus:ring-offset-2 transition ease-in-out duration-150">
                         Pagar con PayPal
                     </Link>
