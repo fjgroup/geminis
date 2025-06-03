@@ -1,7 +1,7 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link, router } from '@inertiajs/vue3'; // Added router
-import Pagination from '@/Components/Pagination.vue';
+import Pagination from '@/Components/UI/Pagination.vue';
 // import PrimaryButton from '@/Components/PrimaryButton.vue'; // Not using PrimaryButton for simple link-style button here
 
 const props = defineProps({
