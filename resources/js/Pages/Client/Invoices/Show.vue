@@ -2,8 +2,8 @@
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
 import { computed } from "vue"; // Importamos computed
 import { Head, Link, router, usePage } from "@inertiajs/vue3"; // Added router, usePage
-import PrimaryButton from "@/Components/PrimaryButton.vue";
-import SecondaryButton from "@/Components/SecondaryButton.vue"; // Added SecondaryButton
+import PrimaryButton from "@/Components/Forms/Buttons/PrimaryButton.vue";
+import SecondaryButton from "@/Components/Forms/Buttons/SecondaryButton.vue";
 
 const props = defineProps({
   invoice: {

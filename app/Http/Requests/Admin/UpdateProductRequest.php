@@ -31,17 +31,18 @@ class UpdateProductRequest extends FormRequest
             'name' => ['required', 'string', 'max:255', Rule::unique('products', 'name')->ignore($this->route('product')?->id)],
             // El slug se genera en el controlador si el nombre cambia.
             // Si se enviara un slug desde el form (actualmente no se hace), esta regla lo validaría.
-            'slug' => ['nullable', 'string', 'max:255', Rule::unique('products', 'slug')->ignore($this->route('product')?->id)],
-            'description' => ['nullable', 'string'],
-            'type' => ['required', 'string', Rule::in(['shared_hosting', 'vps', 'dedicated_server', 'domain_registration', 'ssl_certificate', 'other'])],
-            'module_name' => ['nullable', 'string', 'max:255'],
-            'owner_id' => ['nullable', 'integer', 'exists:users,id'],
-            'status' => ['required', 'string', Rule::in(['active', 'inactive', 'hidden'])],
-            'is_publicly_available' => ['required', 'boolean'],
-            'is_resellable_by_default' => ['required', 'boolean'],
+            'slug' => ['sometimes', 'nullable', 'string', 'max:255', Rule::unique('products', 'slug')->ignore($this->route('product')?->id)],
+            'description' => ['sometimes', 'nullable', 'string'],
+            'product_type_id' => ['sometimes', 'required', 'integer', 'exists:product_types,id'],
+            'type' => ['sometimes', 'nullable', 'string', Rule::in(['shared_hosting', 'vps', 'dedicated_server', 'domain_registration', 'ssl_certificate', 'other'])], // Old field, make nullable or remove if fully deprecated
+            'module_name' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'owner_id' => ['sometimes', 'nullable', 'integer', 'exists:users,id'],
+            'status' => ['sometimes', 'required', 'string', Rule::in(['active', 'inactive', 'hidden'])],
+            'is_publicly_available' => ['sometimes', 'boolean'], // Booleans are false if not present
+            'is_resellable_by_default' => ['sometimes', 'boolean'], // Booleans are false if not present
 
             // Validación para los grupos de opciones configurables
-            'configurable_option_groups' => ['nullable', 'array'],
+            'configurable_option_groups' => ['sometimes', 'nullable', 'array'],
 
             // Validar que cada clave en configurable_option_groups sea un ID de grupo existente
             'configurable_option_groups.*' => ['sometimes', 'array'], // Cada elemento del array es un objeto/array
