@@ -45,10 +45,10 @@ const showingNavigationDropdown = ref(false);
 
                             <!-- Navigation Links -->
                             <div class="hidden space-x-8 sm:-my-px sm:ml-10 sm:flex">
-                                <NavLink :href="route('admin.dashboard')" :active="route().current('admin.dashboard')">
+                                <!-- <NavLink :href="route('admin.dashboard')" :active="route().current('admin.dashboard')">
                                     Dashboard
                                     <HomeIcon class="inline-block w-5 h-5 ml-2" />
-                                </NavLink>
+                                </NavLink> -->
                                 <NavLink :href="route('admin.users.index')" :active="route().current('admin.users.*')">
                                     Usuarios
                                     <UsersIcon class="inline-block w-5 h-5 ml-2" />
@@ -145,10 +145,10 @@ const showingNavigationDropdown = ref(false);
                 <div :class="{ block: showingNavigationDropdown, hidden: !showingNavigationDropdown }"
                     class="sm:hidden">
                     <div class="pt-2 pb-3 space-y-1">
-                        <ResponsiveNavLink :href="route('admin.dashboard')"
+                        <!-- <ResponsiveNavLink :href="route('admin.dashboard')"
                             :active="route().current('admin.dashboard')">
                             Dashboard
-                        </ResponsiveNavLink>
+                        </ResponsiveNavLink> -->
                         <ResponsiveNavLink :href="route('admin.users.index')"
                             :active="route().current('admin.users.*')">
                             Usuarios

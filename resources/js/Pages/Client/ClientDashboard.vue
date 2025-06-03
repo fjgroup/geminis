@@ -87,57 +87,53 @@ const confirmRenewalRequest = (event, serviceId) => {
 
                         <!-- Dashboard Summary Section -->
                         <div class="mb-8">
-                            <h3 class="mb-4 text-lg font-semibold text-gray-900 dark:text-gray-100">Account Overview
+                            <h3 class="mb-4 text-lg font-semibold text-gray-900 dark:text-gray-100">Resumen de Cuenta
                             </h3>
                             <div class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
                                 <!-- Account Balance Card -->
                                 <div
                                     class="p-6 bg-white border border-gray-200 rounded-lg shadow-md dark:bg-gray-700 dark:border-gray-600">
-                                    <h4 class="mb-2 font-semibold text-gray-700 text-md dark:text-gray-300">Account
-                                        Balance</h4>
+                                    <h4 class="mb-2 font-semibold text-gray-700 text-md dark:text-gray-300">Saldo de Cuenta</h4>
                                     <p class="text-2xl font-bold text-gray-900 dark:text-white">{{
                                         formattedAccountBalance }}
                                     </p>
                                     <!-- Optional: Link to add funds or view transactions -->
                                     <Link :href="route('client.transactions.index')"
                                         class="mt-2 text-sm text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300">
-                                    View Transactions
+                                    Ver Transacciones
                                     </Link>
                                 </div>
                                 <!-- Unpaid Invoices Card -->
                                 <div
                                     class="p-6 bg-white border border-gray-200 rounded-lg shadow-md dark:bg-gray-700 dark:border-gray-600">
-                                    <h4 class="mb-2 font-semibold text-gray-700 text-md dark:text-gray-300">Unpaid
-                                        Invoices</h4>
+                                    <h4 class="mb-2 font-semibold text-gray-700 text-md dark:text-gray-300">Facturas Pendientes</h4>
                                     <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ unpaidInvoicesCount
                                         }}</p>
                                     <Link :href="route('client.invoices.index')"
                                         class="mt-2 text-sm text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300">
-                                    View Invoices
+                                    Ver Facturas
                                     </Link>
                                 </div>
                                 <!-- Pending Orders Card -->
                                 <div
                                     class="p-6 bg-white border border-gray-200 rounded-lg shadow-md dark:bg-gray-700 dark:border-gray-600">
-                                    <h4 class="mb-2 font-semibold text-gray-700 text-md dark:text-gray-300">Pending
-                                        Orders</h4>
+                                    <h4 class="mb-2 font-semibold text-gray-700 text-md dark:text-gray-300">Órdenes Pendientes</h4>
                                     <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ pendingOrdersCount }}
                                     </p>
                                     <Link :href="route('client.orders.index')"
                                         class="mt-2 text-sm text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300">
-                                    View Orders
+                                    Ver Órdenes
                                     </Link>
                                 </div>
                                 <!-- Active Services Card -->
                                 <div
                                     class="p-6 bg-white border border-gray-200 rounded-lg shadow-md dark:bg-gray-700 dark:border-gray-600">
-                                    <h4 class="mb-2 font-semibold text-gray-700 text-md dark:text-gray-300">Active
-                                        Services</h4>
+                                    <h4 class="mb-2 font-semibold text-gray-700 text-md dark:text-gray-300">Servicios Activos</h4>
                                     <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ activeServicesCount
                                         }}</p>
                                     <Link :href="route('client.services.index')"
                                         class="mt-2 text-sm text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300">
-                                    View Services
+                                    Ver Servicios
                                     </Link>
                                 </div>
                             </div>

@@ -49,7 +49,7 @@ class ClientFundAdditionController extends Controller
             'amount' => $validated['amount'],
             'currency_code' => $client->currency_code ?? 'USD',
             'status' => 'pending', // Pending confirmation by admin
-            'type' => 'fund_addition',
+            'type' => 'credit_added',
             'transaction_date' => $validated['payment_date'],
             'description' => "Solicitud de adición de fondos por cliente.",
             'fees_amount' => 0, // Typically no fees for manual fund addition recording itself

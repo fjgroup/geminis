@@ -61,6 +61,43 @@ const rejectTransaction = (id) => {
                 <Alert :message="flashSuccess" type="success" v-if="flashSuccess" class="mb-4" />
                 <Alert :message="flashError" type="danger" v-if="flashError" class="mb-4" />
 
+                <div class="mb-4">
+                    <nav class="flex space-x-4" aria-label="Tabs">
+                        <Link :href="route('admin.transactions.index')"
+                              :class="{
+                                  'bg-indigo-100 text-indigo-700': !filters.type && !filters.status && !filters.gateway_slug,
+                                  'text-gray-500 hover:text-gray-700': filters.type || filters.status || filters.gateway_slug
+                              }"
+                              class="px-3 py-2 font-medium text-sm rounded-md">
+                            Todas las Transacciones
+                        </Link>
+                        <Link :href="route('admin.transactions.index', {
+                                  type: 'credit_added',
+                                  status: 'pending',
+                                  gateway_slug: 'manual_fund_addition'
+                              })"
+                              :class="{
+                                  'bg-indigo-100 text-indigo-700': filters.type === 'credit_added' && filters.status === 'pending' && filters.gateway_slug === 'manual_fund_addition',
+                                  'text-gray-500 hover:text-gray-700': !(filters.type === 'credit_added' && filters.status === 'pending' && filters.gateway_slug === 'manual_fund_addition')
+                              }"
+                              class="px-3 py-2 font-medium text-sm rounded-md">
+                            Solicitudes de Fondos Pendientes
+                        </Link>
+                        <!-- Add other filters as needed, e.g., Pending Order Payments -->
+                        <Link :href="route('admin.transactions.index', {
+                                  type: 'order_payment', // Assuming 'order_payment' is the type for invoice payments
+                                  status: 'pending'
+                              })"
+                              :class="{
+                                  'bg-indigo-100 text-indigo-700': filters.type === 'order_payment' && filters.status === 'pending' && !filters.gateway_slug, // Ensure gateway_slug is not set for this tab
+                                  'text-gray-500 hover:text-gray-700': !(filters.type === 'order_payment' && filters.status === 'pending' && !filters.gateway_slug)
+                              }"
+                              class="px-3 py-2 font-medium text-sm rounded-md">
+                            Pagos de Órdenes Pendientes
+                        </Link>
+                    </nav>
+                </div>
+
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                     <div class="p-6 bg-white border-b border-gray-200">
                         <div class="overflow-x-auto">

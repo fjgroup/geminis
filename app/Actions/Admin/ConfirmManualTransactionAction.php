@@ -41,7 +41,7 @@ class ConfirmManualTransactionAction
                 }
             }
             // Fund Addition Logic
-            elseif ($transaction->type === 'fund_addition' && $transaction->client_id) {
+            elseif ($transaction->type === 'credit_added' && $transaction->client_id) {
                 $client = User::find($transaction->client_id);
                 if ($client) {
                     $client->balance = bcadd($client->balance, $transaction->amount, 2);

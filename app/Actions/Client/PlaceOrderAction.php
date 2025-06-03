@@ -175,7 +175,7 @@ class PlaceOrderAction
         OrderActivity::create([
             'order_id' => $order->id,
             'user_id' => $client->id, // Client initiated
-            'type' => 'order_created_pending_payment', // More accurate type
+            'type' => 'order_requested_by_client',
             'details' => json_encode([ // encode to json string
                 'product_id' => $product->id,
                 'product_name' => $product->name,
