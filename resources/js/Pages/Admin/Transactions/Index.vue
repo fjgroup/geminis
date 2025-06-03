@@ -1,10 +1,10 @@
 <script setup>
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { Head, Link, router, usePage } from '@inertiajs/vue3'; // Added router and usePage
-import Pagination from '@/Components/Pagination.vue';
-import PrimaryButton from '@/Components/PrimaryButton.vue'; // Added
-import DangerButton from '@/Components/DangerButton.vue';   // Added
-import Alert from '@/Components/Alert.vue'; // Added
+import Pagination from '@/Components/UI/Pagination.vue';
+import PrimaryButton from '@/Components/Forms/Buttons/PrimaryButton.vue';
+import DangerButton from '@/Components/Forms/Buttons/DangerButton.vue';
+import Alert from '@/Components/UI/Alert.vue';
 import { computed } from 'vue'; // Added
 
 const props = defineProps({
