@@ -1,8 +1,8 @@
 <script setup>
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
-import Pagination from '@/Components/Pagination.vue'; //
-import PrimaryButton from '@/Components/PrimaryButton.vue'; // Ruta actualizada para consistencia
+import Pagination from '@/Components/UI/Pagination.vue';
+import PrimaryButton from '@/Components/Forms/Buttons/PrimaryButton.vue';
 import { PlusIcon, PencilSquareIcon, TrashIcon } from '@heroicons/vue/24/outline'; // Añadido para el icono
 
 
