@@ -1,9 +1,9 @@
 <script setup>
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
-import PrimaryButton from '@/Components/PrimaryButton.vue'; // Using path from original PaymentMethods/Index.vue
-import SecondaryButton from '@/Components/SecondaryButton.vue'; // Using path from original PaymentMethods/Index.vue
-import DangerButton from '@/Components/DangerButton.vue'; // Using path from original PaymentMethods/Index.vue
+import PrimaryButton from '@/Components/Forms/Buttons/PrimaryButton.vue';
+import SecondaryButton from '@/Components/Forms/Buttons/SecondaryButton.vue';
+import DangerButton from '@/Components/Forms/Buttons/DangerButton.vue';
 import ConfirmationModal from '@/Components/UI/ConfirmationModal.vue';
 import Alert from '@/Components/UI/Alert.vue';
 import { ref, computed } from 'vue';
