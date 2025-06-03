@@ -1,8 +1,8 @@
 <script setup>
 import AdminLayout from '@/Layouts/AdminLayout.vue'; // Assuming AdminLayout
 import { Head, Link, useForm, router } from '@inertiajs/vue3'; // Added useForm and router
-import PrimaryButton from '@/Components/PrimaryButton.vue'; // Added PrimaryButton
-import SecondaryButton from '@/Components/SecondaryButton.vue'; // Assuming SecondaryButton exists
+import PrimaryButton from '@/Components/Forms/Buttons/PrimaryButton.vue';
+import SecondaryButton from '@/Components/Forms/Buttons/SecondaryButton.vue';
 
 const props = defineProps({
     order: Object,
