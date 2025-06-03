@@ -3,7 +3,7 @@ import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { Head, useForm } from '@inertiajs/vue3';
 import PaymentMethodForm from './_Form.vue';
 import { ArrowLeftIcon } from '@heroicons/vue/24/outline';
-import PrimaryButton from '@/Components/PrimaryButton.vue';
+import PrimaryButton from '@/Components/Forms/Buttons/PrimaryButton.vue';
 
 const props = defineProps({
     paymentMethod: Object,
