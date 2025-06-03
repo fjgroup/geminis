@@ -1,10 +1,7 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link, router, usePage } from '@inertiajs/vue3'; // Added usePage
-import PrimaryButton from '@/Components/PrimaryButton.vue';
-// Assuming DangerButton and SecondaryButton exist, if not, PrimaryButton will be used with different styling.
-// import DangerButton from '@/Components/DangerButton.vue';
-// import SecondaryButton from '@/Components/SecondaryButton.vue';
+import PrimaryButton from '@/Components/Forms/Buttons/PrimaryButton.vue';
 
 const props = defineProps({
     order: Object,

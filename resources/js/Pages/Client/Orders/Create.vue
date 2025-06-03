@@ -2,6 +2,8 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, useForm } from '@inertiajs/vue3';
 import { computed } from 'vue'; // Importa 'computed' para el precio dinámico
+import PrimaryButton from '@/Components/Forms/Buttons/PrimaryButton.vue';
+import InputError from '@/Components/Forms/InputError.vue';
 
 const props = defineProps({
     product: Object,

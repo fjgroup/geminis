@@ -34,7 +34,6 @@ class UpdateProductRequest extends FormRequest
             'slug' => ['sometimes', 'nullable', 'string', 'max:255', Rule::unique('products', 'slug')->ignore($this->route('product')?->id)],
             'description' => ['sometimes', 'nullable', 'string'],
             'product_type_id' => ['sometimes', 'required', 'integer', 'exists:product_types,id'],
-            'type' => ['sometimes', 'nullable', 'string', Rule::in(['shared_hosting', 'vps', 'dedicated_server', 'domain_registration', 'ssl_certificate', 'other'])], // Old field, make nullable or remove if fully deprecated
             'module_name' => ['sometimes', 'nullable', 'string', 'max:255'],
             'owner_id' => ['sometimes', 'nullable', 'integer', 'exists:users,id'],
             'status' => ['sometimes', 'required', 'string', Rule::in(['active', 'inactive', 'hidden'])],
