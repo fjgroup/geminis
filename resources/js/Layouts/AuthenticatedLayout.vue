@@ -81,7 +81,7 @@ const isActiveDashboard = computed(() => {
                     :href="route('client.products.index')"
                     :active="route().current('client.products.index')"
                   >
-                    Browse Products
+                    Comprar Productos
                   </NavLink>
                   <NavLink
                     :href="route('client.funds.create')"
@@ -284,7 +284,7 @@ const isActiveDashboard = computed(() => {
                 :href="route('client.products.index')"
                 :active="route().current('client.products.index')"
               >
-                Browse Products
+                Comprar Productos
               </ResponsiveNavLink>
               <ResponsiveNavLink
                 :href="route('client.funds.create')"
