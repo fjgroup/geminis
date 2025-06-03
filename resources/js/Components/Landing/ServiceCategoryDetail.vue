@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import Icon from '../Icon.vue';
+import Icon from "../UI/Icon.vue";
 import PlanCard from './PlanCard.vue'; // Importar el componente PlanCard
 
 // Definiciones de tipos (reutilizadas de PlanCard o definidas localmente si es la primera vez)

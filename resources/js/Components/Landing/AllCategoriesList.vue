@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import Icon from '../Icon.vue';
+import Icon from "../UI/Icon.vue";
 import { Link } from '@inertiajs/vue3'; // Added Link
 
 // Definiciones de tipos (reutilizadas de otros componentes ya migrados)

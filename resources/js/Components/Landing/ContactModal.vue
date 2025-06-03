@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import Icon from '../Icon.vue';
+import Icon from "../UI/Icon.vue";
 
 // Definiciones de tipos (reutilizadas de otros componentes o definidas localmente)
 interface ContactInfo {
