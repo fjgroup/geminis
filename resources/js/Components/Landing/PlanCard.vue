@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import Icon from '../Icon.vue';
+import Icon from "../UI/Icon.vue";
 import Tooltip from '../Tooltip.vue';
 
 // Definiciones de tipos traducidas de las interfaces de React
