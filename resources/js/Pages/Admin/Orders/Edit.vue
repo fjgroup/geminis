@@ -2,10 +2,10 @@
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
 import PrimaryButton from '@/Components/Forms/Buttons/PrimaryButton.vue';
-import InputLabel from '@/Components/InputLabel.vue';
-import InputError from '@/Components/InputError.vue';
-import SelectInput from '@/Components/SelectInput.vue';
-import TextareaInput from '@/Components/TextareaInput.vue'; // Assuming this exists
+import InputLabel from '@/Components/Forms/InputLabel.vue';
+import InputError from '@/Components/Forms/InputError.vue';
+import SelectInput from '@/Components/Forms/SelectInput.vue';
+import TextareaInput from '@/Components/Forms/TextareaInput.vue'; // Assuming this exists
 
 const props = defineProps({
     order: Object,

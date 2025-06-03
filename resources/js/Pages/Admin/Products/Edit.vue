@@ -18,6 +18,10 @@ import {
     CurrencyDollarIcon, // Para precios
 } from '@heroicons/vue/24/outline';
 
+import InputLabel from '@/Components/Forms/InputLabel.vue';
+import SelectInput from '@/Components/Forms/SelectInput.vue';
+import InputError from '@/Components/Forms/InputError.vue';
+
 const props = defineProps({
     product: Object,
     resellers: Array, // Lista de revendedores para el select
