@@ -1,10 +1,10 @@
 <script setup>
 import { ref } from "vue";
-import ApplicationLogo from "@/Components/ApplicationLogo.vue";
-import Dropdown from "@/Components/Dropdown.vue";
-import DropdownLink from "@/Components/DropdownLink.vue";
-import NavLink from "@/Components/NavLink.vue";
-import ResponsiveNavLink from "@/Components/ResponsiveNavLink.vue";
+import ApplicationLogo from "@/Components/UI/ApplicationLogo.vue";
+import Dropdown from "@/Components/Shared/Dropdown.vue";
+import DropdownLink from "@/Components/Shared/DropdownLink.vue";
+import NavLink from "@/Components/Shared/NavLink.vue";
+import ResponsiveNavLink from "@/Components/Shared/ResponsiveNavLink.vue";
 import { Link, usePage } from "@inertiajs/vue3";
 import { computed } from "vue";
 
@@ -81,7 +81,7 @@ const isActiveDashboard = computed(() => {
                     :href="route('client.products.index')"
                     :active="route().current('client.products.index')"
                   >
-                    Browse Products
+                    Comprar Productos
                   </NavLink>
                   <NavLink
                     :href="route('client.funds.create')"
@@ -284,7 +284,7 @@ const isActiveDashboard = computed(() => {
                 :href="route('client.products.index')"
                 :active="route().current('client.products.index')"
               >
-                Browse Products
+                Comprar Productos
               </ResponsiveNavLink>
               <ResponsiveNavLink
                 :href="route('client.funds.create')"
@@ -402,10 +402,10 @@ const isActiveDashboard = computed(() => {
       <!-- Page Content -->
       <main>
         <!-- Flash Messages -->
-        <div v-if="$page.props.flash.success" class="p-4 mb-4 text-green-800 bg-green-200 rounded">
+        <div v-if="$page.props.flash && $page.props.flash.success" class="p-4 mb-4 text-green-800 bg-green-200 rounded">
             {{ $page.props.flash.success }}
         </div>
-        <div v-if="$page.props.flash.error" class="p-4 mb-4 text-red-800 bg-red-200 rounded">
+        <div v-if="$page.props.flash && $page.props.flash.error" class="p-4 mb-4 text-red-800 bg-red-200 rounded">
             {{ $page.props.flash.error }}
         </div>
 

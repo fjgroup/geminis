@@ -1,7 +1,7 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link } from '@inertiajs/vue3';
-import Pagination from '@/Components/Pagination.vue';
+import Pagination from '@/Components/UI/Pagination.vue';
 // Removed: import { formatCurrency } from '@/utils';
 import { format } from 'date-fns'; // O usa otra librería para formateo de fechas
 

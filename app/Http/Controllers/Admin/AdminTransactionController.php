@@ -43,17 +43,43 @@ class AdminTransactionController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index(): InertiaResponse
+    public function index(Request $request): InertiaResponse // Add Request $request
     {
         $this->authorize('viewAny', Transaction::class);
 
-        $transactions = Transaction::with(['invoice', 'client', 'reseller', 'paymentMethod'])
-            ->latest('transaction_date')
-            ->paginate(15);
+        $query = Transaction::with(['invoice', 'client', 'reseller', 'paymentMethod'])
+            ->latest('transaction_date');
+
+        // Apply filters
+        if ($request->filled('status')) {
+            $query->where('status', $request->input('status'));
+        }
+
+        if ($request->filled('type')) {
+            $query->where('type', $request->input('type'));
+        }
+
+        if ($request->filled('gateway_slug')) {
+            $query->where('gateway_slug', $request->input('gateway_slug'));
+        }
+
+        // TODO: Add search filter if 'search' is filled, searching across relevant fields.
+        // Example for search (can be expanded):
+        // if ($request->filled('search')) {
+        //     $searchTerm = $request->input('search');
+        //     $query->where(function($q) use ($searchTerm) {
+        //         $q->where('id', 'like', "%{$searchTerm}%")
+        //           ->orWhere('gateway_transaction_id', 'like', "%{$searchTerm}%")
+        //           ->orWhereHas('client', fn($cq) => $cq->where('name', 'like', "%{$searchTerm}%"));
+        //     });
+        // }
+
+
+        $transactions = $query->paginate(15)->withQueryString(); // withQueryString to append filters to pagination
 
         return Inertia::render('Admin/Transactions/Index', [
             'transactions' => $transactions,
-            'filters' => request()->all('search', 'status', 'type'),
+            'filters' => $request->only(['search', 'status', 'type', 'gateway_slug']), // Pass used filters
         ]);
     }
 

@@ -20,7 +20,10 @@ class TransactionPolicy
      */
     public function viewAny(User $user)
     {
-        return $user->isAdmin(); // For admin section, only admin
+        // Allow any authenticated user for the purpose of this policy method.
+        // The ClientTransactionController already filters by client_id.
+        // For admin views, different controllers or more specific policies might be used.
+        return true;
     }
 
     /**

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import Icon from '../Icon.vue';
+import Icon from "../UI/Icon.vue";
 
 // Definición de tipos para las características generales explicadas
 interface GeneralFeatureExplainedData {

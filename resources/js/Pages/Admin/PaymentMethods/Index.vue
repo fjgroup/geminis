@@ -1,9 +1,9 @@
 <script setup>
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
-import PrimaryButton from '@/Components/PrimaryButton.vue';
-import SecondaryButton from '@/Components/SecondaryButton.vue';
-import DangerButton from '@/Components/DangerButton.vue';
+import PrimaryButton from '@/Components/Forms/Buttons/PrimaryButton.vue';
+import SecondaryButton from '@/Components/Forms/Buttons/SecondaryButton.vue';
+import DangerButton from '@/Components/Forms/Buttons/DangerButton.vue';
 import ConfirmationModal from '@/Components/UI/ConfirmationModal.vue';
 import Alert from '@/Components/UI/Alert.vue';
 import { ref, computed } from 'vue';
@@ -14,8 +14,8 @@ const props = defineProps({
 });
 
 const page = usePage();
-const flashSuccess = computed(() => page.props.flash.success);
-const flashError = computed(() => page.props.flash.error);
+const flashSuccess = computed(() => page.props.flash?.success);
+const flashError = computed(() => page.props.flash?.error);
 
 
 const showConfirmDeleteModal = ref(false);
@@ -40,7 +40,6 @@ const deleteMethod = () => {
         });
     }
 };
-
 </script>
 
 <template>

@@ -18,6 +18,10 @@ import {
     CurrencyDollarIcon, // Para precios
 } from '@heroicons/vue/24/outline';
 
+import InputLabel from '@/Components/Forms/InputLabel.vue';
+import SelectInput from '@/Components/Forms/SelectInput.vue';
+import InputError from '@/Components/Forms/InputError.vue';
+
 const props = defineProps({
     product: Object,
     resellers: Array, // Lista de revendedores para el select
@@ -58,15 +62,6 @@ const pricingForm = useForm({
     is_active: true,
     id: null, // Para la actualización
 });
-
-const productTypeOptions = [
-    { value: "shared_hosting", label: "Shared Hosting" },
-    { value: "vps", label: "VPS" },
-    { value: "dedicated_server", label: "Dedicated Server" },
-    { value: "domain_registration", label: "Domain Registration" },
-    { value: "ssl_certificate", label: "SSL Certificate" },
-    { value: "other", label: "Other" },
-];
 
 const productStatusOptions = [
     { value: "active", label: "Active" },

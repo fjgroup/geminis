@@ -60,11 +60,15 @@ class ClientManualPaymentController extends Controller
             'amount' => $invoice->total_amount,
             'currency_code' => $invoice->currency_code,
             'status' => 'pending', // Pending confirmation by admin
-            'type' => 'order_payment', // Or 'invoice_payment' if more generic
+            'type' => 'payment',
             'transaction_date' => $validated['payment_date'],
             'description' => "Pago manual iniciado por cliente para factura #{$invoice->invoice_number}",
             'fees_amount' => 0, // Typically no fees for manual payment recording itself
         ]);
+
+        // Add these lines:
+        $invoice->status = 'pending_confirmation';
+        $invoice->save();
 
         return Redirect::route('client.invoices.show', $invoice->id)
             ->with('success', 'Tu información de pago ha sido enviada y está pendiente de confirmación.');

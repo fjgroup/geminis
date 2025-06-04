@@ -1,8 +1,8 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link } from '@inertiajs/vue3';
-import Pagination from '@/Components/Pagination.vue'; // Assuming this component exists
-import PrimaryButton from '@/Components/PrimaryButton.vue';
+import Pagination from '@/Components/UI/Pagination.vue';
+import PrimaryButton from '@/Components/Forms/Buttons/PrimaryButton.vue';
 
 const props = defineProps({
     products: {

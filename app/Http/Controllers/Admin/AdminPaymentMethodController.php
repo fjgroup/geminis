@@ -94,23 +94,34 @@ class AdminPaymentMethodController extends Controller
             'type' => $validatedData['type'],
             'instructions' => $validatedData['instructions'] ?? null,
             'logo_url' => $validatedData['logo_url'] ?? null,
-            'is_active' => $validatedData['is_active'] ?? false, // Default to false if not present
+            'is_active' => $validatedData['is_active'] ?? false,
             'account_holder_name' => $validatedData['account_holder_name'] ?? null,
         ];
 
-        // Nullify all type-specific fields initially
-        $allTypeSpecificFields = [
-            'bank_name', 'account_number', 'identification_number', 'swift_code', 'iban', 'branch_name',
-            'platform_name', 'email_address', 'payment_link'
-        ];
-        foreach ($allTypeSpecificFields as $field) {
-            $dataToSave[$field] = null;
+        // Default bank-specific fields that might be NOT NULL to empty strings
+        $bankSpecificNotNullableFields = ['bank_name', 'account_number']; // Add others if they are also NOT NULL and bank-specific
+        foreach ($bankSpecificNotNullableFields as $field) {
+            $dataToSave[$field] = '';
         }
 
+        // Default other bank-specific fields that might be nullable to null (or empty string if NOT NULL)
+        // Assuming these might be nullable or need specific handling
+        $dataToSave['identification_number'] = $validatedData['identification_number'] ?? ''; // Assuming empty string if not provided & NOT NULL
+        $dataToSave['swift_code'] = $validatedData['swift_code'] ?? null;
+        $dataToSave['iban'] = $validatedData['iban'] ?? null;
+        $dataToSave['branch_name'] = $validatedData['branch_name'] ?? null;
+
+        // Wallet/Crypto specific fields default to null (assuming they are nullable in DB)
+        $dataToSave['platform_name'] = null;
+        $dataToSave['email_address'] = null;
+        $dataToSave['payment_link'] = null;
+        // For crypto, account_number is the wallet address, so it's handled under its type.
+        // For bank, account_number is handled by bankSpecificNotNullableFields.
+
         if ($type === 'bank') {
-            $dataToSave['bank_name'] = $validatedData['bank_name'] ?? null;
-            $dataToSave['account_number'] = $validatedData['account_number'] ?? null;
-            $dataToSave['identification_number'] = $validatedData['identification_number'] ?? null;
+            $dataToSave['bank_name'] = $validatedData['bank_name'] ?? ''; // Should be present due to validation
+            $dataToSave['account_number'] = $validatedData['account_number'] ?? ''; // Should be present
+            $dataToSave['identification_number'] = $validatedData['identification_number'] ?? ''; // Or null if nullable
             $dataToSave['swift_code'] = $validatedData['swift_code'] ?? null;
             $dataToSave['iban'] = $validatedData['iban'] ?? null;
             $dataToSave['branch_name'] = $validatedData['branch_name'] ?? null;
@@ -118,11 +129,19 @@ class AdminPaymentMethodController extends Controller
             $dataToSave['platform_name'] = $validatedData['platform_name'] ?? null;
             $dataToSave['email_address'] = $validatedData['email_address'] ?? null;
             $dataToSave['payment_link'] = $validatedData['payment_link'] ?? null;
-            // account_holder_name is already common
+            // Ensure bank_name and bank's account_number remain empty string for wallet type
+            $dataToSave['bank_name'] = '';
+            // If 'account_number' for wallet means something different (like phone/email),
+            // it's currently being cleared by bankSpecificNotNullableFields.
+            // The current structure uses 'account_number' for bank account OR crypto wallet address.
+            // For 'wallet' type, 'account_number' field is not explicitly used for platform identifier in `getTypeSpecificRules`.
+            // So, for 'wallet' type, 'account_number' (as in bank account number) should be empty.
+            $dataToSave['account_number'] = '';
         } elseif ($type === 'crypto_wallet') {
             $dataToSave['platform_name'] = $validatedData['platform_name'] ?? null; // e.g. Bitcoin
-            $dataToSave['account_number'] = $validatedData['account_number'] ?? null; // Wallet address
-            // account_holder_name is already common
+            $dataToSave['account_number'] = $validatedData['account_number'] ?? ''; // Wallet address, ensure not null if DB requires
+             // Ensure bank_name remains empty string for crypto_wallet type
+            $dataToSave['bank_name'] = '';
         }
         return $dataToSave;
     }

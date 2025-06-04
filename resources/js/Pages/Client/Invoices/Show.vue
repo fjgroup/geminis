@@ -2,8 +2,8 @@
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
 import { computed } from "vue"; // Importamos computed
 import { Head, Link, router, usePage } from "@inertiajs/vue3"; // Added router, usePage
-import PrimaryButton from "@/Components/PrimaryButton.vue";
-import SecondaryButton from "@/Components/SecondaryButton.vue"; // Added SecondaryButton
+import PrimaryButton from "@/Components/Forms/Buttons/PrimaryButton.vue";
+import SecondaryButton from "@/Components/Forms/Buttons/SecondaryButton.vue";
 
 const props = defineProps({
   invoice: {
@@ -32,21 +32,32 @@ const formatCurrency = (amount, currencyCode = "USD") => {
 
 // Helper to determine payment button state
 const canPayWithBalance = computed(() => {
-  return (
-    props.invoice.status === "unpaid" &&
-    user.value && // use user.value from computed
-    user.value.balance >= props.invoice.total_amount
-  );
-});
+      // Ensure user.value and user.value.balance are available
+      if (!user.value || typeof user.value.balance === 'undefined') return false;
+      // Ensure invoice.total_amount is available
+      if (typeof props.invoice.total_amount === 'undefined') return false;
+
+      return (
+        props.invoice.status === "unpaid" &&
+        parseFloat(user.value.balance) >= parseFloat(props.invoice.total_amount)
+      );
+    });
 
 const hasSomeBalance = computed(() => {
-  return (
-    props.invoice.status === "unpaid" &&
-    user.value &&
-    user.value.balance > 0 &&
-    user.value.balance < props.invoice.total_amount
-  );
-});
+      // Ensure user.value and user.value.balance are available
+      if (!user.value || typeof user.value.balance === 'undefined') return false;
+      // Ensure invoice.total_amount is available
+      if (typeof props.invoice.total_amount === 'undefined') return false;
+
+      const userBalance = parseFloat(user.value.balance);
+      const invoiceTotal = parseFloat(props.invoice.total_amount);
+
+      return (
+        props.invoice.status === "unpaid" &&
+        userBalance > 0 &&
+        userBalance < invoiceTotal
+      );
+    });
 
 const payInvoiceWithBalance = (invoiceId) => {
     if (confirm('¿Confirmas que deseas pagar esta factura utilizando tu saldo disponible?')) {
@@ -178,30 +189,52 @@ const formatDate = (datetime) => {
                   </th>
                 </tr>
               </thead>
-              <tbody class="bg-white divide-y divide-gray-200">
-                <tr v-for="item in invoice.items" :key="item.id">
-                  <td class="px-6 py-4 whitespace-nowrap">{{ item.description }}</td>
-                  <td class="px-6 py-4 whitespace-nowrap text-center">
-                    {{ item.quantity }}
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-right">
-                    {{
-                      new Intl.NumberFormat("en-US", {
-                        style: "currency",
-                        currency: invoice.currency_code || "USD",
-                      }).format(item.unit_price)
-                    }}
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-right">
-                    {{
-                      new Intl.NumberFormat("en-US", {
-                        style: "currency",
-                        currency: invoice.currency_code || "USD",
-                      }).format(item.total_price || item.subtotal)
-                    }}
-                  </td>
-                </tr>
-              </tbody>
+              <tbody class="bg-white divide-y divide-gray-200 dark:divide-gray-700">
+    <template v-if="invoice.items && invoice.items.length > 0">
+        <template v-for="item in invoice.items" :key="item.id">
+            <tr v-if="item.order_item && item.order_item.setup_fee && parseFloat(item.order_item.setup_fee) > 0">
+                <!-- Row for main product/service (when setup fee exists) -->
+                <td class="px-6 py-4 whitespace-nowrap">
+                    {{ item.order_item.product ? item.order_item.product.name : item.description }}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-center">{{ item.quantity }}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-right">
+                    {{ formatCurrency(item.order_item.unit_price, invoice.currency_code) }}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-right">
+                    {{ formatCurrency(parseFloat(item.order_item.unit_price) * item.quantity, invoice.currency_code) }}
+                </td>
+            </tr>
+            <tr v-if="item.order_item && item.order_item.setup_fee && parseFloat(item.order_item.setup_fee) > 0" class="bg-gray-50 dark:bg-gray-700/30">
+                <!-- Row for setup fee -->
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 pl-10">
+                    Tarifa de Configuración <span v-if="item.order_item.product">para {{ item.order_item.product.name }}</span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-500 dark:text-gray-400">{{ item.quantity }}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-500 dark:text-gray-400">
+                    {{ formatCurrency(item.order_item.setup_fee, invoice.currency_code) }}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-500 dark:text-gray-400">
+                    {{ formatCurrency(parseFloat(item.order_item.setup_fee) * item.quantity, invoice.currency_code) }}
+                </td>
+            </tr>
+            <tr v-if="!item.order_item || !item.order_item.setup_fee || parseFloat(item.order_item.setup_fee) <= 0">
+                <!-- Original row for items without setup fee or if order_item is not available -->
+                <td class="px-6 py-4 whitespace-nowrap">{{ item.description }}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-center">{{ item.quantity }}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-right">
+                    {{ formatCurrency(item.unit_price, invoice.currency_code) }}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-right">
+                    {{ formatCurrency(item.total_price, invoice.currency_code) }}
+                </td>
+            </tr>
+        </template>
+    </template>
+    <tr v-else>
+        <td colspan="4" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">No hay ítems en esta factura.</td>
+    </tr>
+</tbody>
             </table>
 
             <!-- Payment Details if Paid -->
@@ -258,7 +291,7 @@ const formatDate = (datetime) => {
                     </PrimaryButton>
                     <p v-if="hasSomeBalance && !canPayWithBalance" class="mt-2 text-sm text-yellow-600 dark:text-yellow-400">
                         Tu saldo actual no es suficiente para cubrir el monto total de esta factura.
-                         Necesitas {{ formatCurrency(invoice.total_amount - user.balance, invoice.currency_code) }} más.
+                         Necesitas {{ formatCurrency(parseFloat(props.invoice.total_amount) - parseFloat(user.value.balance), props.invoice.currency_code) }} más.
                     </p>
                 </div>
 
@@ -272,7 +305,7 @@ const formatDate = (datetime) => {
                 </div>
                  <!-- PayPal Payment Button -->
                 <div v-if="invoice.status === 'unpaid'" class="mt-2">
-                     <Link :href="route('paypal.checkout', { invoice: invoice.id })"
+                     <Link :href="route('client.paypal.checkout', { invoice: invoice.id })"
                           class="inline-flex items-center px-4 py-2 bg-paypal-blue border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-paypal-darkblue active:bg-paypal-darkerblue focus:outline-none focus:ring-2 focus:ring-paypal-blue focus:ring-offset-2 transition ease-in-out duration-150">
                         Pagar con PayPal
                     </Link>

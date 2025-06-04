@@ -93,7 +93,7 @@
 
                             <div class="mt-6">
                                 <PrimaryButton :class="{ 'opacity-25': form.processing }" :disabled="form.processing">
-                                    Place Order
+                                    Realizar Pedido
                                 </PrimaryButton>
                             </div>
                         </form>

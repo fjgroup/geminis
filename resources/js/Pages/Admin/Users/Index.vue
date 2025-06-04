@@ -1,9 +1,9 @@
 <script setup>
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
-import PrimaryButton from '@/Components/PrimaryButton.vue'; // Asumiendo nueva ruta
-import SecondaryButton from '@/Components/SecondaryButton.vue'; // Asumiendo nueva ruta
-import DangerButton from '@/Components/DangerButton.vue'; // Asumiendo nueva ruta
+import PrimaryButton from '@/Components/Forms/Buttons/PrimaryButton.vue';
+import SecondaryButton from '@/Components/Forms/Buttons/SecondaryButton.vue';
+import DangerButton from '@/Components/Forms/Buttons/DangerButton.vue';
 import Pagination from '@/Components/UI/Pagination.vue';
 import { ref, computed } from 'vue';
 import ConfirmationModal from '@/Components/UI/ConfirmationModal.vue';

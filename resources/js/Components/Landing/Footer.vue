@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import Icon from '../Icon.vue';
+import Icon from "../UI/Icon.vue";
 import { Link } from '@inertiajs/vue3'; // Added Link
 
 // Definiciones de tipos (reutilizadas de otros componentes o definidas localmente)

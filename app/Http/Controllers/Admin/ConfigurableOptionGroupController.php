@@ -80,7 +80,7 @@ class ConfigurableOptionGroupController extends Controller
 
         $products = Product::orderBy('name')->get(['id', 'name']);
         // Cargar el producto propietario (si existe) y también las opciones configurables asociadas
-        $configurableOptionGroup->load(['productOwner:id,name', 'configurableOptions' => function ($query) {
+        $configurableOptionGroup->load(['productOwner:id,name', 'options' => function ($query) {
             $query->orderBy('display_order')->orderBy('name');
         }]);
 
@@ -92,7 +92,7 @@ class ConfigurableOptionGroupController extends Controller
                 'product_id' => $configurableOptionGroup->product_id,
                 'display_order' => $configurableOptionGroup->display_order,
                 // Mapear las opciones para pasarlas a la vista
-                'options' => $configurableOptionGroup->configurableOptions->map(fn ($option) => [
+                'options' => $configurableOptionGroup->options->map(fn ($option) => [
                     'id' => $option->id,
                     'name' => $option->name,
                     'value' => $option->value,

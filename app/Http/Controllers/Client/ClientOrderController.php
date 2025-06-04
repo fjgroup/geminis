@@ -198,7 +198,6 @@ class ClientOrderController extends Controller
         $this->authorize('update', $order);
 
         if (Auth::id() !== $order->client_id) {
-            // This should ideally be caught by the policy.
             Log::warning("User " . Auth::id() . " attempted to access edit form for order {$order->id} owned by client {$order->client_id}.");
             return redirect()->route('client.orders.show', $order->id)
                              ->with('error', 'You are not authorized to edit this order.');
@@ -209,14 +208,47 @@ class ClientOrderController extends Controller
                              ->with('error', 'This order cannot be edited at its current stage.');
         }
 
-        // Load order with items, and for each item, its product with available pricings and their billing cycles.
+        // Load the order with its items, each item's product, and the current productPricing with its billingCycle
         $order->load([
-            'items.product.pricings.billingCycle', // Corrected relationship name to match model
-            'items.productPricing.billingCycle' // For current billing cycle name
+            'items.product', // Load the product for each item
+            'items.productPricing.billingCycle' // Load the currently selected pricing and its cycle for each item
         ]);
 
+        // Prepare a new collection/array of items to pass to the view
+        // This new collection will include the available pricing options directly
+        $items_for_view = $order->items->map(function ($item) {
+            $item_view_data = $item->toArray(); // Get base item data
+            $available_pricings_for_select = [];
+            if ($item->product) { // product relation should be loaded
+                $product_pricings = ProductPricing::where('product_id', $item->product->id)
+                                        ->with('billingCycle')
+                                        ->where('is_active', true)
+                                        ->get();
+                foreach ($product_pricings as $pricing) {
+                    if ($pricing->billingCycle) {
+                        $available_pricings_for_select[] = [
+                            'id' => $pricing->id,
+                            'name' => $pricing->billingCycle->name,
+                            'price' => $pricing->price,
+                            'currency_code' => $pricing->currency_code,
+                            'setup_fee' => $pricing->setup_fee
+                        ];
+                    }
+                }
+            }
+            $item_view_data['available_pricings_for_select_explicit'] = $available_pricings_for_select; // Use a distinct name
+            return $item_view_data;
+        })->toArray(); // Convert collection of arrays to a simple array
+
+
+        // Create a new representation of the order for the view
+        $order_for_view = $order->toArray();
+        $order_for_view['items'] = $items_for_view;
+
+        // // dd($order_for_view); // Optional: User can uncomment this to check the final structure
+
         return Inertia::render('Client/Orders/EditOrderForm', [
-            'order' => $order,
+            'order' => $order_for_view, // Pass the modified order structure
         ]);
     }
 
@@ -416,7 +448,7 @@ class ClientOrderController extends Controller
      */
     public function requestPostPaymentCancellation(Order $order): RedirectResponse
     {
-        $this->authorize('update', $order); // Or a specific policy like 'requestPostPaymentCancellation'
+        $this->authorize('requestPostPaymentCancellation', $order);
 
         // Defensive check for ownership
         if (Auth::id() !== $order->client_id) {

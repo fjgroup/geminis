@@ -24,13 +24,12 @@
                                 <!-- Billing Cycle Selection -->
                                 <div class="mb-4">
                                     <InputLabel :for="'product_pricing_id-' + item.id" value="Billing Cycle" />
+
                                     <SelectInput
                                         :id="'product_pricing_id-' + item.id"
                                         class="mt-1 block w-full"
                                         v-model="item.product_pricing_id"
                                         :options="item.available_billing_cycles"
-                                        option-value="id"
-                                        option-label="name"
                                         required
                                     />
                                     <InputError class="mt-2" :message="form.errors[`items.${index}.product_pricing_id`]" />
@@ -90,11 +89,14 @@ const formatCurrency = (amount, currencyCode = 'USD') => {
 
 const form = useForm({
   items: props.order.items.map(item => {
-    // item.product.productPricings should be available from controller eager loading
-    const available_billing_cycles = item.product.product_pricings.map(pricing => ({
-      id: pricing.id, // This is product_pricing_id
-      name: `${pricing.billing_cycle.name} - ${formatCurrency(pricing.price, pricing.currency_code || props.order.currency_code)}`,
-    }));
+    // Ensure item.available_pricings_for_select_explicit exists and is an array
+    const pricingsData = Array.isArray(item.available_pricings_for_select_explicit) ? item.available_pricings_for_select_explicit : [];
+    const available_billing_cycles = pricingsData.map(pricing_info => {
+      return {
+        value: pricing_info.id, // 'id' from the controller's structure
+        label: `${pricing_info.name} - ${formatCurrency(pricing_info.price, pricing_info.currency_code || props.order.currency_code)}` // 'name' is billing_cycle.name
+      };
+    });
 
     // item.product_pricing also available from controller for current details
     const currentBillingCycleName = item.product_pricing?.billing_cycle?.name || 'N/A';
@@ -103,7 +105,7 @@ const form = useForm({
 
     return {
       id: item.id, // OrderItem ID
-      product_name: item.product.name,
+      product_name: item.product?.name || 'Producto Desconocido', // Safer access
       quantity: item.quantity,
       product_pricing_id: item.product_pricing_id, // Current product_pricing_id
       available_billing_cycles: available_billing_cycles,

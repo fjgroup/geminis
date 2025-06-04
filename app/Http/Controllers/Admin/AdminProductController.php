@@ -153,8 +153,8 @@ class AdminProductController extends Controller
 
         // La autorización y validación son manejadas por UpdateProductRequest
         $validatedData = $request->validated();
-        // Excluir configurable_option_groups de $validatedData para el update del producto principal
-        $productData = collect($validatedData)->except('configurable_option_groups')->toArray();
+        // Excluir configurable_option_groups y el antiguo campo 'type' de $validatedData para el update del producto principal
+        $productData = collect($validatedData)->except(['configurable_option_groups', 'type'])->toArray();
 
         // Si el nombre cambia, actualiza el slug
         // Si el slug fue enviado explícitamente y es diferente al generado por el nuevo nombre,
@@ -163,11 +163,11 @@ class AdminProductController extends Controller
         if (isset($productData['name']) && (!isset($productData['slug']) || empty($productData['slug']) || $productData['name'] !== $product->name) ) {
             $productData['slug'] = Str::slug($productData['name']);
         }
-        // Remove old 'type' field if product_type_id is present, to avoid confusion
-        // The actual deprecation/removal of the 'type' column is a separate migration task.
-        if (isset($productData['product_type_id'])) {
-            unset($productData['type']);
-        }
+        // The old 'type' field is now excluded by the except() method above.
+        // The following block can be removed or kept as an additional safeguard, though it becomes redundant.
+        // if (isset($productData['product_type_id'])) {
+        //    unset($productData['type']); // This would attempt to unset 'type' again if it somehow passed the except filter.
+        // }
 
 
         $product->update($productData);

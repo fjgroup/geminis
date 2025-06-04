@@ -1,10 +1,10 @@
 <script setup>
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { Head, Link, router, usePage } from '@inertiajs/vue3'; // Added router and usePage
-import Pagination from '@/Components/Pagination.vue';
-import PrimaryButton from '@/Components/PrimaryButton.vue'; // Added
-import DangerButton from '@/Components/DangerButton.vue';   // Added
-import Alert from '@/Components/Alert.vue'; // Added
+import Pagination from '@/Components/UI/Pagination.vue';
+import PrimaryButton from '@/Components/Forms/Buttons/PrimaryButton.vue';
+import DangerButton from '@/Components/Forms/Buttons/DangerButton.vue';
+import Alert from '@/Components/UI/Alert.vue';
 import { computed } from 'vue'; // Added
 
 const props = defineProps({
@@ -13,8 +13,8 @@ const props = defineProps({
 });
 
 const page = usePage();
-const flashSuccess = computed(() => page.props.flash.success);
-const flashError = computed(() => page.props.flash.error);
+const flashSuccess = computed(() => page.props.flash && page.props.flash.success);
+const flashError = computed(() => page.props.flash && page.props.flash.error);
 
 
 const formatDate = (datetime) => {
@@ -60,6 +60,46 @@ const rejectTransaction = (id) => {
             <div class="max-w-full mx-auto sm:px-6 lg:px-8"> {/* Changed max-w-7xl to max-w-full for wider table */}
                 <Alert :message="flashSuccess" type="success" v-if="flashSuccess" class="mb-4" />
                 <Alert :message="flashError" type="danger" v-if="flashError" class="mb-4" />
+
+                <div class="mb-4">
+                    <nav class="flex space-x-4" aria-label="Tabs">
+                        <Link :href="route('admin.transactions.index')"
+                              :class="{
+                                  'bg-indigo-100 text-indigo-700': !filters.type && !filters.status && !filters.gateway_slug,
+                                  'text-gray-500 hover:text-gray-700': filters.type || filters.status || filters.gateway_slug
+                              }"
+                              class="px-3 py-2 font-medium text-sm rounded-md">
+                            Todas las Transacciones
+                        </Link>
+                        <Link :href="route('admin.transactions.index', {
+                                  type: 'credit_added',
+                                  status: 'pending',
+                                  gateway_slug: 'manual_fund_addition'
+                              })"
+                              :class="{
+                                  'bg-indigo-100 text-indigo-700': filters.type === 'credit_added' && filters.status === 'pending' && filters.gateway_slug === 'manual_fund_addition',
+                                  'text-gray-500 hover:text-gray-700': !(filters.type === 'credit_added' && filters.status === 'pending' && filters.gateway_slug === 'manual_fund_addition')
+                              }"
+                              class="px-3 py-2 font-medium text-sm rounded-md">
+                            Solicitudes de Fondos Pendientes
+                        </Link>
+                        <!-- Add other filters as needed, e.g., Pending Order Payments -->
+                        <Link :href="route('admin.transactions.index', {
+                                  type: 'payment', // Changed from 'order_payment' to 'payment'
+                                  status: 'pending',
+                                  // Optionally, could exclude manual_fund_addition gateway if those are always separate
+                                  // gateway_slug: '!manual_fund_addition' // This is pseudo-code, actual filtering might need backend adjustment if complex exclusion is needed
+                                  // For now, just filtering by type: 'payment' and status: 'pending' will get most order payments.
+                              })"
+                              :class="{
+                                  'bg-indigo-100 text-indigo-700': filters.type === 'payment' && filters.status === 'pending' && !filters.gateway_slug,
+                                  'text-gray-500 hover:text-gray-700': !(filters.type === 'payment' && filters.status === 'pending' && !filters.gateway_slug)
+                              }"
+                              class="px-3 py-2 font-medium text-sm rounded-md">
+                            Pagos de Facturas Pendientes
+                        </Link>
+                    </nav>
+                </div>
 
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                     <div class="p-6 bg-white border-b border-gray-200">
