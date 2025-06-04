@@ -16,6 +16,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Exception; // Added for general \Exception
+use App\Models\ClientService; // Added for ClientService creation
+use Illuminate\Support\Facades\Log; // Ensure Log is imported
 
 class ClientInvoiceController extends Controller
 {
@@ -165,7 +167,7 @@ class ClientInvoiceController extends Controller
                 // For now, I will change it to 'paid_pending_execution' as it was, and update the activity log type.
 
                 // Correction: Set Order status to 'pending_payment' as per explicit task requirement.
-                $order->status = 'pending_payment';
+                $order->status = 'paid_pending_execution';
                 $order->save();
 
                 OrderActivity::create([
@@ -178,10 +180,51 @@ class ClientInvoiceController extends Controller
                         'payment_method' => 'account_balance',
                         'transaction_id' => $transaction->id,
                         'previous_order_status' => $previous_order_status,
-                        'new_order_status' => $order->status, // This will be 'pending_payment'
+                        'new_order_status' => $order->status,
                         'message' => 'Invoice paid by client using account balance. Order is now pending further processing or admin confirmation.'
                     ]),
                 ]);
+
+                // Ensure items and their relations needed for service creation are loaded
+                $order->loadMissing(['items.product', 'items.productPricing.billingCycle']);
+
+                foreach ($order->items as $item) {
+                    // Check if a service for this order item already exists
+                    $existingService = ClientService::where('order_item_id', $item->id)->first();
+                    if ($existingService) {
+                        continue; // Skip if service already created for this item
+                    }
+
+                    // Calculate next_due_date based on billing cycle
+                    $registrationDate = Carbon::now();
+                    $nextDueDate = $registrationDate->copy();
+                    if ($item->productPricing && $item->productPricing->billingCycle && $item->productPricing->billingCycle->days > 0) {
+                        $nextDueDate->addDays($item->productPricing->billingCycle->days);
+                    } else {
+                        Log::warning("Billing cycle days not found or zero for product_pricing_id: {$item->product_pricing_id} on order_item_id: {$item->id}. Defaulting next_due_date.");
+                        $nextDueDate = $registrationDate->copy()->addYear(100); // Default to 100 years if null due to no cycle days
+                    }
+
+                    $clientService = ClientService::create([
+                        'client_id' => $order->client_id,
+                        'reseller_id' => $order->reseller_id,
+                        'order_id' => $order->id,
+                        'order_item_id' => $item->id,
+                        'product_id' => $item->product_id,
+                        'product_pricing_id' => $item->product_pricing_id,
+                        'domain_name' => $item->domain_name,
+                        'status' => 'pending',
+                        'registration_date' => $registrationDate->toDateString(),
+                        'next_due_date' => $nextDueDate->toDateString(),
+                        'billing_amount' => ($item->unit_price * $item->quantity),
+                        'currency_code' => $order->currency_code,
+                        'notes' => 'Servicio creado automáticamente desde la orden #' . $order->order_number,
+                    ]);
+
+                    // Link OrderItem to ClientService
+                    $item->client_service_id = $clientService->id;
+                    $item->save();
+                }
             } else if ($order) {
                 // Log if order was found but not in 'pending_payment' status when invoice was paid.
                 // This case might imply the order was already processed or in an unexpected state.

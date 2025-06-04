@@ -25,18 +25,6 @@
                                 <div class="mb-4">
                                     <InputLabel :for="'product_pricing_id-' + item.id" value="Billing Cycle" />
 
-                                    <pre class="text-xs bg-gray-100 p-2 overflow-auto">
-Item ID: {{ item.id }}
-Item Product (raw):
-{{ JSON.stringify(item.product, null, 2) }}
-
-Attempting to access 'item.product.pricings' (all lowercase):
-{{ JSON.stringify(item.product && item.product.pricings ? item.product.pricings : "item.product.pricings (lowercase) not found or product is null", null, 2) }}
-
-Attempting to access 'item.product.product_pricings' (snake_case):
-{{ JSON.stringify(item.product && item.product.product_pricings ? item.product.product_pricings : "item.product.product_pricings (snake_case) not found or product is null", null, 2) }}
-</pre>
-
                                     <SelectInput
                                         :id="'product_pricing_id-' + item.id"
                                         class="mt-1 block w-full"
@@ -101,11 +89,12 @@ const formatCurrency = (amount, currencyCode = 'USD') => {
 
 const form = useForm({
   items: props.order.items.map(item => {
-    const productPricings = item.product && item.product.product_pricings ? item.product.product_pricings : [];
-    const available_billing_cycles = productPricings.map(pricing => {
+    // Ensure item.available_pricings_for_select_explicit exists and is an array
+    const pricingsData = Array.isArray(item.available_pricings_for_select_explicit) ? item.available_pricings_for_select_explicit : [];
+    const available_billing_cycles = pricingsData.map(pricing_info => {
       return {
-        value: pricing.id, // New key: 'value'
-        label: `${pricing.billing_cycle ? pricing.billing_cycle.name : 'N/A'} - ${formatCurrency(pricing.price, pricing.currency_code || props.order.currency_code)}`, // New key: 'label'
+        value: pricing_info.id, // 'id' from the controller's structure
+        label: `${pricing_info.name} - ${formatCurrency(pricing_info.price, pricing_info.currency_code || props.order.currency_code)}` // 'name' is billing_cycle.name
       };
     });
 

@@ -68,7 +68,7 @@ class InvoicePaymentController extends Controller
                         if ($order->status === 'pending_payment') { // Assuming initial state is 'pending_payment'
                             $previous_order_status = $order->status;
                             // Correction: Set Order status to 'pending_payment' as per explicit task requirement.
-                            $order->status = 'pending_payment';
+                            $order->status = 'paid_pending_execution';
                             $order->save();
                             OrderActivity::create([
                                 'order_id' => $order->id,
@@ -88,7 +88,7 @@ class InvoicePaymentController extends Controller
                             OrderActivity::create([
                                 'order_id' => $order->id,
                                 'user_id' => $user->id,
-                                'type' => 'invoice_paid_for_order_in_unexpected_status', // Corrected type
+                                'type' => 'invoice_paid_by_client',
                                 'details' => json_encode([
                                      'invoice_id' => $invoice->id,
                                      'invoice_number' => $invoice->invoice_number,
@@ -127,7 +127,7 @@ class InvoicePaymentController extends Controller
                     if ($order->status === 'pending_payment') { // Assuming initial state is 'pending_payment'
                         $previous_order_status = $order->status;
                         // Correction: Set Order status to 'pending_payment' as per explicit task requirement.
-                        $order->status = 'pending_payment';
+                        $order->status = 'paid_pending_execution';
                         $order->save();
                         OrderActivity::create([
                             'order_id' => $order->id,
@@ -147,7 +147,7 @@ class InvoicePaymentController extends Controller
                         OrderActivity::create([
                             'order_id' => $order->id,
                             'user_id' => $user->id,
-                            'type' => 'invoice_paid_for_order_in_unexpected_status', // Corrected type
+                            'type' => 'invoice_paid_by_client',
                             'details' => json_encode([
                                  'invoice_id' => $invoice->id,
                                  'invoice_number' => $invoice->invoice_number,

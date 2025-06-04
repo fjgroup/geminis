@@ -208,23 +208,47 @@ class ClientOrderController extends Controller
                              ->with('error', 'This order cannot be edited at its current stage.');
         }
 
-        // Load initial relations for the order and items
-        $order->load(['items.product', 'items.productPricing.billingCycle']);
+        // Load the order with its items, each item's product, and the current productPricing with its billingCycle
+        $order->load([
+            'items.product', // Load the product for each item
+            'items.productPricing.billingCycle' // Load the currently selected pricing and its cycle for each item
+        ]);
 
-        // Explicitly load pricings for each product within items
-        foreach ($order->items as $item) {
-            if ($item->product) { // Ensure product exists before trying to load relations on it
-                $item->product->load('pricings.billingCycle');
+        // Prepare a new collection/array of items to pass to the view
+        // This new collection will include the available pricing options directly
+        $items_for_view = $order->items->map(function ($item) {
+            $item_view_data = $item->toArray(); // Get base item data
+            $available_pricings_for_select = [];
+            if ($item->product) { // product relation should be loaded
+                $product_pricings = ProductPricing::where('product_id', $item->product->id)
+                                        ->with('billingCycle')
+                                        ->where('is_active', true)
+                                        ->get();
+                foreach ($product_pricings as $pricing) {
+                    if ($pricing->billingCycle) {
+                        $available_pricings_for_select[] = [
+                            'id' => $pricing->id,
+                            'name' => $pricing->billingCycle->name,
+                            'price' => $pricing->price,
+                            'currency_code' => $pricing->currency_code,
+                            'setup_fee' => $pricing->setup_fee
+                        ];
+                    }
+                }
             }
-        }
+            $item_view_data['available_pricings_for_select_explicit'] = $available_pricings_for_select; // Use a distinct name
+            return $item_view_data;
+        })->toArray(); // Convert collection of arrays to a simple array
 
-        // Temporary debug: Die and dump the order object to inspect its structure.
-        // REMEMBER TO REMOVE THIS dd() AFTER INSPECTION.
-        // The user will need to describe the output of this dd() for items[n].product.pricings.
-        // dd($order->toArray());
+
+        // Create a new representation of the order for the view
+        $order_for_view = $order->toArray();
+        $order_for_view['items'] = $items_for_view;
+
+        // // dd($order_for_view); // Optional: User can uncomment this to check the final structure
 
         return Inertia::render('Client/Orders/EditOrderForm', [
-            'order' => $order,
+            'order' => $order_for_view, // Pass the modified order structure
         ]);
     }
 

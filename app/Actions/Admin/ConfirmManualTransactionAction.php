@@ -34,7 +34,7 @@ class ConfirmManualTransactionAction
             $transaction->status = 'completed';
 
             // Order Payment Logic
-            if ($transaction->type === 'order_payment' && $transaction->invoice_id) {
+            if ($transaction->type === 'payment' && $transaction->invoice_id) {
                 $invoice = Invoice::with('order.client')->find($transaction->invoice_id);
                 if ($invoice) {
                     $this->updateInvoiceAndOrderStatus($invoice, $transaction);
@@ -107,7 +107,7 @@ class ConfirmManualTransactionAction
                 OrderActivity::create([
                     'order_id' => $order->id,
                     'user_id' => Auth::id(), // Admin user performing the action
-                    'type' => 'payment_confirmed_order_pending_execution',
+                    'type' => 'order_ready_for_admin_execution',
                     'details' => json_encode([
                         'invoice_id' => $invoice->id,
                         'invoice_number' => $invoice->invoice_number,
