@@ -198,7 +198,6 @@ class ClientOrderController extends Controller
         $this->authorize('update', $order);
 
         if (Auth::id() !== $order->client_id) {
-            // This should ideally be caught by the policy.
             Log::warning("User " . Auth::id() . " attempted to access edit form for order {$order->id} owned by client {$order->client_id}.");
             return redirect()->route('client.orders.show', $order->id)
                              ->with('error', 'You are not authorized to edit this order.');
@@ -209,11 +208,20 @@ class ClientOrderController extends Controller
                              ->with('error', 'This order cannot be edited at its current stage.');
         }
 
-        // Load order with items, and for each item, its product with available pricings and their billing cycles.
-        $order->load([
-            'items.product.pricings.billingCycle', // Corrected relationship name to match model
-            'items.productPricing.billingCycle' // For current billing cycle name
-        ]);
+        // Load initial relations for the order and items
+        $order->load(['items.product', 'items.productPricing.billingCycle']);
+
+        // Explicitly load pricings for each product within items
+        foreach ($order->items as $item) {
+            if ($item->product) { // Ensure product exists before trying to load relations on it
+                $item->product->load('pricings.billingCycle');
+            }
+        }
+
+        // Temporary debug: Die and dump the order object to inspect its structure.
+        // REMEMBER TO REMOVE THIS dd() AFTER INSPECTION.
+        // The user will need to describe the output of this dd() for items[n].product.pricings.
+        // dd($order->toArray());
 
         return Inertia::render('Client/Orders/EditOrderForm', [
             'order' => $order,
