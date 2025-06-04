@@ -142,13 +142,28 @@ const triggerConfirmPayment = () => {
                                         <tr v-if="order.items && order.items.length === 0">
                                             <td colspan="5" class="px-4 py-3 text-center text-sm text-gray-500">No items in this order.</td>
                                         </tr>
-                                        <tr v-for="item in order.items" :key="item.id">
-                                            <td class="px-4 py-3 text-sm text-gray-900">{{ item.product ? item.product.name : 'N/A' }}</td>
-                                            <td class="px-4 py-3 text-sm text-gray-500">{{ item.description }}</td>
-                                            <td class="px-4 py-3 text-sm text-gray-500">{{ item.quantity }}</td>
-                                            <td class="px-4 py-3 text-sm text-gray-500">{{ formatCurrency(item.unit_price, order.currency_code) }}</td>
-                                            <td class="px-4 py-3 text-sm text-gray-900">{{ formatCurrency(item.total_price, order.currency_code) }}</td>
-                                        </tr>
+                                        <template v-for="item in order.items" :key="item.id">
+                                            <tr>
+                                                <td class="px-4 py-3 text-sm text-gray-900">{{ item.product ? item.product.name : 'N/A' }}</td>
+                                                <td class="px-4 py-3 text-sm text-gray-500">{{ item.description }}</td>
+                                                <td class="px-4 py-3 text-sm text-gray-500">{{ item.quantity }}</td>
+                                                <td class="px-4 py-3 text-sm text-gray-500">{{ formatCurrency(item.unit_price, order.currency_code) }}</td>
+                                                <td class="px-4 py-3 text-sm text-gray-900">{{ formatCurrency(item.total_price, order.currency_code) }}</td>
+                                            </tr>
+                                            <tr v-if="item.client_service && item.client_service.status === 'pending_configuration'">
+                                                <td colspan="5" class="px-4 py-3 bg-yellow-100 border-l-4 border-yellow-500">
+                                                    <div class="flex justify-between items-center">
+                                                        <p class="text-yellow-700 font-medium">
+                                                            Este ítem requiere configuración del servicio.
+                                                        </p>
+                                                        <Link :href="route('admin.client-services.edit', item.client_service.id)"
+                                                              class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-yellow-600 hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500">
+                                                            Configurar Servicio
+                                                        </Link>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        </template>
                                     </tbody>
                                 </table>
                             </div>

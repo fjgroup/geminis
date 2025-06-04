@@ -47,8 +47,21 @@ const formatCurrency = (amount, currencyCode = 'USD') => {
 };
 
 // Helper for status display
-const formatStatus = (status) => {
+const getFriendlyServiceStatusText = (status) => {
     if (!status) return 'N/A';
+    const mappings = {
+        'Active': 'Activo',
+        'Pending': 'Pendiente', // Original 'pending'
+        'pending_configuration': 'Pendiente de Configuración',
+        'Suspended': 'Suspendido',
+        'Terminated': 'Terminado',
+        'Cancelled': 'Cancelado',
+        // Add other specific statuses here if they come directly from backend
+    };
+    if (mappings[status]) {
+        return mappings[status];
+    }
+    // Fallback for any other status (e.g., if backend sends 'Fraud' or other unmapped ones)
     return status.replace(/_/g, ' ').replace(/\b\w/g, char => char.toUpperCase());
 };
 
@@ -130,11 +143,12 @@ const confirmRenewalRequest = (event, serviceId) => {
                                                     'px-2 inline-flex text-xs leading-5 font-semibold rounded-full': true,
                                                     'bg-green-100 text-green-800': service.status === 'Active',
                                                     'bg-yellow-100 text-yellow-800': service.status === 'Pending',
+                                                    'bg-blue-100 text-blue-800': service.status === 'pending_configuration',
                                                     'bg-orange-100 text-orange-800': service.status === 'Suspended',
                                                     'bg-red-100 text-red-800': service.status === 'Terminated' || service.status === 'Cancelled',
-                                                     'bg-gray-100 text-gray-800': !['Active', 'Pending', 'Suspended', 'Terminated', 'Cancelled'].includes(service.status)
+                                                    'bg-gray-100 text-gray-800': !['Active', 'Pending', 'pending_configuration', 'Suspended', 'Terminated', 'Cancelled'].includes(service.status)
                                                 }">
-                                                    {{ formatStatus(service.status) }}
+                                                    {{ getFriendlyServiceStatusText(service.status) }}
                                                 </span>
                                             </td>
                                              <td class="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-500">

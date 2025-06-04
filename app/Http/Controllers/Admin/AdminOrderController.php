@@ -116,6 +116,7 @@ class AdminOrderController extends Controller
             'reseller:id,name,email', // Load specific columns for reseller
             'items.product:id,name', // For each order item, load its product
             'items.productPricing:id,price,billing_cycle_id', // And its pricing details (billing_cycle_name is not a direct column, billing_cycle_id is)
+            'items.clientService', // Added this line
             'invoice:id,invoice_number,status,total_amount' // Load associated invoice
         ]);
 
@@ -192,6 +193,9 @@ class AdminOrderController extends Controller
         }
     }
 
+    // DEPRECATED: This method is deprecated as it bypasses the standard Invoice -> Order payment confirmation flow.
+    // Payment should be confirmed at the Invoice level (e.g., through AdminTransactionController or by updating Invoice status),
+    // which will then trigger the InvoiceObserver to update the Order status.
     /**
      * Confirm payment for an order by an admin.
      *
@@ -200,26 +204,26 @@ class AdminOrderController extends Controller
      */
     public function confirmPayment(Order $order, ConfirmOrderPaymentAction $confirmOrderPaymentAction): RedirectResponse
     {
-        $this->authorize('update', $order); // Assuming 'update' policy covers this admin action
+        // $this->authorize('update', $order); // Assuming 'update' policy covers this admin action
 
-        if ($order->status !== 'pending_payment') {
-            return redirect()->route('admin.orders.show', $order->id)
-                             ->with('info', "This order is not awaiting payment confirmation (current status: {$order->status}) or is already processed.");
-        }
+        // if ($order->status !== 'pending_payment') {
+        //     return redirect()->route('admin.orders.show', $order->id)
+        //                      ->with('info', "This order is not awaiting payment confirmation (current status: {$order->status}) or is already processed.");
+        // }
 
-        try {
-            // The ConfirmOrderPaymentAction handles its own DB transaction.
-            $confirmOrderPaymentAction->execute($order);
+        // try {
+        //     // The ConfirmOrderPaymentAction handles its own DB transaction.
+        //     $confirmOrderPaymentAction->execute($order);
 
-            return redirect()->route('admin.orders.show', $order->id)
-                             ->with('success', 'Payment confirmed. Order status updated to Paid, Pending Execution.');
-        } catch (Exception $e) { // Catches exceptions from the Action class or other issues.
-            // The action class already rolls back its transaction on failure if it started one.
-            // If DB::beginTransaction() was used here, we would DB::rollBack();
-            Log::error("Error confirming payment for order ID {$order->id} by admin " . Auth::id() . " (via Action): " . $e->getMessage(), ['exception' => $e]);
-            return redirect()->route('admin.orders.show', $order->id)
-                             ->with('error', 'An error occurred while confirming payment. Please try again. ' . $e->getMessage());
-        }
+        //     return redirect()->route('admin.orders.show', $order->id)
+        //                      ->with('success', 'Payment confirmed. Order status updated to Paid, Pending Execution.');
+        // } catch (Exception $e) { // Catches exceptions from the Action class or other issues.
+        //     // The action class already rolls back its transaction on failure if it started one.
+        //     // If DB::beginTransaction() was used here, we would DB::rollBack();
+        //     Log::error("Error confirming payment for order ID {$order->id} by admin " . Auth::id() . " (via Action): " . $e->getMessage(), ['exception' => $e]);
+        //     return redirect()->route('admin.orders.show', $order->id)
+        //                      ->with('error', 'An error occurred while confirming payment. Please try again. ' . $e->getMessage());
+        // }
     }
 
     /**

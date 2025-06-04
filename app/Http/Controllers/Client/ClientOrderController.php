@@ -110,6 +110,7 @@ class ClientOrderController extends Controller
             'reseller:id,name,email', // Load specific columns for reseller
             'items.product:id,name', // For each order item, load its product
             'items.productPricing:id,price,billing_cycle_id', // And its pricing details (billing_cycle_name is not a direct column, billing_cycle_id is)
+            'items.clientService', // Added this line
             'invoice:id,invoice_number,status,total_amount' // Load associated invoice
         ]);
 

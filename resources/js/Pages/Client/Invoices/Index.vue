@@ -28,6 +28,22 @@ const formatCurrency = (amount, currencyCode = 'USD') => {
 const formatDate = (dateString) => {
     return dateString ? format(new Date(dateString), 'dd/MM/yyyy') : 'N/A';
 };
+
+const getFriendlyInvoiceStatusText = (status) => {
+    const mappings = {
+        'unpaid': 'No Pagada',
+        'paid': 'Pagada',
+        'overdue': 'Vencida',
+        'cancelled': 'Cancelada',
+        'refunded': 'Reembolsada',
+        'pending': 'Pendiente',
+        'collections': 'En Cobranza'
+    };
+    if (mappings[status]) {
+        return mappings[status];
+    }
+    return status ? status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'N/A';
+};
 </script>
 
 <template>
@@ -99,11 +115,9 @@ const formatDate = (dateString) => {
                                             'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100': invoice.status === 'paid',
                                             'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100': invoice.status === 'cancelled',
                                             'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100': invoice.status === 'refunded',
-                                            'bg-gray-100 text-gray-800 dark:bg-gray-600 dark:text-gray-200': !['unpaid', 'pending', 'overdue', 'paid', 'cancelled', 'refunded'].includes(invoice.status)
+                                            'bg-gray-100 text-gray-800 dark:bg-gray-600 dark:text-gray-200': !['unpaid', 'pending', 'overdue', 'paid', 'cancelled', 'refunded', 'collections'].includes(invoice.status)
                                         }">
-                                            {{ invoice.status ? invoice.status.replace(/_/g, ' ').replace(/\w/g,
-                                                function (char)
-                                            { return char.toUpperCase(); }) : 'N/A' }}
+                                            {{ getFriendlyInvoiceStatusText(invoice.status) }}
                                         </span>
                                     </td>
                                     <td class="px-6 py-4 text-sm font-medium text-right whitespace-nowrap">

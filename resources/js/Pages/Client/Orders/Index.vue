@@ -27,6 +27,24 @@ const confirmRequestPostPaymentCancellation = (orderId) => {
         });
     }
 };
+
+const getFriendlyOrderStatusText = (status) => {
+    const mappings = {
+        'pending_payment': 'Pendiente de Pago',
+        'pending_provisioning': 'Pago Confirmado, Procesando',
+        'paid_pending_execution': 'Pago Confirmado, En Espera',
+        'active': 'Activa',
+        'completed': 'Completada',
+        'cancelled': 'Cancelada',
+        'fraud': 'Fraude (Contacte Soporte)',
+        'cancellation_requested_by_client': 'Cancelación Solicitada',
+    };
+    if (mappings[status]) {
+        return mappings[status];
+    }
+    // Default fallback: Capitalize the first letter
+    return status ? status.charAt(0).toUpperCase() + status.slice(1).replace(/_/g, ' ') : '';
+};
 </script>
 
 <template>
@@ -86,8 +104,9 @@ const confirmRequestPostPaymentCancellation = (orderId) => {
                                             'bg-blue-100 text-blue-800': order.status === 'pending_provisioning' || order.status === 'paid_pending_execution',
                                             'bg-green-100 text-green-800': order.status === 'active' || order.status === 'completed',
                                             'bg-red-100 text-red-800': order.status === 'fraud' || order.status === 'cancelled',
+                                            'bg-orange-100 text-orange-800': order.status === 'cancellation_requested_by_client', // Added for cancellation_requested_by_client
                                         }">
-                                            {{ order.status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) }}
+                                            {{ getFriendlyOrderStatusText(order.status) }}
                                         </span>
                                     </td>
                                     <td class="px-6 py-4 text-sm font-medium whitespace-nowrap">

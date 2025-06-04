@@ -84,7 +84,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'verified', 'admin']
     Route::post('/orders/{order}/approve-cancellation', [AdminOrderController::class, 'approveCancellationRequest'])->name('orders.approveCancellation');
 
     // Admin Confirm Payment Route
-    Route::post('/orders/{order}/confirm-payment', [AdminOrderController::class, 'confirmPayment'])->name('orders.confirmPayment');
+    // Route::post('/orders/{order}/confirm-payment', [AdminOrderController::class, 'confirmPayment'])->name('orders.confirmPayment');
 
     // Payment Methods Route
     Route::resource('payment-methods', AdminPaymentMethodController::class);

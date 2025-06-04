@@ -216,30 +216,11 @@ class PayPalController extends Controller
                     'fees_amount' => $resource['seller_receivable_breakdown']['paypal_fee']['value'] ?? 0, // If available
                 ]);
 
-                $order = $invoice->order()->with('items.product', 'client')->first();
-                if ($order && $order->status === 'pending_payment') {
-                    $order->status = 'paid_pending_execution';
-                    $order->save();
-
-                    OrderActivity::create([
-                        'order_id' => $order->id,
-                        'user_id' => $order->client_id, // Action by client via PayPal
-                        'type' => 'payment_confirmed_paypal',
-                        'details' => json_encode([
-                            'invoice_id' => $invoice->id,
-                            'invoice_number' => $invoice->invoice_number,
-                            'paypal_capture_id' => $paypalCaptureId,
-                            'amount' => $paypalAmount . ' ' . $paypalCurrency,
-                        ])
-                    ]);
-                    Log::info("PayPal Webhook: Order {$order->id} paid. Service activation logic should be triggered here if applicable.", [
-                        'order_id' => $order->id,
-                        'product_type' => $order->items->first()->product->type ?? 'unknown'
-                    ]);
-                }
+                // The InvoiceObserver is now expected to handle the update of the associated Order's status
+                // to 'pending_provisioning' when the invoice status is set to 'paid'.
 
                 \Illuminate\Support\Facades\DB::commit();
-                Log::info("PayPal Webhook (PAYMENT.CAPTURE.COMPLETED): Successfully processed for Invoice ID {$invoice->id}.");
+                Log::info("PayPal Webhook (PAYMENT.CAPTURE.COMPLETED): Successfully processed for Invoice ID {$invoice->id}. Invoice marked as paid, awaiting observer to update order.");
 
             } catch (Throwable $th) {
                 \Illuminate\Support\Facades\DB::rollBack();
