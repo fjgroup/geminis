@@ -26,7 +26,13 @@
                                     <InputLabel :for="'product_pricing_id-' + item.id" value="Billing Cycle" />
 
                                     <!-- Debug output for available_billing_cycles -->
-                                    <pre class="text-xs bg-gray-100 p-2 overflow-auto">{{ JSON.stringify(item.available_billing_cycles, null, 2) }}</pre>
+                                    <pre class="text-xs bg-gray-100 p-2 overflow-auto">
+Product Data for Item {{ item.id }}:
+{{ JSON.stringify(item.product, null, 2) }}
+
+Product Pricings for Item {{ item.id }}:
+{{ JSON.stringify(item.product ? item.product.pricings : 'Product not loaded or no pricings relation', null, 2) }}
+</pre>
 
                                     <SelectInput
                                         :id="'product_pricing_id-' + item.id"

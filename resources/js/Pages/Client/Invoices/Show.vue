@@ -32,21 +32,32 @@ const formatCurrency = (amount, currencyCode = "USD") => {
 
 // Helper to determine payment button state
 const canPayWithBalance = computed(() => {
-  return (
-    props.invoice.status === "unpaid" &&
-    user.value && // use user.value from computed
-    user.value.balance >= props.invoice.total_amount
-  );
-});
+      // Ensure user.value and user.value.balance are available
+      if (!user.value || typeof user.value.balance === 'undefined') return false;
+      // Ensure invoice.total_amount is available
+      if (typeof props.invoice.total_amount === 'undefined') return false;
+
+      return (
+        props.invoice.status === "unpaid" &&
+        parseFloat(user.value.balance) >= parseFloat(props.invoice.total_amount)
+      );
+    });
 
 const hasSomeBalance = computed(() => {
-  return (
-    props.invoice.status === "unpaid" &&
-    user.value &&
-    user.value.balance > 0 &&
-    user.value.balance < props.invoice.total_amount
-  );
-});
+      // Ensure user.value and user.value.balance are available
+      if (!user.value || typeof user.value.balance === 'undefined') return false;
+      // Ensure invoice.total_amount is available
+      if (typeof props.invoice.total_amount === 'undefined') return false;
+
+      const userBalance = parseFloat(user.value.balance);
+      const invoiceTotal = parseFloat(props.invoice.total_amount);
+
+      return (
+        props.invoice.status === "unpaid" &&
+        userBalance > 0 &&
+        userBalance < invoiceTotal
+      );
+    });
 
 const payInvoiceWithBalance = (invoiceId) => {
     if (confirm('¿Confirmas que deseas pagar esta factura utilizando tu saldo disponible?')) {
@@ -280,7 +291,7 @@ const formatDate = (datetime) => {
                     </PrimaryButton>
                     <p v-if="hasSomeBalance && !canPayWithBalance" class="mt-2 text-sm text-yellow-600 dark:text-yellow-400">
                         Tu saldo actual no es suficiente para cubrir el monto total de esta factura.
-                         Necesitas {{ formatCurrency(invoice.total_amount - user.balance, invoice.currency_code) }} más.
+                         Necesitas {{ formatCurrency(parseFloat(props.invoice.total_amount) - parseFloat(user.value.balance), props.invoice.currency_code) }} más.
                     </p>
                 </div>
 
