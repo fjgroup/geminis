@@ -25,6 +25,18 @@
                                 <div class="mb-4">
                                     <InputLabel :for="'product_pricing_id-' + item.id" value="Billing Cycle" />
 
+                                    <pre class="text-xs bg-gray-100 p-2 overflow-auto">
+Item ID: {{ item.id }}
+Item Product (raw):
+{{ JSON.stringify(item.product, null, 2) }}
+
+Attempting to access 'item.product.pricings' (all lowercase):
+{{ JSON.stringify(item.product && item.product.pricings ? item.product.pricings : "item.product.pricings (lowercase) not found or product is null", null, 2) }}
+
+Attempting to access 'item.product.product_pricings' (snake_case):
+{{ JSON.stringify(item.product && item.product.product_pricings ? item.product.product_pricings : "item.product.product_pricings (snake_case) not found or product is null", null, 2) }}
+</pre>
+
                                     <SelectInput
                                         :id="'product_pricing_id-' + item.id"
                                         class="mt-1 block w-full"

@@ -182,13 +182,13 @@ const payWithBalance = (invoiceId) => {
                             <!-- Pay with Balance Button -->
                             <div v-if="order.invoice && order.invoice.status === 'unpaid' && userBalanceNumeric >= invoiceTotalNumeric" class="mt-4 text-right">
                                 <PrimaryButton @click="payWithBalance(order.invoice.id)" class="bg-emerald-600 hover:bg-emerald-700 focus:ring-emerald-500">
-                                    Pagar con Saldo (Disponible: {{ user.value.formatted_balance }})
+                                    Pagar con Saldo (Disponible: {{ user.value ? user.value.formatted_balance : 'N/A' }})
                                 </PrimaryButton>
                                 <p class="text-xs text-gray-500 mt-1">Utilizar tu crédito disponible para pagar esta factura.</p>
                             </div>
                              <div v-else-if="order.invoice && order.invoice.status === 'unpaid' && userBalanceNumeric > 0 && userBalanceNumeric < invoiceTotalNumeric" class="mt-4 text-right">
                                 <PrimaryButton class="bg-gray-400 cursor-not-allowed" disabled>
-                                    Saldo Insuficiente (Disponible: {{ user.value.formatted_balance }})
+                                    Saldo Insuficiente (Disponible: {{ user.value ? user.value.formatted_balance : 'N/A' }})
                                 </PrimaryButton>
                                 <p class="text-xs text-gray-500 mt-1">Necesitas {{ formatCurrency(invoiceTotalNumeric - userBalanceNumeric, order.currency_code) }} más para pagar con saldo.</p>
                             </div>
