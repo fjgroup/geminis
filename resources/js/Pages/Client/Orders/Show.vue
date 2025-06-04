@@ -42,7 +42,21 @@ function confirmRequestPostPaymentCancellation() {
 // Statuses where client can request cancellation
 const cancellablePostPaymentStatuses = ['paid_pending_execution', 'active', 'pending_provisioning'];
 
-const user = page.props.auth.user; // Access authenticated user
+const user = computed(() => page.props.auth.user); // Make user fully reactive for template
+
+const userBalanceNumeric = computed(() => {
+    if (user.value && typeof user.value.balance !== 'undefined') {
+        return parseFloat(user.value.balance);
+    }
+    return 0; // Default to 0 if balance is not available
+});
+
+const invoiceTotalNumeric = computed(() => {
+    if (props.order.invoice && typeof props.order.invoice.total_amount !== 'undefined') {
+        return parseFloat(props.order.invoice.total_amount);
+    }
+    return 0; // Default to 0 if not available
+});
 
 const payWithBalance = (invoiceId) => {
     if (confirm('¿Confirmas que deseas pagar esta factura utilizando tu saldo disponible?')) {
@@ -165,17 +179,17 @@ const payWithBalance = (invoiceId) => {
                             </div>
 
                             <!-- Pay with Balance Button -->
-                            <div v-if="order.invoice && order.invoice.status === 'unpaid' && user && user.balance >= order.invoice.total_amount" class="mt-4 text-right">
+                            <div v-if="order.invoice && order.invoice.status === 'unpaid' && userBalanceNumeric >= invoiceTotalNumeric" class="mt-4 text-right">
                                 <PrimaryButton @click="payWithBalance(order.invoice.id)" class="bg-emerald-600 hover:bg-emerald-700 focus:ring-emerald-500">
-                                    Pagar con Saldo (Disponible: {{ user.formatted_balance }})
+                                    Pagar con Saldo (Disponible: {{ user.value.formatted_balance }})
                                 </PrimaryButton>
                                 <p class="text-xs text-gray-500 mt-1">Utilizar tu crédito disponible para pagar esta factura.</p>
                             </div>
-                             <div v-else-if="order.invoice && order.invoice.status === 'unpaid' && user && user.balance > 0 && user.balance < order.invoice.total_amount" class="mt-4 text-right">
+                             <div v-else-if="order.invoice && order.invoice.status === 'unpaid' && userBalanceNumeric > 0 && userBalanceNumeric < invoiceTotalNumeric" class="mt-4 text-right">
                                 <PrimaryButton class="bg-gray-400 cursor-not-allowed" disabled>
-                                    Saldo Insuficiente (Disponible: {{ user.formatted_balance }})
+                                    Saldo Insuficiente (Disponible: {{ user.value.formatted_balance }})
                                 </PrimaryButton>
-                                <p class="text-xs text-gray-500 mt-1">Necesitas {{ formatCurrency(order.invoice.total_amount - user.balance, order.currency_code) }} más para pagar con saldo.</p>
+                                <p class="text-xs text-gray-500 mt-1">Necesitas {{ formatCurrency(invoiceTotalNumeric - userBalanceNumeric, order.currency_code) }} más para pagar con saldo.</p>
                             </div>
 
 

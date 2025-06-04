@@ -66,6 +66,10 @@ class ClientManualPaymentController extends Controller
             'fees_amount' => 0, // Typically no fees for manual payment recording itself
         ]);
 
+        // Add these lines:
+        $invoice->status = 'pending_confirmation';
+        $invoice->save();
+
         return Redirect::route('client.invoices.show', $invoice->id)
             ->with('success', 'Tu información de pago ha sido enviada y está pendiente de confirmación.');
     }
