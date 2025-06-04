@@ -15,6 +15,9 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia; // Importar Inertia
 use Inertia\Response; // Importar Response
+use App\Jobs\ProvisionClientServiceJob; // Added
+use Illuminate\Support\Facades\Gate; // Added
+use Illuminate\Support\Facades\Log; // Added, though likely already available via Controller
 
 
 class AdminClientServiceController extends Controller
@@ -229,5 +232,70 @@ class AdminClientServiceController extends Controller
     public function getProductPricings(Product $product): JsonResponse
     {
         return response()->json($product->pricings);
+    }
+
+    /**
+     * Retry provisioning for a client service.
+     *
+     * @param ClientService $clientService
+     * @return RedirectResponse
+     */
+    public function retryProvisioning(ClientService $clientService): RedirectResponse
+    {
+        Gate::authorize('update', $clientService); // Or a more specific policy action like 'retryProvisioning'
+
+        if ($clientService->status !== 'provisioning_failed') {
+            return redirect()->route('admin.client-services.edit', $clientService->id)
+                             ->with('error', 'El servicio no está en estado de fallo de aprovisionamiento.');
+        }
+
+        // Load the orderItem and its necessary nested relations for the job
+        // Ensure these relations are defined in the respective models.
+        $clientService->loadMissing([
+            'orderItem.order.client',
+            'orderItem.product.productType',
+            'orderItem.productPricing.billingCycle'
+        ]);
+
+        if (!$clientService->orderItem) {
+            Log::error("AdminClientServiceController: No se encontró OrderItem para ClientService ID: {$clientService->id} durante el reintento de aprovisionamiento.");
+            return redirect()->route('admin.client-services.edit', $clientService->id)
+                             ->with('error', 'No se pudo encontrar el ítem de orden asociado para reintentar el aprovisionamiento.');
+        }
+
+        // Check if all required nested relations for the job are loaded on orderItem
+        if (!$clientService->orderItem->order ||
+            !$clientService->orderItem->order->client ||
+            !$clientService->orderItem->product ||
+            !$clientService->orderItem->product->productType ||
+            !$clientService->orderItem->productPricing ||
+            !$clientService->orderItem->productPricing->billingCycle
+            ) {
+            Log::error("AdminClientServiceController: Faltan relaciones necesarias en OrderItem ID: {$clientService->orderItem->id} para el reintento de aprovisionamiento de ClientService ID: {$clientService->id}.",
+                [
+                    'order_loaded' => !!$clientService->orderItem->order,
+                    'client_loaded' => !!($clientService->orderItem->order && $clientService->orderItem->order->client),
+                    'product_loaded' => !!$clientService->orderItem->product,
+                    'productType_loaded' => !!($clientService->orderItem->product && $clientService->orderItem->product->productType),
+                    'productPricing_loaded' => !!$clientService->orderItem->productPricing,
+                    'billingCycle_loaded' => !!($clientService->orderItem->productPricing && $clientService->orderItem->productPricing->billingCycle),
+                ]
+            );
+            return redirect()->route('admin.client-services.edit', $clientService->id)
+                             ->with('error', 'Faltan datos relacionados con el ítem de orden. No se puede reintentar el aprovisionamiento.');
+        }
+
+
+        // Optionally, update status to indicate a retry is in progress
+        $clientService->status = 'pending_configuration'; // Reset to a state where provisioning can be attempted
+        $clientService->notes = ($clientService->notes ? $clientService->notes . "\n" : '') . "Reintento de aprovisionamiento iniciado por admin (" . auth()->user()->name . ") el " . now()->toDateTimeString() . ".";
+        $clientService->save();
+
+        ProvisionClientServiceJob::dispatch($clientService->orderItem);
+
+        Log::info("AdminClientServiceController: Reintento de aprovisionamiento despachado para ClientService ID: {$clientService->id} vía OrderItem ID: {$clientService->orderItem->id}.");
+
+        return redirect()->route('admin.client-services.edit', $clientService->id)
+                         ->with('success', 'Se ha encolado el reintento de aprovisionamiento para el servicio.');
     }
 }

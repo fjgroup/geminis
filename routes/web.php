@@ -45,6 +45,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'verified', 'admin']
 
     // Rutas para Client Services
     Route::resource('client-services', AdminClientServiceController::class);
+    Route::post('/client-services/{client_service}/retry-provisioning', [AdminClientServiceController::class, 'retryProvisioning'])
+        ->name('client-services.retryProvisioning');
 
     // Rutas para Órdenes de Administración
     Route::resource('orders', AdminOrderController::class);

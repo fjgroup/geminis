@@ -44,6 +44,24 @@ const deleteService = (serviceId) => {
         });
     }
 };
+
+const getAdminFriendlyServiceStatusText = (status) => {
+    const mappings = {
+        'pending': 'Pendiente',
+        'active': 'Activo',
+        'suspended': 'Suspendido',
+        'terminated': 'Terminado',
+        'cancelled': 'Cancelado',
+        'fraud': 'Fraude',
+        'pending_configuration': 'Pend. Configuración',
+        'provisioning_failed': 'Fallo de Aprovisionamiento',
+    };
+    if (mappings[status]) {
+        return mappings[status];
+    }
+    // Fallback for any other status
+    return status ? status.charAt(0).toUpperCase() + status.slice(1).replace(/_/g, ' ') : 'N/A';
+};
 </script>
 
 <template>
@@ -142,11 +160,15 @@ const deleteService = (serviceId) => {
                                             class="px-6 py-4 text-sm text-gray-500 whitespace-nowrap dark:text-gray-400">
                                             <span class="inline-flex px-2 text-xs font-semibold leading-5 rounded-full"
                                                 :class="{
-                                                      'bg-green-100 text-green-800': service.status === 'active',
-                                                      'bg-yellow-100 text-yellow-800': service.status === 'pending' || service.status === 'suspended',
-                                                      'bg-red-100 text-red-800': service.status === 'terminated' || service.status === 'cancelled' || service.status === 'fraud',
-                                                  }">
-                                                {{ service.status }}
+                                                    'bg-green-100 text-green-800 dark:bg-green-700 dark:text-green-100': service.status === 'active',
+                                                    'bg-yellow-100 text-yellow-800 dark:bg-yellow-700 dark:text-yellow-100': service.status === 'pending',
+                                                    'bg-blue-100 text-blue-800 dark:bg-blue-700 dark:text-blue-100': service.status === 'pending_configuration',
+                                                    'bg-orange-100 text-orange-800 dark:bg-orange-700 dark:text-orange-100': service.status === 'suspended',
+                                                    'bg-red-200 text-red-900 border border-red-400 dark:bg-red-800 dark:text-red-100 dark:border-red-600': service.status === 'provisioning_failed',
+                                                    'bg-red-100 text-red-800 dark:bg-red-700 dark:text-red-200': service.status === 'terminated' || service.status === 'cancelled' || service.status === 'fraud',
+                                                    'bg-gray-100 text-gray-800 dark:bg-gray-600 dark:text-gray-200': !['active', 'pending', 'pending_configuration', 'suspended', 'terminated', 'cancelled', 'fraud', 'provisioning_failed'].includes(service.status)
+                                                }">
+                                                {{ getAdminFriendlyServiceStatusText(service.status) }}
                                             </span>
                                         </td>
                                         <td

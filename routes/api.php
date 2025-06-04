@@ -2,7 +2,8 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Client\PayPalController; // Ensure correct path
+// use App\Http\Controllers\Client\PayPalController; // Old controller
+use App\Http\Controllers\Webhook\PayPalWebhookController; // New controller
 
 /*
 |--------------------------------------------------------------------------
@@ -20,4 +21,4 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 });
 
 // PayPal Webhook
-Route::post('/webhooks/paypal', [PayPalController::class, 'webhook'])->name('webhooks.paypal');
+Route::post('/webhooks/paypal', [PayPalWebhookController::class, 'handle'])->name('webhooks.paypal');

@@ -10,6 +10,8 @@ use App\Models\Order;
 use App\Observers\OrderObserver;
 use App\Models\ClientService;
 use App\Observers\ClientServiceObserver;
+use App\Interfaces\PaymentGatewayInterface;
+use App\Services\PaypalGatewayService;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -18,7 +20,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->bind(PaymentGatewayInterface::class, PaypalGatewayService::class);
     }
 
     /**
