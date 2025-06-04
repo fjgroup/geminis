@@ -24,6 +24,10 @@
                                 <!-- Billing Cycle Selection -->
                                 <div class="mb-4">
                                     <InputLabel :for="'product_pricing_id-' + item.id" value="Billing Cycle" />
+
+                                    <!-- Debug output for available_billing_cycles -->
+                                    <pre class="text-xs bg-gray-100 p-2 overflow-auto">{{ JSON.stringify(item.available_billing_cycles, null, 2) }}</pre>
+
                                     <SelectInput
                                         :id="'product_pricing_id-' + item.id"
                                         class="mt-1 block w-full"
