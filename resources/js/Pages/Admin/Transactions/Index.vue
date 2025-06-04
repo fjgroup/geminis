@@ -85,15 +85,18 @@ const rejectTransaction = (id) => {
                         </Link>
                         <!-- Add other filters as needed, e.g., Pending Order Payments -->
                         <Link :href="route('admin.transactions.index', {
-                                  type: 'order_payment', // Assuming 'order_payment' is the type for invoice payments
-                                  status: 'pending'
+                                  type: 'payment', // Changed from 'order_payment' to 'payment'
+                                  status: 'pending',
+                                  // Optionally, could exclude manual_fund_addition gateway if those are always separate
+                                  // gateway_slug: '!manual_fund_addition' // This is pseudo-code, actual filtering might need backend adjustment if complex exclusion is needed
+                                  // For now, just filtering by type: 'payment' and status: 'pending' will get most order payments.
                               })"
                               :class="{
-                                  'bg-indigo-100 text-indigo-700': filters.type === 'order_payment' && filters.status === 'pending' && !filters.gateway_slug, // Ensure gateway_slug is not set for this tab
-                                  'text-gray-500 hover:text-gray-700': !(filters.type === 'order_payment' && filters.status === 'pending' && !filters.gateway_slug)
+                                  'bg-indigo-100 text-indigo-700': filters.type === 'payment' && filters.status === 'pending' && !filters.gateway_slug,
+                                  'text-gray-500 hover:text-gray-700': !(filters.type === 'payment' && filters.status === 'pending' && !filters.gateway_slug)
                               }"
                               class="px-3 py-2 font-medium text-sm rounded-md">
-                            Pagos de Órdenes Pendientes
+                            Pagos de Facturas Pendientes
                         </Link>
                     </nav>
                 </div>

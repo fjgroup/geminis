@@ -60,12 +60,12 @@ const payWithBalance = (invoiceId) => {
 </script>
 
 <template>
-    <Head :title="'Order Details #' + order.order_number" />
+    <Head :title="'Detalles de Orden #' + order.order_number" />
 
     <AuthenticatedLayout>
         <template #header>
             <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-                Order Details: {{ order.order_number }}
+                Detalles de la Orden: {{ order.order_number }}
             </h2>
         </template>
 
@@ -82,9 +82,9 @@ const payWithBalance = (invoiceId) => {
                         </div>
 
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                            <div><strong>Order Number:</strong> {{ order.order_number }}</div>
-                            <div><strong>Order Date:</strong> {{ formatDate(order.order_date) }}</div>
-                            <div><strong>Status:</strong> 
+                            <div><strong>Número de Orden:</strong> {{ order.order_number }}</div>
+                            <div><strong>Fecha de Orden:</strong> {{ formatDate(order.order_date) }}</div>
+                            <div><strong>Estado:</strong>
                                 <span :class="{
                                     'text-yellow-600 font-semibold': order.status === 'pending_payment',
                                     'text-blue-600 font-semibold': order.status === 'paid_pending_execution' || order.status === 'pending_provisioning',
@@ -93,30 +93,30 @@ const payWithBalance = (invoiceId) => {
                                     'text-red-600 font-semibold': order.status === 'fraud' || order.status === 'cancelled',
                                 }">{{ order.status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) }}</span>
                             </div>
-                            <div><strong>Total Amount:</strong> {{ formatCurrency(order.total_amount, order.currency_code) }}</div>
+                            <div><strong>Monto Total:</strong> {{ formatCurrency(order.total_amount, order.currency_code) }}</div>
                         </div>
 
                         <div v-if="order.invoice" class="mb-6">
-                            <h4 class="font-medium text-gray-700">Associated Invoice:</h4>
+                            <h4 class="font-medium text-gray-700">Factura Asociada:</h4>
                             <p>
                                 <Link :href="route('client.invoices.show', order.invoice.id)" class="text-indigo-600 hover:text-indigo-900">
-                                    View Invoice #{{ order.invoice.invoice_number }} (Status: {{ order.invoice.status }})
+                                    Ver Factura #{{ order.invoice.invoice_number }} (Estado: {{ order.invoice.status }})
                                 </Link>
                             </p>
                         </div>
 
                         <div v-if="order.notes" class="mb-6">
-                            <h4 class="font-medium text-gray-700">Order Notes:</h4>
+                            <h4 class="font-medium text-gray-700">Notas de la Orden:</h4>
                             <p class="whitespace-pre-wrap text-sm text-gray-600">{{ order.notes }}</p>
                         </div>
                         
-                        <h4 class="font-medium text-gray-700 mb-2">Order Items:</h4>
+                        <h4 class="font-medium text-gray-700 mb-2">Ítems de la Orden:</h4>
                         <ul v-if="order.items && order.items.length > 0" class="list-disc pl-5 text-sm text-gray-600">
                             <li v-for="item in order.items" :key="item.id">
                                 {{ item.description }} - {{ item.quantity }} x {{ formatCurrency(item.unit_price, order.currency_code) }}
                             </li>
                         </ul>
-                        <p v-else class="text-sm text-gray-500">No items in this order.</p>
+                        <p v-else class="text-sm text-gray-500">No hay ítems en esta orden.</p>
 
                         <!-- Action Buttons -->
                         <div class="mt-8 pt-6 border-t border-gray-200 space-y-3">

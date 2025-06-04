@@ -29,8 +29,6 @@
                                         class="mt-1 block w-full"
                                         v-model="item.product_pricing_id"
                                         :options="item.available_billing_cycles"
-                                        option-value="id"
-                                        option-label="name"
                                         required
                                     />
                                     <InputError class="mt-2" :message="form.errors[`items.${index}.product_pricing_id`]" />
@@ -90,26 +88,13 @@ const formatCurrency = (amount, currencyCode = 'USD') => {
 
 const form = useForm({
   items: props.order.items.map(item => {
-    console.log('Processing item:', item); // Log the whole item
-    console.log('Item product:', item.product); // Log the product part
-    if (item.product) {
-        console.log('Item product pricings:', item.product.product_pricings); // Log the pricings array
-    }
-
     const productPricings = item.product && item.product.product_pricings ? item.product.product_pricings : [];
     const available_billing_cycles = productPricings.map(pricing => {
-      console.log('Processing pricing option for SelectInput:', pricing); // Log each pricing option
-      if (pricing.billing_cycle) {
-        console.log('Billing cycle name:', pricing.billing_cycle.name);
-      } else {
-        console.log('Pricing option MISSING billing_cycle:', pricing);
-      }
       return {
-        id: pricing.id,
-        name: `${pricing.billing_cycle ? pricing.billing_cycle.name : 'N/A'} - ${formatCurrency(pricing.price, pricing.currency_code || props.order.currency_code)}`,
+        value: pricing.id, // New key: 'value'
+        label: `${pricing.billing_cycle ? pricing.billing_cycle.name : 'N/A'} - ${formatCurrency(pricing.price, pricing.currency_code || props.order.currency_code)}`, // New key: 'label'
       };
     });
-    console.log('Generated available_billing_cycles for item:', available_billing_cycles);
 
     // item.product_pricing also available from controller for current details
     const currentBillingCycleName = item.product_pricing?.billing_cycle?.name || 'N/A';

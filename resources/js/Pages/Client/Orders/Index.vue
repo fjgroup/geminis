@@ -3,6 +3,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link, router } from '@inertiajs/vue3'; // Added router
 import Pagination from '@/Components/UI/Pagination.vue';
 // import PrimaryButton from '@/Components/PrimaryButton.vue'; // Not using PrimaryButton for simple link-style button here
+import { EyeIcon, DocumentTextIcon, XCircleIcon, QuestionMarkCircleIcon } from '@heroicons/vue/24/outline';
 
 const props = defineProps({
     orders: Object, // Esto recibirá los datos paginados de las órdenes del cliente
@@ -89,24 +90,40 @@ const confirmRequestPostPaymentCancellation = (orderId) => {
                                             {{ order.status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) }}
                                         </span>
                                     </td>
-                                    <td class="px-6 py-4 text-sm font-medium whitespace-nowrap space-x-2">
-                                        <Link v-if="order.invoice_id" :href="route('client.invoices.show', order.invoice_id)" class="text-indigo-600 hover:text-indigo-900">
-                                            Ver Factura
-                                        </Link>
-                                        <span v-else class="text-gray-400">Sin Factura</span>
+                                    <td class="px-6 py-4 text-sm font-medium whitespace-nowrap">
+                                        <div class="flex items-center space-x-3">
+                                            <Link :href="route('client.orders.show', order.id)"
+                                                  class="text-gray-500 hover:text-indigo-600"
+                                                  title="Ver Detalles de la Orden">
+                                                <EyeIcon class="w-5 h-5" />
+                                            </Link>
+
+                                            <Link v-if="order.invoice_id"
+                                                  :href="route('client.invoices.show', order.invoice_id)"
+                                                  class="text-gray-500 hover:text-blue-600"
+                                                  title="Ver Factura">
+                                                <DocumentTextIcon class="w-5 h-5" />
+                                            </Link>
+                                            <span v-else class="text-gray-400 cursor-not-allowed" title="Sin Factura">
+                                                <DocumentTextIcon class="w-5 h-5 opacity-50" />
+                                            </span>
                                         
-                                        <button 
-                                            v-if="order.status === 'pending_payment'" 
-                                            @click="confirmCancelOrder(order.id)" 
-                                            class="text-red-600 hover:text-red-800 focus:outline-none text-sm">
-                                            Cancelar (Pre-Pago)
-                                        </button>
-                                        <button
-                                            v-if="order.status === 'paid_pending_execution'"
-                                            @click="confirmRequestPostPaymentCancellation(order.id)"
-                                            class="text-orange-600 hover:text-orange-800 focus:outline-none text-sm">
-                                            Solicitar Cancelación (Post-Pago)
-                                        </button>
+                                            <button
+                                                v-if="order.status === 'pending_payment'"
+                                                @click="confirmCancelOrder(order.id)"
+                                                class="text-gray-500 hover:text-red-600 focus:outline-none"
+                                                title="Cancelar Orden (Pre-Pago)">
+                                                <XCircleIcon class="w-5 h-5" />
+                                            </button>
+
+                                            <button
+                                                v-if="order.status === 'paid_pending_execution'"
+                                                @click="confirmRequestPostPaymentCancellation(order.id)"
+                                                class="text-gray-500 hover:text-orange-600 focus:outline-none"
+                                                title="Solicitar Cancelación de Orden (Post-Pago)">
+                                                <QuestionMarkCircleIcon class="w-5 h-5" />
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             </tbody>
