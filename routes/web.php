@@ -49,9 +49,6 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'verified', 'admin']
     Route::post('/client-services/{client_service}/retry-provisioning', [AdminClientServiceController::class, 'retryProvisioning'])
         ->name('client-services.retryProvisioning');
 
-    // Rutas para Órdenes de Administración (REMOVED)
-    // Route::resource('orders', AdminOrderController::class);
-
     // Rutas para Facturas de Administración
     Route::resource('invoices', AdminInvoiceController::class);
     Route::post('/invoices/{invoice}/activate-services', [AdminInvoiceController::class, 'activateServices'])->name('invoices.activateServices');
@@ -82,16 +79,6 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'verified', 'admin']
     // Ruta para confirmar manualmente un pago
     Route::post('/transactions/confirm-manual', [AdminTransactionController::class, 'confirmManualPayment'])->name('transactions.confirmManualPayment');
 
-    // Order Execution Routes (REMOVED)
-    // Route::post('/orders/{order}/start-execution', [AdminOrderController::class, 'startExecution'])->name('orders.startExecution');
-    // Route::post('/orders/{order}/complete-execution', [AdminOrderController::class, 'completeExecution'])->name('orders.completeExecution');
-
-    // Order Cancellation Approval Route (REMOVED)
-    // Route::post('/orders/{order}/approve-cancellation', [AdminOrderController::class, 'approveCancellationRequest'])->name('orders.approveCancellation');
-
-    // Admin Confirm Payment Route (REMOVED)
-    // Route::post('/orders/{order}/confirm-payment', [AdminOrderController::class, 'confirmPayment'])->name('orders.confirmPayment');
-
     // Payment Methods Route
     Route::resource('payment-methods', AdminPaymentMethodController::class);
     // Product Types Route
@@ -120,21 +107,10 @@ Route::prefix('client')->name('client.')->middleware(['auth'])->group(function (
 
   // Checkout Route
   Route::get('/checkout/product/{product}', [ClientCheckoutController::class, 'showProductCheckoutPage'])->name('client.checkout.product');
+  Route::post('/checkout/product/{product}/submit', [ClientCheckoutController::class, 'submitProductCheckout'])->name('client.checkout.submit');
 
   // Rutas de Recurso para la gestión de servicios de cliente
   Route::resource('services', ClientServiceController::class); // Consolidated service routes using resource including index
-
-  // Rutas para la creación de órdenes (REMOVED as ClientOrderController is removed)
-  // Route::get('/order/product/{product}', [ClientOrderController::class, 'showOrderForm'])->name('order.showOrderForm');
-  // Route::post('/order/place/{product}', [ClientOrderController::class, 'placeOrder'])->name('order.placeOrder'); // This POST route might be kept if PlaceOrderAction is used by it
-
-  // Rutas para la gestión de órdenes de cliente (REMOVED)
-  // Route::get('/orders', [ClientOrderController::class, 'index'])->name('orders.index');
-  // Route::get('/orders/{order}', [ClientOrderController::class, 'show'])->name('orders.show');
-  // Route::delete('/orders/{order}/cancel-prepayment', [ClientOrderController::class, 'cancelPrePaymentOrder'])->name('orders.cancelPrePayment');
-  // Route::post('/orders/{order}/request-cancellation', [ClientOrderController::class, 'requestPostPaymentCancellation'])->name('orders.requestPostPaymentCancellation');
-  // Route::get('/orders/{order}/edit-order', [ClientOrderController::class, 'editOrderForm'])->name('orders.editOrderForm');
-  // Route::put('/orders/{order}/update-order', [ClientOrderController::class, 'updateOrder'])->name('orders.updateOrder');
 
   // Rutas para la gestión de facturas de cliente
   Route::resource('invoices', App\Http\Controllers\Client\ClientInvoiceController::class)->except(['create', 'store', 'edit', 'update', 'destroy']); // Use resource for invoices, exclude non-client actions
@@ -168,14 +144,6 @@ Route::prefix('client')->name('client.')->middleware(['auth'])->group(function (
   Route::get('/services/{service}/upgrade-downgrade-options', [ClientServiceController::class, 'showUpgradeDowngradeOptions'])->name('services.showUpgradeDowngradeOptions');
   Route::post('/services/{service}/process-upgrade-downgrade', [ClientServiceController::class, 'processUpgradeDowngrade'])->name('services.processUpgradeDowngrade');
   Route::post('/services/{service}/request-renewal', [ClientServiceController::class, 'requestRenewal'])->name('services.requestRenewal');
-
-    // Rutas para la gestión de órdenes de cliente (REMOVED - DUPLICATE BLOCK)
-    // Route::get('/orders', [ClientOrderController::class, 'index'])->name('orders.index');
-    // Route::get('/orders/{order}', [ClientOrderController::class, 'show'])->name('orders.show');
-    // Route::delete('/orders/{order}/cancel-prepayment', [ClientOrderController::class, 'cancelPrePaymentOrder'])->name('orders.cancelPrePayment');
-    // Route::post('/orders/{order}/request-cancellation', [ClientOrderController::class, 'requestPostPaymentCancellation'])->name('orders.requestPostPaymentCancellation');
-    // Route::get('/orders/{order}/edit-order', [ClientOrderController::class, 'editOrderForm'])->name('orders.editOrderForm');
-    // Route::put('/orders/{order}/update-order', [ClientOrderController::class, 'updateOrder'])->name('orders.updateOrder');
 
     // Rutas para la gestión de facturas de cliente
     Route::get('/invoices', [App\Http\Controllers\Client\ClientInvoiceController::class, 'index'])->name('invoices.index');

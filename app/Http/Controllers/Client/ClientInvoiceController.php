@@ -122,7 +122,7 @@ class ClientInvoiceController extends Controller
             $invoice->save();
 
             // Create Client Services from Invoice Items
-            $invoice->loadMissing(['items.product', 'items.productPricing.billingCycle', 'client']);
+            $invoice->loadMissing(['items.product.productType', 'items.productPricing.billingCycle', 'client']);
 
             foreach ($invoice->items as $invoiceItem) {
                 if ($invoiceItem->client_service_id && ClientService::find($invoiceItem->client_service_id)) {
@@ -164,13 +164,25 @@ class ClientInvoiceController extends Controller
                     $nextDueDate->addYears(100);
                 }
 
+                $serviceStatus = 'Active'; // Default status
+                if ($invoiceItem->product && $invoiceItem->product->productType) {
+                    if (str_contains(strtolower($invoiceItem->product->productType->slug ?? ''), 'domain')) {
+                        $serviceStatus = 'pending'; // Domains require manual/callback activation
+                    }
+                } elseif (!$invoiceItem->product_id) {
+                    // This case should be caught by the "continue if !product" check earlier.
+                    // If it's a manual item without a product, it typically wouldn't create a ClientService.
+                    // If it could, 'pending' would be a safe default if its nature is unknown.
+                    // For now, this path shouldn't be hit due to earlier checks.
+                }
+
                 $clientService = ClientService::create([
                     'client_id' => $invoice->client_id,
                     'reseller_id' => $invoice->client->reseller_id,
                     'product_id' => $invoiceItem->product_id,
                     'product_pricing_id' => $invoiceItem->product_pricing_id,
                     'domain_name' => $invoiceItem->domain_name,
-                    'status' => 'pending',
+                    'status' => $serviceStatus,
                     'registration_date' => $registrationDate->toDateString(),
                     'next_due_date' => $nextDueDate->toDateString(),
                     'billing_amount' => $invoiceItem->total_price,
@@ -182,6 +194,35 @@ class ClientInvoiceController extends Controller
                 $invoiceItem->client_service_id = $clientService->id;
                 $invoiceItem->save();
             }
+
+            // Update Invoice status based on ClientService statuses
+            $invoice->load('items.clientService'); // Reload to get fresh ClientService statuses
+            $allServicesFullyActive = true;
+            $hasPendingServices = false;
+            $hasActivatableServices = false;
+
+            foreach ($invoice->items as $item) {
+                if ($item->product && $item->product->productType && $item->product->productType->creates_service_instance) {
+                    $hasActivatableServices = true;
+                    if (!$item->clientService || $item->clientService->status !== 'Active') {
+                        $allServicesFullyActive = false;
+                    }
+                    if ($item->clientService && $item->clientService->status === 'pending') {
+                        $hasPendingServices = true;
+                    }
+                }
+            }
+
+            if (!$hasActivatableServices) {
+                // No services to activate, 'paid' is fine. $invoice->status is already 'paid'.
+            } elseif ($hasPendingServices) {
+                $invoice->status = 'pending_activation';
+            } elseif ($allServicesFullyActive) {
+                $invoice->status = 'active_service';
+            } else {
+                $invoice->status = 'pending_activation'; // Default to needs admin review if not all clear
+            }
+            $invoice->save(); // Save the potentially updated invoice status
 
             DB::commit();
 

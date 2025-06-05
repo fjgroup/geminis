@@ -212,7 +212,7 @@ const billingCycleOptions = computed(() => {
 // The pre-population logic is now above the watch block.
 
 function submitOrder() {
-  form.post(route('client.order.placeOrder', { product: props.product.id }), {
+  form.post(route('client.checkout.submit', { product: props.product.id }), {
     onError: (pageErrors) => {
       // This callback is for when the form submission itself fails at the network level
       // or if Laravel returns a general error response (e.g., 500).

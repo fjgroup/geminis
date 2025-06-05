@@ -87,7 +87,7 @@ const getLowestPrice = (productPricings) => {
                             </div>
                         </div>
                         <div class="p-6 bg-gray-50 dark:bg-gray-700/50">
-                             <Link :href="route('client.order.showOrderForm', { product: product.id })"
+                             <Link :href="route('client.checkout.product', { product: product.id })"
                                   class="w-full">
                                 <PrimaryButton class="justify-center w-full">
                                     Order Now
