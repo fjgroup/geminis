@@ -5,7 +5,7 @@ namespace Database\Factories;
 use App\Models\Client; // Assuming Client model alias for User
 use App\Models\User;   // Or directly User model
 use App\Models\Invoice;
-use App\Models\Order;
+// use App\Models\Order; // Removed
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
 
@@ -36,40 +36,27 @@ class InvoiceFactory extends Factory
 
         return [
             'client_id' => User::factory(), // Assumes User model is used for clients
-            'order_id' => null, // Can be set specifically in tests
+            // 'order_id' => null, // Removed
             'invoice_number' => strtoupper(Str::random(4) . '-' . $this->faker->unique()->randomNumber(5)),
             'issue_date' => $issue_date,
             'due_date' => (clone $issue_date)->modify("+{$due_date_offset} days"),
             'paid_date' => null,
-            'status' => $this->faker->randomElement(['unpaid', 'paid', 'cancelled', 'refunded']),
+            'status' => $this->faker->randomElement(['draft', 'unpaid', 'pending_confirmation', 'paid', 'pending_activation', 'active_service', 'overdue', 'cancelled', 'refunded', 'collections', 'failed_payment']),
             'subtotal' => $subtotal,
             'total_amount' => $total_amount,
             'currency_code' => $this->faker->randomElement(['USD', 'EUR', 'GBP']),
-            'notes' => $this->faker->optional()->sentence,
+            'notes_to_client' => $this->faker->optional()->sentence,
+            'admin_notes' => $this->faker->optional()->paragraph,
             'payment_method_id' => null, // Or associate with a PaymentMethod factory
             'reseller_id' => null, // Or associate with a User factory for resellers
             'paypal_order_id' => null,
+            'requested_date' => $this->faker->dateTimeThisYear(),
+            'ip_address' => $this->faker->optional()->ipv4,
+            'payment_gateway_slug' => $this->faker->optional()->randomElement(['paypal', 'stripe', 'manual_transfer']),
         ];
     }
 
-    /**
-     * Configure the model factory.
-     *
-     * @return $this
-     */
-    public function configure()
-    {
-        return $this->afterCreating(function (Invoice $invoice) {
-            // If an order_id is set, ensure the invoice's total amount matches the order's total.
-            // This is a common scenario.
-            if ($invoice->order_id && $invoice->order) {
-                $invoice->total_amount = $invoice->order->total_amount;
-                $invoice->subtotal = $invoice->order->total_amount; // Assuming no tax for simplicity
-                $invoice->currency_code = $invoice->order->currency_code;
-                $invoice->save();
-            }
-        });
-    }
+    // configure() method removed as its only logic was Order-related.
 
     /**
      * Indicate that the invoice is unpaid.

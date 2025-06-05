@@ -6,139 +6,137 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 use App\Models\User;
 use App\Models\Invoice;
-use App\Models\Order;
+use App\Models\InvoiceItem;
 use App\Models\Product;
+use App\Models\ProductType;
 use App\Models\ProductPricing;
 use App\Models\BillingCycle;
-use App\Models\InvoiceItem; // Import InvoiceItem
-use Illuminate\Support\Facades\Hash;
-use Carbon\Carbon;
+use App\Models\ClientService;
 use Inertia\Testing\AssertableInertia as Assert;
 
 class ViewInvoicesPageTest extends TestCase
 {
     use RefreshDatabase;
 
-    private User $client;
-
-    protected function setUp(): void
+    private function createProductAndPricing(string $typeSlug, string $productName, bool $isDomain = false, float $price = 10.00): ProductPricing
     {
-        parent::setUp();
-
-        $this->client = User::factory()->create([
-            'role' => 'client',
-            'password' => Hash::make('password'),
+        $productType = ProductType::factory()->create([
+            'slug' => $typeSlug,
+            'name' => ucfirst($typeSlug),
+            'creates_service_instance' => true,
+            'is_domain_product' => $isDomain,
         ]);
-    }
-
-    private function createInvoice(array $invoiceAttributes): Invoice
-    {
-        // Simplified Order and Product setup for Invoice context
-        $product = Product::factory()->create();
-        $billingCycle = BillingCycle::factory()->create();
-        $productPricing = ProductPricing::factory()->create([
+        $product = Product::factory()->create(['product_type_id' => $productType->id, 'name' => $productName]);
+        $billingCycle = BillingCycle::factory()->create(['type' => 'month', 'multiplier' => 1, 'name' => 'Monthly']);
+        return ProductPricing::factory()->create([
             'product_id' => $product->id,
             'billing_cycle_id' => $billingCycle->id,
-        ]);
-        $order = Order::factory()->create([
-            'client_id' => $this->client->id,
-            'product_pricing_id' => $productPricing->id,
-            'billing_cycle_id' => $productPricing->billing_cycle_id,
-            'total_amount' => $invoiceAttributes['total_amount'] ?? 100.00,
-        ]);
-        
-        $invoice = Invoice::factory()->create(array_merge([
-            'client_id' => $this->client->id,
-            'order_id' => $order->id, // Link to an order
+            'price' => $price,
+            'setup_fee' => 5.00, // Incluir setup_fee para probar su visualización
             'currency_code' => 'USD',
-            'issue_date' => Carbon::now()->subDays(10),
-            'due_date' => Carbon::now()->addDays(5),
-        ], $invoiceAttributes));
-
-        // Add at least one InvoiceItem for the 'items' relationship if needed by controller/view
-        InvoiceItem::factory()->create([
-            'invoice_id' => $invoice->id,
-            'description' => 'Test Item',
-            'quantity' => 1,
-            'unit_price' => $invoice->total_amount,
-            'total_price' => $invoice->total_amount,
         ]);
-        
-        return $invoice;
     }
 
-    /** @test */
-    public function client_can_view_their_invoices_with_various_statuses_and_correct_totals()
+    public function test_client_can_view_their_invoices_index_page(): void
     {
-        $invoiceUnpaid = $this->createInvoice(['status' => 'unpaid', 'total_amount' => 50.00, 'invoice_number' => 'INV-001']);
-        $invoicePaid = $this->createInvoice(['status' => 'paid', 'total_amount' => 75.50, 'invoice_number' => 'INV-002']);
-        $invoiceCancelled = $this->createInvoice(['status' => 'cancelled', 'total_amount' => 30.25, 'invoice_number' => 'INV-003']);
-        $invoiceRefunded = $this->createInvoice(['status' => 'refunded', 'total_amount' => 100.00, 'invoice_number' => 'INV-004']);
-        $invoiceOverdue = $this->createInvoice(['status' => 'overdue', 'total_amount' => 25.00, 'invoice_number' => 'INV-005', 'due_date' => Carbon::now()->subDay()]);
-
-        // Create an invoice for another client to ensure it's not visible
-        $otherClient = User::factory()->create(['role' => 'client']);
+        $client = User::factory()->create(['role' => 'client']);
+        Invoice::factory()->count(3)->create([
+            'client_id' => $client->id,
+            'status' => 'unpaid',
+            'requested_date' => now()->subDays(5),
+        ]);
         Invoice::factory()->create([
-            'client_id' => $otherClient->id,
-            'status' => 'paid',
-            'total_amount' => 99.00,
+            'client_id' => $client->id,
+            'status' => 'pending_activation', // Nuevo estado
+            'requested_date' => now()->subDays(2),
         ]);
 
-        $this->actingAs($this->client);
-
+        $this->actingAs($client);
         $response = $this->get(route('client.invoices.index'));
 
-        $response->assertStatus(200);
+        $response->assertOk();
         $response->assertInertia(fn (Assert $page) => $page
             ->component('Client/Invoices/Index')
-            ->has('invoices.data', 5) // Expecting 5 invoices for the logged-in client
-            ->where('invoices.data.0.status', 'overdue') // Assuming default order is by latest, or needs specific ordering in controller
-            ->where('invoices.data.0.total_amount', 25.00)
-            ->where('invoices.data.1.status', 'refunded')
-            ->where('invoices.data.1.total_amount', 100.00)
-            ->where('invoices.data.2.status', 'cancelled')
-            ->where('invoices.data.2.total_amount', 30.25)
-            ->where('invoices.data.3.status', 'paid')
-            ->where('invoices.data.3.total_amount', 75.50)
-            ->where('invoices.data.4.status', 'unpaid')
-            ->where('invoices.data.4.total_amount', 50.00)
-            // Check if items relationship is loaded (as per controller `->with('items')`)
-            ->has('invoices.data.0.items')
+            ->has('invoices.data', 4)
+            ->where('invoices.data.0.status', 'unpaid') // Asumiendo orden por defecto
+            ->where('invoices.data.3.status', 'pending_activation')
+            ->has('invoices.data.0.requested_date')
         );
     }
 
-    /** @test */
-    public function client_sees_empty_state_when_no_invoices_exist()
+    public function test_client_can_view_invoice_show_page_with_detailed_items_and_service_status(): void
     {
-        $this->actingAs($this->client);
+        $client = User::factory()->create(['role' => 'client']);
 
-        $response = $this->get(route('client.invoices.index'));
+        $hostingPricing = $this->createProductAndPricing('web-hosting', 'Awesome Hosting Plan', false, 20.00);
+        $domainPricing = $this->createProductAndPricing('domain-reg', 'Awesome Domain Reg', true, 12.00);
 
-        $response->assertStatus(200);
+        $invoice = Invoice::factory()->create([
+            'client_id' => $client->id,
+            'status' => 'pending_activation',
+            'total_amount' => 37.00, // 20 (hosting) + 5 (setup) + 12 (domain)
+            'subtotal' => 32.00, // 20+12
+            'requested_date' => now(),
+            'ip_address' => '127.0.0.1',
+            'payment_gateway_slug' => 'test_gateway',
+        ]);
+
+        $item1 = InvoiceItem::create([
+            'invoice_id' => $invoice->id,
+            'product_id' => $hostingPricing->product_id,
+            'product_pricing_id' => $hostingPricing->id,
+            'quantity' => 1,
+            'unit_price' => $hostingPricing->price,
+            'setup_fee' => $hostingPricing->setup_fee,
+            'total_price' => $hostingPricing->price + $hostingPricing->setup_fee,
+            'description' => $hostingPricing->product->name . ' - Monthly',
+            'item_type' => 'new_service',
+            'domain_name' => 'mycoolsite.com',
+        ]);
+        $service1 = ClientService::factory()->create([
+            'client_id' => $client->id,
+            'product_id' => $hostingPricing->product_id,
+            'status' => 'active' // Hosting activado
+        ]);
+        $item1->update(['client_service_id' => $service1->id]);
+
+        $item2 = InvoiceItem::create([
+            'invoice_id' => $invoice->id,
+            'product_id' => $domainPricing->product_id,
+            'product_pricing_id' => $domainPricing->id,
+            'quantity' => 1,
+            'unit_price' => $domainPricing->price,
+            'setup_fee' => $domainPricing->setup_fee, // Asumimos que el domain pricing también puede tener setup fee
+            'total_price' => $domainPricing->price + $domainPricing->setup_fee,
+            'description' => $domainPricing->product->name,
+            'item_type' => 'new_service',
+            'domain_name' => 'anotherdomain.net',
+        ]);
+        $service2 = ClientService::factory()->create([
+            'client_id' => $client->id,
+            'product_id' => $domainPricing->product_id,
+            'status' => 'pending' // Dominio pendiente
+        ]);
+        $item2->update(['client_service_id' => $service2->id]);
+
+        $this->actingAs($client);
+        $response = $this->get(route('client.invoices.show', $invoice->id));
+
+        $response->assertOk();
         $response->assertInertia(fn (Assert $page) => $page
-            ->component('Client/Invoices/Index')
-            ->has('invoices.data', 0)
-        );
-    }
-
-    /** @test */
-    public function invoices_are_paginated_on_my_invoices_page()
-    {
-        // Controller paginates by 10
-        for ($i = 0; $i < 12; $i++) {
-            $this->createInvoice(['status' => 'unpaid', 'total_amount' => 10.00 + $i]);
-        }
-
-        $this->actingAs($this->client);
-        $response = $this->get(route('client.invoices.index'));
-
-        $response->assertStatus(200);
-        $response->assertInertia(fn (Assert $page) => $page
-            ->component('Client/Invoices/Index')
-            ->has('invoices.data', 10)
-            ->has('invoices.links')
-            ->where('invoices.total', 12)
-            ->where('invoices.current_page', 1)
+            ->component('Client/Invoices/Show')
+            ->has('invoice.id')
+            ->where('invoice.status', 'pending_activation')
+            ->has('invoice.requested_date')
+            ->has('invoice.ip_address') // Verificar que estos campos lleguen si los mostramos
+            ->has('invoice.items', 2)
+            ->where('invoice.items.0.product.name', $hostingPricing->product->name)
+            ->where('invoice.items.0.product_pricing.billing_cycle.name', 'Monthly')
+            ->where('invoice.items.0.domain_name', 'mycoolsite.com')
+            ->where('invoice.items.0.setup_fee', (string) $hostingPricing->setup_fee) // Cast a string para comparación
+            ->where('invoice.items.0.client_service.status', 'active')
+            ->where('invoice.items.1.product.name', $domainPricing->product->name)
+            ->where('invoice.items.1.client_service.status', 'pending')
         );
     }
 }

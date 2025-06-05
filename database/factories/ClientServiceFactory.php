@@ -4,7 +4,7 @@ namespace Database\Factories;
 
 use App\Models\ClientService;
 use App\Models\User; // Assuming client is a User
-use App\Models\Order;
+// use App\Models\Order; // Removed
 use App\Models\Product;
 use App\Models\ProductPricing;
 use App\Models\BillingCycle;
@@ -58,11 +58,11 @@ class ClientServiceFactory extends Factory
         return [
             'client_id' => User::factory(),
             'reseller_id' => null, // Or User::factory()->reseller() if you have a reseller state
-            'order_id' => Order::factory(), // This will create a new order. Link to existing if needed.
+            // 'order_id' => Order::factory(), // Removed
             'product_id' => $productPricing->product_id,
             'product_pricing_id' => $productPricing->id,
             'billing_cycle_id' => $billingCycle->id,
-            'status' => $this->faker->randomElement(['pending', 'active', 'suspended', 'terminated', 'cancelled', 'fraud', 'pending_configuration']),
+            'status' => $this->faker->randomElement(['pending', 'active', 'suspended', 'terminated', 'cancelled', 'fraud', 'pending_configuration', 'provisioning_failed']),
             'registration_date' => $registrationDate->toDateString(),
             'next_due_date' => $nextDueDate->toDateString(),
             'termination_date' => null,
@@ -90,11 +90,7 @@ class ClientServiceFactory extends Factory
                 $service->domain_name = $this->faker->unique()->domainName;
                 $service->save();
             }
-            // Ensure order_id is consistent with client_id
-            if ($service->order && $service->order->client_id !== $service->client_id) {
-                $service->order->client_id = $service->client_id;
-                $service->order->save();
-            }
+            // Removed order consistency check block
         });
     }
 }
