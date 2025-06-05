@@ -281,17 +281,36 @@ const payInvoiceUsingBalance = (invoiceId) => { // Renombrado para claridad
             </div>
 
             <!-- Payment Details if Paid -->
-            <div v-if="invoice.status === 'paid' && invoice.transactions && invoice.transactions.length > 0 && invoice.transactions[0].payment_method"
+            <div v-if="invoice.status === 'paid' && invoice.transactions && invoice.transactions.length > 0"
                  class="mt-6 p-4 border border-gray-200 dark:border-gray-700 rounded bg-gray-50 dark:bg-gray-700/50">
-                <!-- ... (sección de detalles de pago existente, parece estar bien) ... -->
-                 <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">Detalles del Pago Realizado</h3>
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">Detalles del Pago Realizado</h3>
                 <div class="text-sm text-gray-700 dark:text-gray-300 space-y-2">
                     <p><strong>Fecha de Transacción (Cliente):</strong> {{ formatDate(invoice.transactions[0].transaction_date) }}</p>
-                    <p><strong>Referencia del Cliente:</strong> {{ invoice.transactions[0].gateway_transaction_id }}</p>
+                    <p><strong>Referencia del Cliente:</strong> {{ invoice.transactions[0].gateway_transaction_id || 'N/A' }}</p>
 
-                    <div v-if="invoice.transactions[0].payment_method.formatted_details" class="mt-2">
-                        <h4 class="font-semibold text-gray-800 dark:text-gray-200">Método de Pago: {{ invoice.transactions[0].payment_method.formatted_details.name }}</h4>
-                        <!-- ... resto de la lógica de formatted_details ... -->
+                    <div v-if="invoice.transactions[0].payment_method && invoice.transactions[0].payment_method.formatted_details">
+                        <p><strong>Método de Pago:</strong> {{ invoice.transactions[0].payment_method.name || 'N/A' }}</p>
+
+                        <template v-if="typeof invoice.transactions[0].payment_method.formatted_details === 'object' && invoice.transactions[0].payment_method.formatted_details !== null">
+                            <template v-for="(value, key) in (Array.isArray(invoice.transactions[0].payment_method.formatted_details) ? invoice.transactions[0].payment_method.formatted_details[0] : invoice.transactions[0].payment_method.formatted_details)" :key="key">
+                                <p v-if="String(key).toLowerCase() !== 'name' && String(key).toLowerCase() !== 'id' && !/^\d+$/.test(String(key))">
+                                    <strong>{{ String(key).replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) }}:</strong> {{ value }}
+                                </p>
+                            </template>
+                        </template>
+                        <template v-else-if="typeof invoice.transactions[0].payment_method.formatted_details === 'string'">
+                            <p>{{ invoice.transactions[0].payment_method.formatted_details }}</p>
+                        </template>
+                        <template v-else>
+                            <p>No hay detalles específicos del método de pago disponibles o no están en el formato esperado.</p>
+                        </template>
+                    </div>
+                    <div v-else-if="invoice.transactions[0].payment_method">
+                        <p><strong>Método de Pago:</strong> {{ invoice.transactions[0].payment_method.name || 'N/A' }}</p>
+                        <p>No se proporcionaron detalles adicionales para este método de pago.</p>
+                    </div>
+                    <div v-else>
+                        <p>Los detalles del método de pago no están disponibles.</p>
                     </div>
                 </div>
             </div>
