@@ -92,7 +92,7 @@ const handleContact = () => {
         <div class="flex items-center mb-5">
             <Icon :name="categoryIcon" class="w-10 h-10 mr-3 text-brand-blue" />
             <h3 class="text-2xl font-semibold text-slate-800">{{ plan.name }}</h3>
-            <Icon :name="plan.planIcon" class="w-10 h-10 ml-3 text-brand-blue" />
+            <Icon v-if="plan.planIcon" :name="plan.planIcon" class="w-10 h-10 ml-3 text-brand-blue" />
         </div>
         <p class="text-slate-600 mb-2 text-sm min-h-[40px]">{{ plan.description }}</p>
 
