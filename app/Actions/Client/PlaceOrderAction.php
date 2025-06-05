@@ -4,11 +4,8 @@ namespace App\Actions\Client;
 
 use App\Models\Product;
 use App\Models\ProductPricing;
-use App\Models\Order;
-use App\Models\OrderItem;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
-use App\Models\OrderActivity;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -19,175 +16,205 @@ use Exception;
 class PlaceOrderAction
 {
     /**
-     * Execute the action to place an order.
+     * Execute the action to place an order, creating an Invoice directly.
      *
      * @param Product $product The product being ordered.
      * @param array $data Validated data from the request.
      * @param User $client The authenticated client placing the order.
-     * @return Order|null The first created Order object, or null if none created.
+     * @return Invoice|null The created Invoice object, or null if an error occurred.
      * @throws Exception If any error occurs during the process.
      */
-    public function execute(Product $product, array $data, User $client): ?Order
+    public function execute(Product $product, array $data, User $client): ?Invoice
     {
-        $product->loadMissing('productType'); // Ensure productType is loaded
+        $product->loadMissing('productType', 'productType.productCategory'); // Ensure necessary relations are loaded
 
         $billingCycleId = $data['billing_cycle_id'];
-        $quantity = (int)$data['quantity'];
-        $domainNames = $data['domainNames'] ?? []; // Array of domain names
+        $quantity = (int)$data['quantity']; // Overall quantity for the product
+        $domainNames = $data['domainNames'] ?? []; // Array of domain names, if applicable
         $notesToClient = $data['notes_to_client'] ?? null;
+        $ipAddress = $data['ip_address'] ?? request()->ip();
+        $paymentGatewaySlug = $data['payment_gateway_slug'] ?? null;
 
-        $ordersCreated = [];
+        $invoiceItemsData = [];
+        $firstProductPricing = null;
 
         DB::beginTransaction();
 
         try {
-            // Hosting product (requires domain): create one order per domain/quantity
+            // Case 1: Product requires a domain, and multiple domains are provided (quantity matches domain count)
             if ($product->productType && $product->productType->requires_domain && $quantity > 0 && !empty($domainNames) && count($domainNames) === $quantity) {
+                $productPricing = ProductPricing::with('billingCycle')->findOrFail($billingCycleId); // Get pricing once if same for all
+                if (!$firstProductPricing) $firstProductPricing = $productPricing;
+
                 for ($i = 0; $i < $quantity; $i++) {
-                    $domainName = $domainNames[$i] ?? null; // Should exist due to validation
-                    $order = $this->createOrderAndAssociatedRecords(
-                        $client,
-                        $product,
-                        $billingCycleId,
-                        1, // Quantity for this specific order item will be 1
-                        $domainName,
-                        $notesToClient // Notes can be the same for all split orders or customized if needed
-                    );
-                    $ordersCreated[] = $order;
+                    $domainName = $domainNames[$i];
+                    $invoiceItemsData[] = [
+                        'product_id' => $product->id,
+                        'product_pricing_id' => $productPricing->id,
+                        'quantity' => 1, // Each domain is a separate item with quantity 1
+                        'domain_name' => $domainName,
+                        'item_type' => $product->productType->slug ?? 'domain_service',
+                        'product_object' => $product, // Pass for description, taxability
+                        'product_pricing_object' => $productPricing, // Pass for prices, cycle name
+                        'registration_period_years' => $productPricing->billingCycle->period_in_years ?? null,
+                    ];
                 }
             } else {
-                // Non-hosting product or hosting product with quantity 1 (or domains not provided correctly, though validation should catch this)
-                // For non-hosting, domainName might be irrelevant or taken from first entry if provided for some reason
-                $domainName = ($product->productType && $product->productType->requires_domain && !empty($domainNames)) ? ($domainNames[0] ?? null) : null;
-                $order = $this->createOrderAndAssociatedRecords(
-                    $client,
-                    $product,
-                    $billingCycleId,
-                    $quantity, // Original quantity for non-split items
-                    $domainName,
-                    $notesToClient
-                );
-                $ordersCreated[] = $order;
+                // Case 2: Non-domain product, or domain product with quantity 1, or domain product where domains are not itemized
+                $productPricing = ProductPricing::with('billingCycle')->findOrFail($billingCycleId);
+                if (!$firstProductPricing) $firstProductPricing = $productPricing;
+
+                $domainName = null;
+                if ($product->productType && $product->productType->requires_domain && !empty($domainNames)) {
+                    $domainName = $domainNames[0] ?? null; // Use first domain if provided, even if quantity > 1 but not itemized
+                }
+
+                $invoiceItemsData[] = [
+                    'product_id' => $product->id,
+                    'product_pricing_id' => $productPricing->id,
+                    'quantity' => $quantity, // Use the overall quantity
+                    'domain_name' => $domainName,
+                    'item_type' => $product->productType->slug ?? ($product->productType?->productCategory?->slug ?? 'general_service'),
+                    'product_object' => $product,
+                    'product_pricing_object' => $productPricing,
+                    'registration_period_years' => $productPricing->billingCycle->period_in_years ?? null,
+                ];
             }
 
-            DB::commit();
+            if (empty($invoiceItemsData)) {
+                throw new Exception("No items to invoice were prepared.");
+            }
 
-            return $ordersCreated[0] ?? null; // Return the first order created, or null
+            $currencyCode = $firstProductPricing->currency_code ?? config('app.currency_code', 'USD');
+
+            $invoice = $this->createInvoiceWithItems(
+                $client,
+                $invoiceItemsData,
+                $currencyCode,
+                $notesToClient,
+                $ipAddress,
+                $paymentGatewaySlug
+            );
+
+            DB::commit();
+            return $invoice;
 
         } catch (Exception $e) {
             DB::rollBack();
-            Log::error("Error placing order in PlaceOrderAction: " . $e->getMessage(), [
+            Log::error("Error placing order (creating invoice) in PlaceOrderAction: " . $e->getMessage(), [
                 'product_id' => $product->id,
                 'client_id' => $client->id,
                 'data' => $data,
-                'exception' => $e
+                'exception_trace' => $e->getTraceAsString()
             ]);
-            throw $e;
+            throw $e; // Re-throw to be handled by controller or higher-level handler
         }
     }
 
     /**
-     * Create a single order and its associated records (OrderItem, Invoice, InvoiceItem, OrderActivity).
+     * Create a single Invoice and its associated InvoiceItems.
      *
-     * @return Order The created Order object.
+     * @param User $client The client for whom the invoice is created.
+     * @param array $itemsDataArray Array of data for each invoice item.
+     * @param string $currencyCode Currency code for the invoice.
+     * @param string|null $notesToClient Notes to display to the client.
+     * @param string|null $ipAddress IP address of the client.
+     * @param string|null $paymentGatewaySlug Selected payment gateway.
+     * @return Invoice The created Invoice object.
      */
-    private function createOrderAndAssociatedRecords(
+    private function createInvoiceWithItems(
         User $client,
-        Product $product,
-        int $productPricingId,
-        int $itemQuantity, // This will be 1 for split hosting orders, original quantity otherwise
-        ?string $domainName,
-        ?string $notesToClient
-    ): Order {
-        $productPricing = ProductPricing::with('billingCycle')->findOrFail($productPricingId);
+        array $itemsDataArray,
+        string $currencyCode,
+        ?string $notesToClient,
+        ?string $ipAddress,
+        ?string $paymentGatewaySlug
+    ): Invoice {
+        // Generate Invoice Number
+        $invoiceNumber = 'INV-' . date('Ymd') . '-' . Str::upper(Str::random(6)); // Consider a more robust unique generator
 
-        // Calculate total amount for this specific order/service instance
-        $itemBasePrice = $productPricing->price;
-        $itemSetupFee = $productPricing->setup_fee ?? 0;
-
-        // Total amount for this specific order (itemQuantity is 1 for split hosting)
-        $currentOrderTotalAmount = ($itemBasePrice * $itemQuantity) + ($itemSetupFee * $itemQuantity);
-
-        // Placeholder for Order Number generation (ideally move to Order model)
-        $orderNumber = 'ORD-' . time() . '-' . Str::upper(Str::random(4)) . ($domainName ? '-' . Str::slug(substr($domainName,0,10)) : '');
-
-
-        $order = Order::create([
+        $invoice = new Invoice([
             'client_id' => $client->id,
-            'reseller_id' => $client->reseller_id,
-            'order_number' => $orderNumber, // TODO: Use Order::generateOrderNumber()
-            'order_date' => Carbon::now(),
-            'total_amount' => $currentOrderTotalAmount,
-            'currency_code' => $productPricing->currency_code ?? config('app.currency_code', 'USD'),
-            'status' => 'pending_payment',
-            'notes' => $notesToClient, // Changed from notes_to_client to notes to match Order model
-            // invoice_id will be updated after invoice creation
+            'reseller_id' => $client->reseller_id, // Assuming client model has reseller_id
+            'invoice_number' => $invoiceNumber, // TODO: Implement Invoice::generateInvoiceNumber() if needed
+            'requested_date' => Carbon::now(),
+            'issue_date' => Carbon::now()->toDateString(),
+            'due_date' => Carbon::now()->addDays(config('invoicing.due_days', 7))->toDateString(),
+            'status' => 'unpaid', // Or 'draft' if a review step is needed
+            'currency_code' => $currencyCode,
+            'ip_address' => $ipAddress,
+            'payment_gateway_slug' => $paymentGatewaySlug,
+            'notes_to_client' => $notesToClient,
+            'subtotal' => 0, // Will be calculated
+            'total_amount' => 0, // Will be calculated
+            // tax fields can be added later if needed
         ]);
+        // Save once to get ID for items, or pass around instance and save at end. Let's save at end.
+        // $invoice->save(); // Not saving here, will save after items and totals calculation
 
-        $orderItemDescription = $product->name . ($productPricing->billingCycle ? ' (' . $productPricing->billingCycle->name . ')' : '');
-        if ($domainName) {
-            $orderItemDescription .= ' - ' . $domainName;
+        $currentSubtotal = 0;
+
+        foreach ($itemsDataArray as $itemData) {
+            $product = $itemData['product_object'];
+            $productPricing = $itemData['product_pricing_object'];
+            $itemQuantity = $itemData['quantity'];
+
+            $unitPrice = $productPricing->price;
+            $setupFee = $productPricing->setup_fee ?? 0;
+
+            // Total price for this line item: (unit_price * quantity) + setup_fee
+            // Assuming setup_fee is a one-time charge for the line item, not per unit within the quantity.
+            $itemTotalPrice = ($unitPrice * $itemQuantity) + $setupFee;
+
+            $description = $product->name . ($productPricing->billingCycle ? ' (' . $productPricing->billingCycle->name . ')' : '');
+            if (!empty($itemData['domain_name'])) {
+                $description .= ' - ' . $itemData['domain_name'];
+            }
+
+            // Ensure item_type is a string and has a reasonable default
+            $itemType = 'general'; // Default value
+            if (isset($product->productType) && $product->productType !== null && is_string($product->productType->slug) && !empty($product->productType->slug)) {
+                $itemType = $product->productType->slug;
+            } elseif (isset($product->productType, $product->productType->productCategory) && $product->productType->productCategory !== null && is_string($product->productType->productCategory->slug) && !empty($product->productType->productCategory->slug)) {
+                 $itemType = $product->productType->productCategory->slug;
+            }
+
+
+            $invoiceItem = new InvoiceItem([
+                // invoice_id will be set when saving via relationship or after invoice is saved
+                'product_id' => $itemData['product_id'],
+                'product_pricing_id' => $itemData['product_pricing_id'],
+                'client_service_id' => null, // Not linking to existing client service at order time
+                'description' => $description,
+                'quantity' => $itemQuantity,
+                'unit_price' => $unitPrice,
+                'setup_fee' => $setupFee,
+                'total_price' => $itemTotalPrice,
+                'taxable' => $product->taxable ?? true, // Default to true
+                'domain_name' => $itemData['domain_name'] ?? null,
+                'registration_period_years' => $itemData['registration_period_years'] ?? null,
+                'item_type' => Str::limit($itemType, 50),
+            ]);
+            // Collect items to save with the invoice later
+            $invoiceItemsForSaving[] = $invoiceItem;
+            $currentSubtotal += $itemTotalPrice;
         }
 
-        $orderItem = OrderItem::create([
-            'order_id' => $order->id,
-            'product_id' => $product->id,
-            'product_pricing_id' => $productPricing->id,
-            'quantity' => $itemQuantity,
-            'unit_price' => $itemBasePrice,
-            'setup_fee' => $itemSetupFee,
-            'total_price' => $currentOrderTotalAmount, // total for this item (price + setup) * itemQuantity
-            'description' => $orderItemDescription,
-            'domain_name' => $domainName, // Save domain name here
-            'item_type' => Str::limit($product->productType->slug ?? 'general', 50), // Use slug from ProductType, default to 'general' if null, truncate to 50 chars
-        ]);
+        $invoice->subtotal = $currentSubtotal;
+        // Assuming total_amount is same as subtotal if no taxes are calculated yet.
+        // Add tax calculation logic here if needed and adjust total_amount.
+        $invoice->total_amount = $currentSubtotal;
 
-        // Placeholder for Invoice Number generation (ideally move to Invoice model)
-        $invoiceNumber = 'INV-' . date('Ymd') . '-' . Str::upper(Str::random(4)) . ($domainName ? '-' . Str::slug(substr($domainName,0,10)) : '');
+        // Save the invoice first to get an ID
+        $invoice->save();
 
-        $invoice = Invoice::create([
-            'client_id' => $order->client_id,
-            'reseller_id' => $order->reseller_id,
-            'order_id' => $order->id, // Link invoice to this specific order
-            'invoice_number' => $invoiceNumber, // TODO: Use Invoice::generateInvoiceNumber()
-            'issue_date' => Carbon::now()->format('Y-m-d'),
-            'due_date' => Carbon::now()->addDays(config('invoicing.due_days', 7))->format('Y-m-d'),
-            'status' => 'unpaid',
-            'subtotal' => $currentOrderTotalAmount, // Assuming no taxes for now
-            'total_amount' => $currentOrderTotalAmount,
-            'currency_code' => $order->currency_code,
-            'notes_to_client' => "Factura para Orden #{$order->order_number}",
-        ]);
+        // Now save the items, associating them with the invoice
+        if (!empty($invoiceItemsForSaving)) {
+            $invoice->items()->saveMany($invoiceItemsForSaving);
+        }
 
-        InvoiceItem::create([
-            'invoice_id' => $invoice->id,
-            'order_item_id' => $orderItem->id,
-            'description' => $orderItem->description,
-            'quantity' => $orderItem->quantity,
-            'unit_price' => $orderItem->unit_price, // This should be (unit_price + setup_fee) if setup_fee is per item on invoice
-            'total_price' => $orderItem->total_price, // This is (unit_price + setup_fee) * quantity
-            'taxable' => $product->taxable ?? true, // Default to true if not specified
-        ]);
+        // No OrderActivity to create in this refactored version.
 
-        $order->invoice_id = $invoice->id;
-        $order->save();
-
-        OrderActivity::create([
-            'order_id' => $order->id,
-            'user_id' => $client->id, // Client initiated
-            'type' => 'order_requested_by_client',
-            'details' => json_encode([ // encode to json string
-                'product_id' => $product->id,
-                'product_name' => $product->name,
-                'domain' => $domainName,
-                'billing_cycle' => $productPricing->billingCycle->name ?? 'N/A',
-                'quantity' => $itemQuantity,
-                'total_amount' => $currentOrderTotalAmount,
-                'invoice_id' => $invoice->id,
-                'invoice_number' => $invoice->invoice_number,
-            ])
-        ]);
-
-        return $order;
+        return $invoice;
     }
 }

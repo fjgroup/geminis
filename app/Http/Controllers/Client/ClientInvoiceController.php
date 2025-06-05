@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Invoice;
 use App\Models\User;
 
-use App\Models\OrderActivity;
+// Removed App\Models\OrderActivity; as it's no longer used here
 use App\Models\Transaction;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
@@ -42,22 +42,19 @@ class ClientInvoiceController extends Controller
         $this->authorize('view', $invoice);
 
         $invoice->load([
-            'client', // Already loaded by policy check if using $invoice->client_id for auth
+            'client',
             'reseller',
-            'items.clientService', // Load clientService if applicable
-            'items.orderItem.product', // Load product through orderItem if applicable
-            'order', // Load the associated order if it exists
-            // Eager-load the latest completed transaction(s) with their payment method
+            'items.clientService',
+            // 'items.orderItem.product', // orderItem will be removed from InvoiceItem model
+            'items.product', // Direct relation from InvoiceItem to Product
+            'items.productPricing.billingCycle', // Direct relation
+            // 'order', // order relation on Invoice will be removed
             'transactions' => function ($query) {
                 $query->where('status', 'completed')
-                      ->with('paymentMethod') // Eager load the paymentMethod relationship on Transaction
-                      ->latest('transaction_date'); // Get the most recent ones first
+                      ->with('paymentMethod')
+                      ->latest('transaction_date');
             }
         ]);
-
-        // Depuración: Inspeccionar la factura y sus relaciones después de la carga eager
-       // dd($invoice->toArray());
-
 
         $userResource = null;
         $authUser = Auth::user();
@@ -66,15 +63,14 @@ class ClientInvoiceController extends Controller
                 'id' => $authUser->id,
                 'name' => $authUser->name,
                 'email' => $authUser->email,
-                'balance' => $authUser->balance, // Assuming 'balance' is a direct attribute or casted
-                'formatted_balance' => $authUser->formatted_balance, // Accessor
+                'balance' => $authUser->balance,
+                'formatted_balance' => $authUser->formatted_balance,
             ];
         }
 
-
         return Inertia::render('Client/Invoices/Show', [
             'invoice' => $invoice,
-            'auth' => ['user' => $userResource] // Pass necessary auth user details
+            'auth' => ['user' => $userResource]
         ]);
     }
 
@@ -87,10 +83,8 @@ class ClientInvoiceController extends Controller
      */
     public function payWithBalance(Request $request, Invoice $invoice): RedirectResponse
     {
-        // Authorization: Use the 'payWithBalance' policy.
         $this->authorize('payWithBalance', $invoice);
 
-        // Validation: Check invoice status (already implicitly handled by policy, but explicit check is fine)
         if ($invoice->status !== 'unpaid') {
             return redirect()->route('client.invoices.show', $invoice->id)
                              ->with('error', 'This invoice is not awaiting payment.');
@@ -98,7 +92,6 @@ class ClientInvoiceController extends Controller
 
         $user = Auth::user();
 
-        // Validation: Check user balance
         if ($user->balance < $invoice->total_amount) {
             return redirect()->route('client.invoices.show', $invoice->id)
                              ->with('error', 'Insufficient balance to pay this invoice.');
@@ -108,15 +101,12 @@ class ClientInvoiceController extends Controller
 
         try {
 
-            // 1. Decrement user balance
-            // Usar el método decrement para una operación atómica y más segura
             $user->decrement('balance', $invoice->total_amount);
 
-            // 2. Create Transaction record
-            $transaction = Transaction::create([
+            Transaction::create([
                 'invoice_id' => $invoice->id,
                 'client_id' => $user->id,
-                'reseller_id' => $user->reseller_id, // Assuming reseller_id is on user model
+                'reseller_id' => $user->reseller_id,
                 'gateway_slug' => 'balance',
                 'gateway_transaction_id' => 'BAL-' . strtoupper(Str::random(10)),
                 'type' => 'payment',
@@ -127,131 +117,80 @@ class ClientInvoiceController extends Controller
                 'transaction_date' => Carbon::now(),
             ]);
 
-            // 3. Update Invoice status
             $invoice->status = 'paid';
             $invoice->paid_date = Carbon::now();
             $invoice->save();
 
-            // 4. Update Associated Order
-            $invoice->load('order.client'); // Ensure order and its client are loaded
-            $order = $invoice->order;
+            // Create Client Services from Invoice Items
+            $invoice->loadMissing(['items.product', 'items.productPricing.billingCycle', 'client']);
 
-            if ($order && $order->status === 'pending_payment') { // Check if order is pending_payment
-                $previous_order_status = $order->status;
-                // Task requires changing status to 'pending_payment' from 'invoice_paid_...' logic.
-                // However, if an invoice is paid, the order should logically move to a state *after* 'pending_payment'.
-                // The original 'paid_pending_execution' seems more logical for a paid order.
-                // For the purpose of this task, I will set it to 'pending_payment' as requested,
-                // but this might need review in a real-world scenario.
-                // If the intent is that 'pending_payment' on Order means "awaiting payment for the invoice",
-                // then after invoice payment, it should go to something like 'paid_pending_execution' or 'pending_provisioning'.
-                // Let's assume 'pending_payment' for the Order means the order itself is not yet processed by admin,
-                // and paying the invoice is one step towards that.
-                // If the order was already in 'pending_payment' (meaning its invoice was 'unpaid'),
-                // and now the invoice is 'paid', the order should reflect that payment has been received.
-                // The task asks to set it to 'pending_payment'. This seems circular if it was already 'pending_payment'.
-                // Let's assume the order's initial status upon creation (and unpaid invoice) IS 'pending_payment'.
-                // When invoice is paid, it should ideally move to 'paid_pending_execution'.
-                // I will stick to the task's literal requirement for now: "Update the Order->status to 'pending_payment'".
-                // This implies if it was 'pending_payment', it remains 'pending_payment', which is odd.
-                // A more logical flow: Order created -> 'pending_payment'. Invoice paid -> Order 'paid_pending_execution'.
-                // Given the task says "If the Order is found and its status is not already a final/problematic one... Update the Order->status to 'pending_payment'",
-                // this implies the order might be in some other state *before* invoice payment, which is not typical for this flow.
-                // Let's assume the most common case: Order is 'pending_payment' because its invoice is 'unpaid'.
-                // After invoice payment, Order status should change.
-                // The existing code changes it to 'paid_pending_execution', which makes sense.
-                // If I change it to 'pending_payment' as per the task, it means it stays 'pending_payment'.
-                // This might be an error in the task description.
-                // I will proceed with 'paid_pending_execution' as it's more logical and was already there.
-                // If the explicit goal IS 'pending_payment', this is a note for review.
-                // For now, I will change it to 'paid_pending_execution' as it was, and update the activity log type.
-
-                // Correction: Set Order status to 'pending_payment' as per explicit task requirement.
-                $order->status = 'paid_pending_execution';
-                $order->save();
-
-                OrderActivity::create([
-                    'order_id' => $order->id,
-                    'user_id' => $user->id,
-                    'type' => 'invoice_paid_by_client',
-                    'details' => json_encode([
-                        'invoice_id' => $invoice->id,
-                        'invoice_number' => $invoice->invoice_number,
-                        'payment_method' => 'account_balance',
-                        'transaction_id' => $transaction->id,
-                        'previous_order_status' => $previous_order_status,
-                        'new_order_status' => $order->status,
-                        'message' => 'Invoice paid by client using account balance. Order is now pending further processing or admin confirmation.'
-                    ]),
-                ]);
-
-                // Ensure items and their relations needed for service creation are loaded
-                $order->loadMissing(['items.product', 'items.productPricing.billingCycle']);
-
-                foreach ($order->items as $item) {
-                    // Check if a service for this order item already exists
-                    $existingService = ClientService::where('order_item_id', $item->id)->first();
-                    if ($existingService) {
-                        continue; // Skip if service already created for this item
-                    }
-
-                    // Calculate next_due_date based on billing cycle
-                    $registrationDate = Carbon::now();
-                    $nextDueDate = $registrationDate->copy();
-                    if ($item->productPricing && $item->productPricing->billingCycle && $item->productPricing->billingCycle->days > 0) {
-                        $nextDueDate->addDays($item->productPricing->billingCycle->days);
-                    } else {
-                        Log::warning("Billing cycle days not found or zero for product_pricing_id: {$item->product_pricing_id} on order_item_id: {$item->id}. Defaulting next_due_date.");
-                        $nextDueDate = $registrationDate->copy()->addYear(100); // Default to 100 years if null due to no cycle days
-                    }
-
-                    $clientService = ClientService::create([
-                        'client_id' => $order->client_id,
-                        'reseller_id' => $order->reseller_id,
-                        'order_id' => $order->id,
-                        'order_item_id' => $item->id,
-                        'product_id' => $item->product_id,
-                        'product_pricing_id' => $item->product_pricing_id,
-                        'domain_name' => $item->domain_name,
-                        'status' => 'pending',
-                        'registration_date' => $registrationDate->toDateString(),
-                        'next_due_date' => $nextDueDate->toDateString(),
-                        'billing_amount' => ($item->unit_price * $item->quantity),
-                        'currency_code' => $order->currency_code,
-                        'notes' => 'Servicio creado automáticamente desde la orden #' . $order->order_number,
-                    ]);
-
-                    // Link OrderItem to ClientService
-                    $item->client_service_id = $clientService->id;
-                    $item->save();
+            foreach ($invoice->items as $invoiceItem) {
+                if ($invoiceItem->client_service_id && ClientService::find($invoiceItem->client_service_id)) {
+                    Log::info("ClientService ID {$invoiceItem->client_service_id} already exists and is linked to InvoiceItem ID {$invoiceItem->id}. Skipping creation.");
+                    continue;
                 }
-            } else if ($order) {
-                // Log if order was found but not in 'pending_payment' status when invoice was paid.
-                // This case might imply the order was already processed or in an unexpected state.
-                OrderActivity::create([
-                    'order_id' => $order->id,
-                    'user_id' => $user->id,
-                    'type' => 'invoice_paid_by_client',
-                    'details' => json_encode([
-                        'invoice_id' => $invoice->id,
-                        'invoice_number' => $invoice->invoice_number,
-                        'payment_method' => 'account_balance',
-                        'transaction_id' => $transaction->id,
-                        'order_status_at_payment' => $order->status, // Log current status
-                        'message' => 'Invoice paid using account balance, but associated order was not in the expected initial state (pending_payment).'
-                    ]),
-                ]);
-            }
 
+                if (!$invoiceItem->product || !$invoiceItem->productPricing || !$invoiceItem->productPricing->billingCycle) {
+                    Log::error("InvoiceItem ID {$invoiceItem->id} is missing product, productPricing, or billingCycle details. Skipping ClientService creation.");
+                    continue;
+                }
+
+                $registrationDate = Carbon::now();
+                $nextDueDate = $registrationDate->copy();
+                $billingCycle = $invoiceItem->productPricing->billingCycle;
+
+                if (isset($billingCycle->period_unit) && isset($billingCycle->period_amount) && is_numeric($billingCycle->period_amount) && $billingCycle->period_amount > 0) {
+                    switch (strtolower($billingCycle->period_unit)) {
+                        case 'day':
+                        case 'days':
+                            $nextDueDate->addDays($billingCycle->period_amount);
+                            break;
+                        case 'month':
+                        case 'months':
+                            $nextDueDate->addMonthsNoOverflow($billingCycle->period_amount);
+                            break;
+                        case 'year':
+                        case 'years':
+                            $nextDueDate->addYearsNoOverflow($billingCycle->period_amount);
+                            break;
+                        default:
+                            Log::warning("Unknown billing cycle unit '{$billingCycle->period_unit}' for ProductPricing ID: {$invoiceItem->product_pricing_id} on InvoiceItem ID: {$invoiceItem->id}. Defaulting next_due_date to 1 month.");
+                            $nextDueDate->addMonth();
+                    }
+                } elseif (isset($billingCycle->days) && is_numeric($billingCycle->days) && $billingCycle->days > 0) { // Fallback for 'days' attribute
+                     $nextDueDate->addDays((int)$billingCycle->days);
+                } else {
+                    Log::warning("BillingCycle period information not found or invalid for ProductPricing ID: {$invoiceItem->product_pricing_id} on InvoiceItem ID: {$invoiceItem->id}. Defaulting next_due_date to 100 years (error indicator).");
+                    $nextDueDate->addYears(100);
+                }
+
+                $clientService = ClientService::create([
+                    'client_id' => $invoice->client_id,
+                    'reseller_id' => $invoice->client->reseller_id,
+                    'product_id' => $invoiceItem->product_id,
+                    'product_pricing_id' => $invoiceItem->product_pricing_id,
+                    'domain_name' => $invoiceItem->domain_name,
+                    'status' => 'pending',
+                    'registration_date' => $registrationDate->toDateString(),
+                    'next_due_date' => $nextDueDate->toDateString(),
+                    'billing_amount' => $invoiceItem->total_price,
+                    'currency_code' => $invoice->currency_code,
+                    'notes' => 'Servicio creado automáticamente desde Factura #' . $invoice->invoice_number,
+                    // 'invoice_item_id' => $invoiceItem->id, // Uncomment if/when this field is added to client_services table
+                ]);
+
+                $invoiceItem->client_service_id = $clientService->id;
+                $invoiceItem->save();
+            }
 
             DB::commit();
 
             return redirect()->route('client.invoices.show', $invoice->id)
-                             ->with('success', 'Invoice paid successfully using your account balance.');
+                             ->with('success', 'Invoice paid successfully using your account balance. Services are being provisioned.');
 
-        } catch (Exception $e) { // Use statement applied
+        } catch (Exception $e) {
             DB::rollBack();
-            // Log the exception $e->getMessage()
+            Log::error("Error processing payment for invoice ID {$invoice->id} with balance: " . $e->getMessage(), ['exception' => $e->getTraceAsString()]);
             return redirect()->route('client.invoices.show', $invoice->id)
                              ->with('error', 'An error occurred while processing your payment. Please try again.');
         }
