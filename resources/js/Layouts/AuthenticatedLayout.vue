@@ -55,7 +55,7 @@ const isActiveDashboard = computed(() => {
                 </NavLink>
 
                 <!-- Client Specific Links -->
-                <template v-if="$page.props.auth.user.role === 'client'">
+                <template v-if="$page.props.auth.user && $page.props.auth.user.role === 'client'">
                   <NavLink
                     :href="route('client.services.index')"
                     :active="route().current('client.services.index')"
@@ -92,7 +92,7 @@ const isActiveDashboard = computed(() => {
                 </template>
 
                 <!-- Reseller Specific Links -->
-                <template v-if="$page.props.auth.user.role === 'reseller'">
+                <template v-if="$page.props.auth.user && $page.props.auth.user.role === 'reseller'">
                   <NavLink
                     :href="route('reseller.clients.index')"
                     :active="
@@ -108,7 +108,7 @@ const isActiveDashboard = computed(() => {
                 </template>
 
                 <!-- Admin Specific Links -->
-                <template v-if="$page.props.auth.user.role === 'admin'">
+                <template v-if="$page.props.auth.user && $page.props.auth.user.role === 'admin'">
                   <NavLink
                     :href="route('admin.users.index')"
                     :active="
@@ -128,15 +128,7 @@ const isActiveDashboard = computed(() => {
                   >
                     Manage Products
                   </NavLink>
-                  <NavLink
-                    :href="route('admin.orders.index')"
-                    :active="
-                      route().current('admin.orders.index') ||
-                      route().current('admin.orders.show')
-                    "
-                  >
-                    Manage Orders
-                  </NavLink>
+                  <!-- Order Link Removed -->
                   <NavLink
                     :href="route('admin.invoices.index')"
                     :active="
@@ -165,7 +157,7 @@ const isActiveDashboard = computed(() => {
               </div>
             </div>
 
-            <div class="hidden sm:ms-6 sm:flex sm:items-center">
+            <div v-if="$page.props.auth.user" class="hidden sm:ms-6 sm:flex sm:items-center">
               <!-- Settings Dropdown -->
               <div class="relative ms-3">
                 <Dropdown align="right" width="48">
@@ -258,7 +250,7 @@ const isActiveDashboard = computed(() => {
             </ResponsiveNavLink>
 
             <!-- Client Specific Responsive Links -->
-            <template v-if="$page.props.auth.user.role === 'client'">
+            <template v-if="$page.props.auth.user && $page.props.auth.user.role === 'client'">
               <ResponsiveNavLink
                 :href="route('client.services.index')"
                 :active="route().current('client.services.index')"
@@ -295,7 +287,7 @@ const isActiveDashboard = computed(() => {
             </template>
 
             <!-- Reseller Specific Responsive Links -->
-            <template v-if="$page.props.auth.user.role === 'reseller'">
+            <template v-if="$page.props.auth.user && $page.props.auth.user.role === 'reseller'">
               <ResponsiveNavLink
                 :href="route('reseller.clients.index')"
                 :active="
@@ -310,7 +302,7 @@ const isActiveDashboard = computed(() => {
             </template>
 
             <!-- Admin Specific Responsive Links -->
-            <template v-if="$page.props.auth.user.role === 'admin'">
+            <template v-if="$page.props.auth.user && $page.props.auth.user.role === 'admin'">
               <ResponsiveNavLink
                 :href="route('admin.users.index')"
                 :active="
@@ -330,15 +322,7 @@ const isActiveDashboard = computed(() => {
               >
                 Manage Products
               </ResponsiveNavLink>
-              <ResponsiveNavLink
-                :href="route('admin.orders.index')"
-                :active="
-                  route().current('admin.orders.index') ||
-                  route().current('admin.orders.show')
-                "
-              >
-                Manage Orders
-              </ResponsiveNavLink>
+              <!-- Order Responsive Link Removed -->
               <ResponsiveNavLink
                 :href="route('admin.invoices.index')"
                 :active="
@@ -368,7 +352,7 @@ const isActiveDashboard = computed(() => {
 
           <!-- Responsive Settings Options -->
           <div class="pt-4 pb-1 border-t border-gray-200">
-            <div class="px-4">
+            <div v-if="$page.props.auth.user" class="px-4">
               <div class="text-base font-medium text-gray-800">
                 {{ $page.props.auth.user.name }}
               </div>
