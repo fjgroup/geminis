@@ -18,7 +18,8 @@ use Inertia\Response; // Importar Response
 use App\Jobs\ProvisionClientServiceJob; // Added
 use Illuminate\Support\Facades\Gate; // Added
 use Illuminate\Support\Facades\Log; // Added, though likely already available via Controller
-
+use Illuminate\Support\Facades\Auth; // Added for auth()->user()
+use App\Models\PaymentMethod; // Import PaymentMethod
 
 class AdminClientServiceController extends Controller
 {
@@ -95,7 +96,6 @@ class AdminClientServiceController extends Controller
             'resellers' => $resellers->map(fn($user) => ['value' => $user->id, 'label' => $user->name]),
 
             // 'servers' => $servers->map(fn($server) => ['value' => $server->id, 'label' => $server->name]),
-
             'statusOptions' => ClientService::getPossibleEnumValues('status'),
 
             'billingCycles' => $billingCycles, // Pasar billingCycles a la vista
@@ -165,6 +165,9 @@ class AdminClientServiceController extends Controller
 
         $billingCycles = BillingCycle::all(); // Obtener todos los BillingCycle
 
+        // Cargar métodos de pago activos para el formulario de confirmación manual
+        $paymentMethods = \App\Models\PaymentMethod::where('is_active', true)->orderBy('name')->get(['id', 'name']);
+
         return Inertia::render('Admin/ClientServices/Edit', [
             'clientService' => $clientService,
             // Pasamos los datos para los selectores, similar al método create
@@ -179,6 +182,7 @@ class AdminClientServiceController extends Controller
             // 'servers' => $servers->map(fn($server) => ['value' => $server->id, 'label' => $server->name]),
             'statusOptions' => ClientService::getPossibleEnumValues('status'),
             'billingCycles' => $billingCycles, // Pasar billingCycles a la vista
+            'paymentMethods' => $paymentMethods->map(fn($method) => ['value' => $method->id, 'label' => $method->name]), // Pasar métodos de pago formateados
             // 'productPricings' se cargarán dinámicamente en el formulario _Form.vue
         ]);
     }
@@ -288,7 +292,7 @@ class AdminClientServiceController extends Controller
 
         // Optionally, update status to indicate a retry is in progress
         $clientService->status = 'pending_configuration'; // Reset to a state where provisioning can be attempted
-        $clientService->notes = ($clientService->notes ? $clientService->notes . "\n" : '') . "Reintento de aprovisionamiento iniciado por admin (" . auth()->user()->name . ") el " . now()->toDateTimeString() . ".";
+        $clientService->notes = ($clientService->notes ? $clientService->notes . "\n" : '') . "Reintento de aprovisionamiento iniciado por admin (" . Auth::user()->name . ") el " . now()->toDateTimeString() . ".";
         $clientService->save();
 
         ProvisionClientServiceJob::dispatch($clientService->orderItem);

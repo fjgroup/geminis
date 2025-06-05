@@ -77,6 +77,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'verified', 'admin']
     Route::get('/transactions', [AdminTransactionController::class, 'index'])->name('transactions.index');
     Route::post('transactions/{transaction}/confirm', [AdminTransactionController::class, 'confirm'])->name('transactions.confirm');
     Route::post('transactions/{transaction}/reject', [AdminTransactionController::class, 'reject'])->name('transactions.reject');
+    // Ruta para confirmar manualmente un pago
+    Route::post('/transactions/confirm-manual', [AdminTransactionController::class, 'confirmManualPayment'])->name('transactions.confirmManualPayment');
 
     // Order Execution Routes
     Route::post('/orders/{order}/start-execution', [AdminOrderController::class, 'startExecution'])->name('orders.startExecution');
