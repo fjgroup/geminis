@@ -20,9 +20,10 @@ class ClientDashboardController extends Controller
                                 ->with(['product', 'productPricing', 'billingCycle'])
                                 ->get();
 
-        $pendingOrdersCount = $user->orders()
-                                   ->whereIn('status', ['paid_pending_execution', 'pending_provisioning'])
-                                   ->count();
+        // Contar facturas que están pagadas pero sus servicios están pendientes de activación/confirmación
+        $pendingServicesInvoicesCount = $user->invoices()
+                                             ->whereIn('status', ['pending_activation', 'pending_confirmation'])
+                                             ->count();
 
         $unpaidInvoicesCount = $user->invoices()
                                     ->where('status', 'unpaid')
@@ -30,7 +31,7 @@ class ClientDashboardController extends Controller
 
         return Inertia::render('Client/ClientDashboard', [
             'clientServices' => $clientServices,
-            'pendingOrdersCount' => $pendingOrdersCount,
+            'pendingServicesInvoicesCount' => $pendingServicesInvoicesCount, // Nombre de variable actualizado
             'unpaidInvoicesCount' => $unpaidInvoicesCount,
             'accountBalance' => $user->balance,
             'formattedAccountBalance' => $user->formatted_balance,

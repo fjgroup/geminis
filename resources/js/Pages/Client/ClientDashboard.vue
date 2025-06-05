@@ -9,7 +9,7 @@ const props = defineProps({
         type: Array,
         default: () => [],
     },
-    pendingOrdersCount: {
+    pendingServicesInvoicesCount: { // Nombre de prop actualizado
         type: Number,
         default: 0,
     },
@@ -114,15 +114,15 @@ const confirmRenewalRequest = (event, serviceId) => {
                                     Ver Facturas
                                     </Link>
                                 </div>
-                                <!-- Pending Orders Card -->
+                                <!-- Pending Services/Invoices Card -->
                                 <div
                                     class="p-6 bg-white border border-gray-200 rounded-lg shadow-md dark:bg-gray-700 dark:border-gray-600">
-                                    <h4 class="mb-2 font-semibold text-gray-700 text-md dark:text-gray-300">Órdenes Pendientes</h4>
-                                    <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ pendingOrdersCount }}
+                                    <h4 class="mb-2 font-semibold text-gray-700 text-md dark:text-gray-300">Facturas en Proceso</h4>
+                                    <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ pendingServicesInvoicesCount }}
                                     </p>
-                                    <Link :href="route('client.orders.index')"
+                                    <Link :href="route('client.invoices.index')"
                                         class="mt-2 text-sm text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300">
-                                    Ver Órdenes
+                                    Ver Facturas
                                     </Link>
                                 </div>
                                 <!-- Active Services Card -->
@@ -147,10 +147,7 @@ const confirmRenewalRequest = (event, serviceId) => {
                                     class="inline-flex items-center px-4 py-2 text-xs font-semibold tracking-widest text-white uppercase transition duration-150 ease-in-out bg-gray-800 border border-transparent rounded-md dark:bg-gray-700 hover:bg-gray-700 dark:hover:bg-gray-600 focus:bg-gray-700 active:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800">
                                 Mis Servicios
                                 </Link>
-                                <Link :href="route('client.orders.index')"
-                                    class="inline-flex items-center px-4 py-2 text-xs font-semibold tracking-widest text-white uppercase transition duration-150 ease-in-out bg-gray-800 border border-transparent rounded-md dark:bg-gray-700 hover:bg-gray-700 dark:hover:bg-gray-600 focus:bg-gray-700 active:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800">
-                                Mis Órdenes
-                                </Link>
+                                <!-- "Mis Órdenes" Link removed as it's now redundant with "Mis Facturas" -->
                                 <Link :href="route('client.invoices.index')"
                                     class="inline-flex items-center px-4 py-2 text-xs font-semibold tracking-widest text-white uppercase transition duration-150 ease-in-out bg-gray-800 border border-transparent rounded-md dark:bg-gray-700 hover:bg-gray-700 dark:hover:bg-gray-600 focus:bg-gray-700 active:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800">
                                 Mis Facturas
