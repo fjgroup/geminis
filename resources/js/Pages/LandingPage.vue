@@ -208,17 +208,18 @@ const handleCloseModal = () => {
 
 const handleHeroCtaClick = () => {
     if (serviceConfig.value) { // Use serviceConfig computed prop
-        const targetId = serviceData.value.whatIsHostingInfo ? "what-is-hosting-section"
-            : serviceData.value.generalFeaturesExplained ? "general-features-section"
-                : serviceData.value.highlightedPlansSection ? "highlighted-plans-section"
+        const targetId = serviceConfig.value.whatIsHostingInfo ? "what-is-hosting-section"
+            : serviceConfig.value.generalFeaturesExplained ? "general-features-section"
+                : serviceConfig.value.highlightedPlansSection ? "highlighted-plans-section"
                     : "all-categories-section"; // Asegúrate de que estos IDs coincidan con los de tus componentes Vue
         const element = document.getElementById(targetId);
         if (element) {
             element.scrollIntoView({ behavior: 'smooth', block: 'start' });
         } else {
-            const firstCategory = serviceData.value.serviceCategories[0];
-            if (firstCategory) {
-                handleNavigation('categoryDetail', firstCategory.categoryId);
+            // Fallback: try to scroll to the all categories list if other sections are not found
+            const allCategoriesElement = document.getElementById('all-categories-section');
+            if (allCategoriesElement) {
+                allCategoriesElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
         }
     }
@@ -226,8 +227,10 @@ const handleHeroCtaClick = () => {
 
 // Computed property para la categoría seleccionada
 const selectedCategoryData = computed(() => {
-    if (!serviceData.value || !selectedCategoryId.value) return null;
-    return serviceData.value.serviceCategories.find(cat => cat.categoryId === selectedCategoryId.value);
+    if (!serviceConfig.value || !serviceConfig.value.serviceCategories || !selectedCategoryId.value) {
+        return null;
+    }
+    return serviceConfig.value.serviceCategories.find(cat => cat.categoryId === selectedCategoryId.value);
 });
 
 
