@@ -30,7 +30,10 @@ class StoreProductRequest extends FormRequest
             // o si se envía, debe ser único.
             'slug' => ['nullable', 'string', 'max:255', Rule::unique('products', 'slug')],
             'description' => ['nullable', 'string'],
-            'type' => ['required', 'string', Rule::in(['shared_hosting', 'vps', 'dedicated_server', 'domain_registration', 'ssl_certificate', 'other'])],
+            // Make 'type' nullable as it's being deprecated
+            'type' => ['nullable', 'string', Rule::in(['shared_hosting', 'vps', 'dedicated_server', 'domain_registration', 'ssl_certificate', 'other'])],
+            // Add rule for product_type_id
+            'product_type_id' => ['required', 'integer', 'exists:product_types,id'],
             'module_name' => ['nullable', 'string', 'max:255'],
             'owner_id' => ['nullable', 'integer', 'exists:users,id'],
             'status' => ['required', 'string', Rule::in(['active', 'inactive', 'hidden'])],
