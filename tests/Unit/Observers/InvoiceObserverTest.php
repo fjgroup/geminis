@@ -4,218 +4,173 @@ namespace Tests\Unit\Observers;
 
 use Tests\TestCase;
 use App\Models\User;
-use App\Models\Order;
 use App\Models\Invoice;
-use App\Models\OrderItem;
-use App\Models\OrderActivity;
+use App\Models\InvoiceItem;
 use App\Models\Product;
+use App\Models\ProductType;
 use App\Models\ProductPricing;
 use App\Models\BillingCycle;
-use App\Observers\InvoiceObserver; // For direct testing if needed, though usually through model events
+use App\Models\ClientService;
+use App\Jobs\ProvisionClientServiceJob; // Importar el Job
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Event; // If needing to assert events explicitly
+use Illuminate\Support\Facades\Queue; // Importar para fake queue
 
 class InvoiceObserverTest extends TestCase
 {
     use RefreshDatabase;
 
-    protected function setUp(): void
+    // Helper para crear productos y precios
+    private function createProductHierarchy(string $productTypeName, string $productTypeSlug, bool $createsServiceInstance, float $price = 10.00): ProductPricing
     {
-        parent::setUp();
-        // Manually register the observer if not relying on auto-discovery in tests
-        // or if testing a specific instance. For model event testing, this is usually not needed.
-        // Event::observe(InvoiceObserver::class); // Not needed if AppServiceProvider registers it
-    }
-
-    /** @test */
-    public function order_status_updates_to_pending_provisioning_when_invoice_is_paid()
-    {
-        // 1. Arrange
-        $client = User::factory()->create();
-        $order = Order::factory()->for($client)->create([
-            'status' => 'pending_payment',
+        $productType = ProductType::factory()->create([
+            'name' => $productTypeName,
+            'slug' => $productTypeSlug,
+            'creates_service_instance' => $createsServiceInstance,
         ]);
-        $invoice = Invoice::factory()->for($client)->for($order)->create([
-            'status' => 'unpaid',
-            'total_amount' => $order->total_amount, // Ensure amounts match
-            'currency_code' => $order->currency_code,
+        $product = Product::factory()->create(['product_type_id' => $productType->id, 'name' => $productTypeName . ' Product']);
+        $billingCycle = BillingCycle::factory()->create(['name' => 'Monthly', 'type' => 'month', 'multiplier' => 1]);
+        return ProductPricing::factory()->create([
+            'product_id' => $product->id,
+            'billing_cycle_id' => $billingCycle->id,
+            'price' => $price
         ]);
-
-        // Ensure the relationship is set if not done by factories
-        $order->invoice_id = $invoice->id;
-        $order->save();
-        $invoice->order_id = $order->id; // Ensure this is also set for invoice->order access in observer
-        $invoice->save();
-
-
-        // 2. Act
-        $invoice->status = 'paid';
-        $invoice->save(); // This should trigger the InvoiceObserver's updating method
-
-        // 3. Assert
-        $order->refresh();
-        $this->assertEquals('pending_provisioning', $order->status);
-
-        $activity = OrderActivity::where('order_id', $order->id)
-            ->where('type', 'order_status_auto_updated_to_pending_provisioning')
-            ->latest('id') // Get the latest one in case of multiple activities
-            ->first();
-
-        $this->assertNotNull($activity);
-        $this->assertEquals($order->id, $activity->order_id);
-        $details = json_decode($activity->details, true);
-        $this->assertEquals($invoice->id, $details['invoice_id']);
-        $this->assertEquals($invoice->invoice_number, $details['invoice_number']);
-        $this->assertEquals('pending_payment', $details['previous_order_status']);
-        $this->assertEquals('pending_provisioning', $details['new_order_status']);
     }
 
-    /** @test */
-    public function order_status_does_not_change_if_order_is_already_active_when_invoice_is_paid()
+    // Helper para crear InvoiceItems
+    private function createInvoiceItemForProduct(Invoice $invoice, ProductPricing $productPricing, ?ClientService $clientService = null): InvoiceItem
     {
-        // 1. Arrange
-        $client = User::factory()->create();
-        $order = Order::factory()->for($client)->create(['status' => 'active']);
-        $invoice = Invoice::factory()->for($client)->for($order)->create(['status' => 'unpaid']);
-
-        $order->invoice_id = $invoice->id;
-        $order->save();
-        $invoice->order_id = $order->id;
-        $invoice->save();
-
-        // 2. Act
-        $invoice->status = 'paid';
-        $invoice->save();
-
-        // 3. Assert
-        $order->refresh();
-        $this->assertEquals('active', $order->status); // Status should remain active
-
-        $activity = OrderActivity::where('order_id', $order->id)
-            ->where('type', 'order_status_auto_updated_to_pending_provisioning')
-            ->first();
-        $this->assertNull($activity); // No new activity should be logged for this specific type
-    }
-
-    /** @test */
-    public function order_status_does_not_change_if_order_is_paid_pending_execution_when_invoice_is_paid()
-    {
-        // This tests the scenario where the observer might be too aggressive.
-        // Based on the current InvoiceObserver, if order is 'paid_pending_execution', it *should* change to 'pending_provisioning'.
-        // So this test name might be misleading if the expectation is for it *not* to change.
-        // Let's assume the observer logic is: 'pending_payment' OR 'paid_pending_execution' -> 'pending_provisioning'
-
-        // 1. Arrange
-        $client = User::factory()->create();
-        $order = Order::factory()->for($client)->create(['status' => 'paid_pending_execution']);
-        $invoice = Invoice::factory()->for($client)->for($order)->create(['status' => 'unpaid']);
-
-        $order->invoice_id = $invoice->id;
-        $order->save();
-        $invoice->order_id = $order->id;
-        $invoice->save();
-
-        // 2. Act
-        $invoice->status = 'paid';
-        $invoice->save();
-
-        // 3. Assert
-        $order->refresh();
-        $this->assertEquals('pending_provisioning', $order->status); // Status should change
-
-        $activity = OrderActivity::where('order_id', $order->id)
-            ->where('type', 'order_status_auto_updated_to_pending_provisioning')
-            ->latest('id')
-            ->first();
-        $this->assertNotNull($activity);
-        $details = json_decode($activity->details, true);
-        $this->assertEquals('paid_pending_execution', $details['previous_order_status']);
-        $this->assertEquals('pending_provisioning', $details['new_order_status']);
-    }
-
-
-    /** @test */
-    public function no_order_update_if_invoice_is_paid_but_has_no_associated_order()
-    {
-        // 1. Arrange
-        $client = User::factory()->create();
-        $invoice = Invoice::factory()->for($client)->create([
-            'status' => 'unpaid',
-            'order_id' => null, // No associated order
+        return InvoiceItem::factory()->create([
+            'invoice_id' => $invoice->id,
+            'product_id' => $productPricing->product_id,
+            'product_pricing_id' => $productPricing->id,
+            'client_service_id' => $clientService?->id,
+            'description' => $productPricing->product->name,
+            'quantity' => 1,
+            'unit_price' => $productPricing->price,
+            'total_price' => $productPricing->price,
+            'item_type' => 'new_service',
         ]);
+    }
 
-        // 2. Act
+
+    /** @test */
+    public function dispatches_provisioning_job_when_invoice_status_changes_to_paid_for_pending_service_items(): void
+    {
+        Queue::fake();
+
+        $client = User::factory()->create();
+        $invoice = Invoice::factory()->for($client)->create(['status' => 'unpaid']);
+
+        $hostingPricing = $this->createProductHierarchy('Web Hosting', 'web-hosting', true);
+        $manualItemPricing = $this->createProductHierarchy('Manual Service', 'manual-service', false); // No crea instancia
+
+        // Ítem que necesita aprovisionamiento (ClientService en 'pending')
+        $servicePending = ClientService::factory()->create(['status' => 'pending', 'product_id' => $hostingPricing->product_id]);
+        $itemNeedingProvisioning = $this->createInvoiceItemForProduct($invoice, $hostingPricing, $servicePending);
+
+        // Ítem que ya está activo
+        $serviceActive = ClientService::factory()->create(['status' => 'active', 'product_id' => $hostingPricing->product_id]);
+        $itemAlreadyActive = $this->createInvoiceItemForProduct($invoice, $hostingPricing, $serviceActive);
+
+        // Ítem que no crea instancia de servicio
+        $itemNoService = $this->createInvoiceItemForProduct($invoice, $manualItemPricing, null);
+
+        // Act
         $invoice->status = 'paid';
-        $invoice->save(); // This should trigger the observer
+        $invoice->save(); // Esto dispara el observer
 
-        // 3. Assert
-        // Primarily, we assert that no error occurs and no OrderActivity is mistakenly created for a non-existent order.
-        $activities = OrderActivity::where('type', 'order_status_auto_updated_to_pending_provisioning')
-                                    ->whereJsonContains('details->invoice_id', $invoice->id)
-                                    ->get();
-        $this->assertCount(0, $activities, "No order activity should be logged for an invoice without an order.");
+        // Assert
+        Queue::assertPushed(ProvisionClientServiceJob::class, 1);
+        Queue::assertPushed(ProvisionClientServiceJob::class, function ($job) use ($itemNeedingProvisioning) {
+            return $job->invoiceItem->id === $itemNeedingProvisioning->id;
+        });
+        Queue::assertNotPushed(ProvisionClientServiceJob::class, function ($job) use ($itemAlreadyActive) {
+            return $job->invoiceItem->id === $itemAlreadyActive->id;
+        });
+         Queue::assertNotPushed(ProvisionClientServiceJob::class, function ($job) use ($itemNoService) {
+            return $job->invoiceItem->id === $itemNoService->id;
+        });
     }
 
     /** @test */
-    public function invoice_observer_does_not_change_order_status_if_invoice_status_changes_but_not_to_paid()
+    public function dispatches_provisioning_job_when_invoice_status_changes_to_pending_activation(): void
     {
-        // 1. Arrange
+        Queue::fake();
         $client = User::factory()->create();
-        $order = Order::factory()->for($client)->create(['status' => 'pending_payment']);
-        $invoice = Invoice::factory()->for($client)->for($order)->create(['status' => 'unpaid']);
+        $invoice = Invoice::factory()->for($client)->create(['status' => 'unpaid']);
+        $hostingPricing = $this->createProductHierarchy('Web Hosting', 'web-hosting', true);
+        $servicePending = ClientService::factory()->create(['status' => 'pending', 'product_id' => $hostingPricing->product_id]);
+        $itemToProvision = $this->createInvoiceItemForProduct($invoice, $hostingPricing, $servicePending);
 
-        $order->invoice_id = $invoice->id;
-        $order->save();
-        $invoice->order_id = $order->id;
+        // Act
+        $invoice->status = 'pending_activation';
         $invoice->save();
 
-        // 2. Act
-        $invoice->status = 'cancelled'; // Changing to something other than 'paid'
-        $invoice->save();
-
-        // 3. Assert
-        $order->refresh();
-        $this->assertEquals('pending_payment', $order->status); // Status should NOT change
-
-        $activity = OrderActivity::where('order_id', $order->id)
-            ->where('type', 'order_status_auto_updated_to_pending_provisioning')
-            ->first();
-        $this->assertNull($activity);
+        // Assert
+        Queue::assertPushed(ProvisionClientServiceJob::class, 1);
+        Queue::assertPushed(ProvisionClientServiceJob::class, function ($job) use ($itemToProvision) {
+            return $job->invoiceItem->id === $itemToProvision->id;
+        });
     }
 
-     /** @test */
-    public function invoice_observer_does_not_change_order_status_if_invoice_status_is_already_paid_and_resaved()
+    /** @test */
+    public function does_not_dispatch_job_if_invoice_status_changes_but_not_to_a_trigger_status(): void
     {
-        // 1. Arrange
+        Queue::fake();
         $client = User::factory()->create();
-        $order = Order::factory()->for($client)->create(['status' => 'pending_payment']); // Initial order status
-        $invoice = Invoice::factory()->for($client)->for($order)->create(['status' => 'unpaid']);
+        $invoice = Invoice::factory()->for($client)->create(['status' => 'unpaid']);
+        $hostingPricing = $this->createProductHierarchy('Web Hosting', 'web-hosting', true);
+        $servicePending = ClientService::factory()->create(['status' => 'pending', 'product_id' => $hostingPricing->product_id]);
+        $this->createInvoiceItemForProduct($invoice, $hostingPricing, $servicePending);
 
-        $order->invoice_id = $invoice->id;
-        $order->save();
-        $invoice->order_id = $order->id;
+        // Act
+        $invoice->status = 'cancelled'; // No es 'paid' ni 'pending_activation'
         $invoice->save();
 
-        // First payment
+        // Assert
+        Queue::assertNotPushed(ProvisionClientServiceJob::class);
+    }
+
+    /** @test */
+    public function does_not_dispatch_job_if_invoice_is_resaved_without_relevant_status_change(): void
+    {
+        Queue::fake();
+        $client = User::factory()->create();
+        $invoice = Invoice::factory()->for($client)->create(['status' => 'paid']); // Ya está 'paid'
+        $hostingPricing = $this->createProductHierarchy('Web Hosting', 'web-hosting', true);
+        $servicePending = ClientService::factory()->create(['status' => 'pending', 'product_id' => $hostingPricing->product_id]);
+        $this->createInvoiceItemForProduct($invoice, $hostingPricing, $servicePending);
+
+        // Simular que el job ya se despachó la primera vez que pasó a 'paid'
+        // Para esta prueba, nos enfocamos en que un simple re-save no lo despache de nuevo si el status no cambia *a* 'paid'/'pending_activation'
+        Queue::fake(); // Resetear la cola para esta aserción específica
+
+        // Act
+        $invoice->admin_notes = 'Updating notes'; // Cambiar un campo no relacionado con el status
+        $invoice->save();
+
+        // Assert
+        Queue::assertNotPushed(ProvisionClientServiceJob::class);
+    }
+
+    /** @test */
+    public function dispatches_job_if_invoice_item_has_no_client_service_yet_but_product_creates_one(): void
+    {
+        Queue::fake();
+        $client = User::factory()->create();
+        $invoice = Invoice::factory()->for($client)->create(['status' => 'unpaid']);
+        $hostingPricing = $this->createProductHierarchy('Web Hosting', 'web-hosting', true);
+        // Importante: No se crea ClientService aquí, o se pasa null.
+        $itemWithoutService = $this->createInvoiceItemForProduct($invoice, $hostingPricing, null);
+
+        // Act
         $invoice->status = 'paid';
         $invoice->save();
-        $order->refresh();
-        $this->assertEquals('pending_provisioning', $order->status); // Verify first change
 
-        // 2. Act
-        // Now, save the invoice again without changing its 'paid' status
-        // For example, an unrelated field on the invoice is updated
-        $invoice->notes = 'Some updated notes';
-        $invoice->save(); // This should trigger the observer, but the condition for status change shouldn't pass
-
-        // 3. Assert
-        $order->refresh();
-        $this->assertEquals('pending_provisioning', $order->status); // Status should remain 'pending_provisioning'
-
-        // Check that a second activity for status change was NOT logged
-        $activities = OrderActivity::where('order_id', $order->id)
-            ->where('type', 'order_status_auto_updated_to_pending_provisioning')
-            ->get();
-        $this->assertCount(1, $activities, "Only one activity for status change should exist.");
+        // Assert
+        Queue::assertPushed(ProvisionClientServiceJob::class, 1);
+        Queue::assertPushed(ProvisionClientServiceJob::class, function ($job) use ($itemWithoutService) {
+            return $job->invoiceItem->id === $itemWithoutService->id;
+        });
     }
 }

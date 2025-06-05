@@ -4,223 +4,170 @@ namespace Tests\Unit\Jobs;
 
 use Tests\TestCase;
 use App\Models\User;
-use App\Models\Order;
-use App\Models\OrderItem;
-use App\Models\OrderActivity;
+use App\Models\Invoice;
+use App\Models\InvoiceItem;
 use App\Models\Product;
 use App\Models\ProductType;
 use App\Models\ProductPricing;
 use App\Models\BillingCycle;
 use App\Models\ClientService;
-use Carbon\Carbon;
-use Illuminate\Support\Str;
 use App\Jobs\ProvisionClientServiceJob;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Queue;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Support\Facades\Log;
+use Carbon\Carbon;
 
 class ProvisionClientServiceJobTest extends TestCase
 {
     use RefreshDatabase;
 
+    private User $client;
+    private ProductPricing $hostingProductPricing;
+    private ProductPricing $domainProductPricing;
+    private Invoice $invoice;
+
     protected function setUp(): void
     {
         parent::setUp();
-        // It's good practice to ensure queues are faked so jobs don't actually dispatch to a real queue
-        // However, for dispatchSync, it runs immediately, so faking isn't strictly necessary for that.
-        // Queue::fake();
+
+        $this->client = User::factory()->create();
+
+        $hostingType = ProductType::factory()->create(['name' => 'Web Hosting', 'slug' => 'web-hosting', 'creates_service_instance' => true, 'is_domain_product' => false]);
+        $hostingProduct = Product::factory()->create(['name' => 'Basic Hosting', 'product_type_id' => $hostingType->id]);
+        $monthlyCycle = BillingCycle::factory()->create(['name' => 'Monthly', 'type' => 'month', 'multiplier' => 1]);
+        $this->hostingProductPricing = ProductPricing::factory()->create(['product_id' => $hostingProduct->id, 'billing_cycle_id' => $monthlyCycle->id, 'price' => 10.00]);
+
+        $domainType = ProductType::factory()->create(['name' => 'Domain Registration', 'slug' => 'domain-registration', 'creates_service_instance' => true, 'is_domain_product' => true]);
+        $domainProduct = Product::factory()->create(['name' => 'Standard Domain', 'product_type_id' => $domainType->id]);
+        $this->domainProductPricing = ProductPricing::factory()->create(['product_id' => $domainProduct->id, 'billing_cycle_id' => $monthlyCycle->id, 'price' => 15.00]);
+
+        $this->invoice = Invoice::factory()->create(['client_id' => $this->client->id, 'status' => 'paid']); // Job se dispara con 'paid' o 'pending_activation'
     }
 
-    private function createTestOrderItem(array $orderStatus = ['status' => 'pending_provisioning'], bool $createsServiceInstance = true): OrderItem
+    private function createInvoiceItemWithPendingService(ProductPricing $productPricing, string $domainName = null): InvoiceItem
     {
-        $client = User::factory()->create();
-        $billingCycle = BillingCycle::factory()->create(['type' => 'month', 'multiplier' => 1]);
-        $productType = ProductType::factory()->create(['creates_service_instance' => $createsServiceInstance]);
-        $product = Product::factory()->for($productType)->create();
-        $productPricing = ProductPricing::factory()->for($product)->for($billingCycle)->create();
-
-        $order = Order::factory()->for($client)->create($orderStatus);
-
-        $orderItem = OrderItem::factory()
-            ->for($order)
-            ->for($product)
-            ->for($productPricing)
-            ->create(['client_service_id' => null]);
-
-        // Crucial: Load relations as the job expects them to be somewhat available
-        // or it reloads them. The job now reloads them using find($this->orderItem->id)
-        // and then loads relations. So, this explicit load before dispatch isn't strictly
-        // necessary if the job's reloading is robust.
-        // $orderItem->load(['order.client', 'product.productType', 'productPricing.billingCycle']);
-        return $orderItem;
-    }
-
-    /** @test */
-    public function job_creates_new_client_service_and_activates_it_successfully()
-    {
-        // Arrange
-        $orderItem = $this->createTestOrderItem();
-
-        // Act
-        ProvisionClientServiceJob::dispatchSync($orderItem);
-
-        // Assert
-        $orderItem->refresh();
-        $order = $orderItem->order->fresh();
-
-        $this->assertNotNull($orderItem->client_service_id, "ClientService ID should be set on OrderItem.");
-
-        $clientService = ClientService::find($orderItem->client_service_id);
-        $this->assertNotNull($clientService, "ClientService record was not created.");
-
-        $this->assertEquals('active', $clientService->status, "ClientService status should be active.");
-        $this->assertNotEmpty($clientService->username, "ClientService username should be set.");
-        $this->assertNotEmpty($clientService->password_encrypted, "ClientService password should be set.");
-        $this->assertNotNull($clientService->registration_date, "ClientService registration_date should be set.");
-        $this->assertNotNull($clientService->next_due_date, "ClientService next_due_date should be set.");
-
-        // Check next_due_date calculation (assuming 1 month from registration_date for this test setup)
-        $expectedNextDueDate = Carbon::parse($clientService->registration_date)->addMonthsNoOverflow(1)->toDateString();
-        $this->assertEquals($expectedNextDueDate, $clientService->next_due_date);
-
-        // Assert Order status changed by ClientServiceObserver
-        $this->assertEquals('active', $order->status, "Order status should be updated to active by ClientServiceObserver.");
-
-        // Assert OrderActivity for order activation (created by ClientServiceObserver)
-        $activity = OrderActivity::where('order_id', $order->id)
-            ->where('type', 'order_auto_activated_post_service_config')
-            ->latest('id')
-            ->first();
-        $this->assertNotNull($activity, "OrderActivity for order auto-activation was not logged.");
-        $details = json_decode($activity->details, true);
-        $this->assertEquals($clientService->id, $details['client_service_id']);
-    }
-
-    /** @test */
-    public function job_updates_existing_failed_service_to_active()
-    {
-        // Arrange
-        $orderItem = $this->createTestOrderItem();
-        $existingFailedService = ClientService::factory()->create([
-            'order_item_id' => $orderItem->id,
-            'client_id' => $orderItem->order->client_id,
-            'order_id' => $orderItem->order->id,
-            'product_id' => $orderItem->product_id,
-            'product_pricing_id' => $orderItem->product_pricing_id,
-            'billing_cycle_id' => $orderItem->productPricing->billing_cycle_id,
-            'status' => 'provisioning_failed',
-            'username' => null, // Ensure these are null to check if job updates them
-            'password_encrypted' => null,
+        $clientService = ClientService::factory()->create([
+            'client_id' => $this->client->id,
+            'product_id' => $productPricing->product_id,
+            'product_pricing_id' => $productPricing->id,
+            'billing_cycle_id' => $productPricing->billing_cycle_id,
+            'status' => 'pending', // Estado inicial antes de que el job corra
+            'domain_name' => $domainName,
+            'registration_date' => Carbon::now()->subDay(), // Simular que fue creado antes
+            'next_due_date' => Carbon::now()->subDay()->addMonth(), // Fecha tentativa
+            'billing_amount' => $productPricing->price,
         ]);
-        $orderItem->client_service_id = $existingFailedService->id;
-        $orderItem->save();
 
-        // Act
-        ProvisionClientServiceJob::dispatchSync($orderItem);
-
-        // Assert
-        $existingFailedService->refresh();
-        $this->assertEquals('active', $existingFailedService->status);
-        $this->assertNotEmpty($existingFailedService->username);
-        $this->assertNotEmpty($existingFailedService->password_encrypted);
-        $this->assertNotNull($existingFailedService->next_due_date);
-
-        $order = $orderItem->order->fresh();
-        $this->assertEquals('active', $order->status);
-    }
-
-    /** @test */
-    public function job_does_not_reprovision_already_active_service()
-    {
-        // Arrange
-        $orderItem = $this->createTestOrderItem();
-        $activeService = ClientService::factory()->create([
-            'order_item_id' => $orderItem->id,
-            'client_id' => $orderItem->order->client_id,
-            'order_id' => $orderItem->order->id,
-            'product_id' => $orderItem->product_id,
-            'status' => 'active',
-            'username' => 'initial_user',
-            'updated_at' => Carbon::now()->subDay(), // Ensure updated_at is in the past
+        return InvoiceItem::factory()->create([
+            'invoice_id' => $this->invoice->id,
+            'product_id' => $productPricing->product_id,
+            'product_pricing_id' => $productPricing->id,
+            'client_service_id' => $clientService->id, // Vinculado
+            'description' => $productPricing->product->name,
+            'quantity' => 1,
+            'unit_price' => $productPricing->price,
+            'total_price' => $productPricing->price,
+            'item_type' => 'new_service',
+            'domain_name' => $domainName,
         ]);
-        $orderItem->client_service_id = $activeService->id;
-        $orderItem->save();
-
-        $originalUpdatedAt = $activeService->updated_at->toDateTimeString(); // Ensure Carbon object comparison
-        $originalUsername = $activeService->username;
-
-        // Act
-        ProvisionClientServiceJob::dispatchSync($orderItem);
-
-        // Assert
-        $activeService->refresh();
-        $this->assertEquals('active', $activeService->status);
-        // The job's current logic will re-run the "simulated provisioning" part even if service was active.
-        // It will re-set username, password, next_due_date, and notes.
-        // If the desired behavior is to truly do *nothing*, the job needs an earlier exit.
-        // The test currently reflects what the job *does*.
-        // $this->assertEquals($originalUsername, $activeService->username, "Username should not change for an already active service if job exits early.");
-        // $this->assertEquals($originalUpdatedAt, $activeService->updated_at->toDateTimeString(), "Updated_at should not change if job exits early.");
-
-        // Based on current job logic, it logs "Servicio ya activo" and returns.
-        // So, username and updated_at should NOT change.
-        $this->assertEquals($originalUsername, $activeService->username);
-        // updated_at might still change if saveQuietly() on orderItem in the job happens after this check.
-        // The job's check is: if ($clientService && $clientService->status === 'active') { Log::info(...); return; }
-        // This return should prevent any further modification to $clientService.
-        // However, the orderItem might be saved if its client_service_id was null.
-        // Let's ensure orderItem's client_service_id is correctly set for this test.
-        $this->assertEquals($originalUpdatedAt, $activeService->updated_at->toDateTimeString());
-
-
-        $activities = OrderActivity::where('order_id', $orderItem->order_id)
-            ->where('type', 'order_auto_activated_post_service_config')
-            ->count();
-        // If the order was already active (because service was active), ClientServiceObserver wouldn't run.
-        // If order was pending_provisioning, it would have become active.
-        // This test is more about the job not messing with an *already active service*.
-        // The initial creation of the active service would have (or should have) triggered the observer.
-        // This dispatch shouldn't trigger it *again*.
-         $this->assertLessThanOrEqual(1, $activities, "No new order_auto_activated_post_service_config activity should be created.");
     }
 
     /** @test */
-    public function job_logs_error_and_sets_status_to_failed_on_exception()
+    public function it_activates_non_domain_client_service_and_updates_details(): void
     {
-        // Arrange
-        $orderItem = $this->createTestOrderItem();
+        $invoiceItem = $this->createInvoiceItemWithPendingService($this->hostingProductPricing, 'myhostingsite.com');
+        $clientService = $invoiceItem->clientService;
 
-        // Simulate a condition that will cause an exception inside the job's try block
-        // For example, product_pricing_id that doesn't exist, causing findOrFail in job's reload or access.
-        // The job reloads OrderItem with relations. If productPricing is missing, it will fail.
-        $orderItem->product_pricing_id = 99999; // Non-existent ID
-        $orderItem->save();
+        $initialRegistrationDate = Carbon::parse($clientService->registration_date);
 
-        Log::shouldReceive('error')->atLeast()->once(); // Expect at least one error log
+        $job = new ProvisionClientServiceJob($invoiceItem->withoutRelations()); // Usar withoutRelations como en el constructor real
+        $job->handle();
 
-        $this->expectException(ModelNotFoundException::class); // Or more general Throwable if preferred
+        $clientService->refresh();
 
-        try {
-            ProvisionClientServiceJob::dispatchSync($orderItem->fresh()); // Use fresh model
-        } catch (ModelNotFoundException $e) {
-            // After the exception is caught (as expected)
-            $clientService = ClientService::where('order_item_id', $orderItem->id)->first();
+        $this->assertEquals('active', $clientService->status);
+        $this->assertNotNull($clientService->username);
+        $this->assertNotNull($clientService->password_encrypted);
+        // Verificar que la fecha de registro no cambie si ya estaba establecida
+        $this->assertEquals($initialRegistrationDate->toDateString(), Carbon::parse($clientService->registration_date)->toDateString());
+        // Verificar que next_due_date se calcule basado en la registration_date y el ciclo
+        $expectedDueDate = $initialRegistrationDate->copy()->addMonthsNoOverflow($clientService->productPricing->billingCycle->multiplier);
+        $this->assertEquals($expectedDueDate->toDateString(), Carbon::parse($clientService->next_due_date)->toDateString());
+        $this->assertStringContainsString("Servicio (re)aprovisionado por Job", $clientService->notes);
+    }
 
-            // In this specific failure (ModelNotFound for ProductPricing on OrderItem reload within job),
-            // the job might fail before even attempting to create/update a ClientService.
-            // So, $clientService might be null or its status might not be 'provisioning_failed'
-            // if the error occurs very early in the job's handle method.
-            // The job's catch block tries to update it.
+    /** @test */
+    public function it_keeps_domain_client_service_as_pending_and_updates_details(): void
+    {
+        $invoiceItem = $this->createInvoiceItemWithPendingService($this->domainProductPricing, 'mydomain.com');
+        $clientService = $invoiceItem->clientService;
+        $initialStatus = $clientService->status; // 'pending'
+        $initialRegistrationDate = Carbon::parse($clientService->registration_date);
 
-            if ($clientService) {
-                $this->assertEquals('provisioning_failed', $clientService->status);
-            } else {
-                // This is also a valid outcome if the failure was before CS creation attempt.
-                // We've already asserted the Log::error and the exception.
-                $this->assertNull($clientService, "ClientService should ideally not exist or be marked as failed if error was very early.");
-            }
-            throw $e; // Re-throw to satisfy expectException
-        }
+
+        $job = new ProvisionClientServiceJob($invoiceItem->withoutRelations());
+        $job->handle();
+
+        $clientService->refresh();
+
+        // El estado para dominios debería seguir siendo 'pending' o el que el Job defina para "espera manual"
+        // La lógica actual del Job mantiene 'pending' para dominios.
+        $this->assertEquals('pending', $clientService->status);
+        $this->assertEquals('mydomain.com', $clientService->domain_name); // Asegurar que el dominio se mantuvo/asignó
+        $expectedDueDate = $initialRegistrationDate->copy()->addMonthsNoOverflow($clientService->productPricing->billingCycle->multiplier);
+        $this->assertEquals($expectedDueDate->toDateString(), Carbon::parse($clientService->next_due_date)->toDateString());
+        $this->assertStringContainsString("Servicio (re)aprovisionado por Job", $clientService->notes);
+    }
+
+    /** @test */
+    public function it_logs_error_if_client_service_is_not_found_for_invoice_item(): void
+    {
+        Log::shouldReceive('error')->once()->with(\Mockery::pattern('/ClientService no encontrado para InvoiceItem ID/'));
+
+        $invoiceItem = InvoiceItem::factory()->create([ // No creamos ClientService vinculado
+            'invoice_id' => $this->invoice->id,
+            'product_id' => $this->hostingProductPricing->product_id,
+            'product_pricing_id' => $this->hostingProductPricing->id,
+            'client_service_id' => 999, // ID no existente
+        ]);
+
+        $job = new ProvisionClientServiceJob($invoiceItem->withoutRelations());
+        $job->handle(); // Debería loguear y retornar
+    }
+
+    /** @test */
+    public function it_does_not_process_if_client_service_is_not_in_pending_status(): void
+    {
+        Log::shouldReceive('info')->once()->with(\Mockery::pattern('/no está en estado \'pending\'/'));
+
+        $invoiceItem = $this->createInvoiceItemWithPendingService($this->hostingProductPricing);
+        $clientService = $invoiceItem->clientService;
+        $clientService->status = 'active'; // Cambiar a un estado no-pending
+        $clientService->save();
+
+        $job = new ProvisionClientServiceJob($invoiceItem->withoutRelations());
+        $job->handle();
+
+        $clientService->refresh();
+        $this->assertEquals('active', $clientService->status); // No debería haber cambiado
+    }
+
+    /** @test */
+    public function it_updates_client_service_id_on_invoice_item_if_it_was_null_job_created_service(): void
+    {
+        // Este test asume un escenario donde el Job podría crear el ClientService si no existe.
+        // La lógica actual del Job espera que ClientService ya exista.
+        // Si quisiéramos probar que el Job vincule un CS que él mismo creó, el Job necesitaría esa lógica.
+        // Por ahora, el Job espera que ClientService exista. Si no, loguea error.
+        // Si el ClientService es creado por payWithBalance y vinculado, este test en su forma actual no es necesario
+        // o necesita un setup donde el invoiceItem.client_service_id es null y el Job SÍ lo crea.
+        // Dado que el Job actual no crea el CS, este test no es aplicable tal cual.
+        // Lo que sí hace el Job es:
+        // if (is_null($invoiceItem->client_service_id) || $invoiceItem->client_service_id !== $clientService->id) {
+        //    $invoiceItem->client_service_id = $clientService->id;
+        //    $invoiceItem->save();
+        // }
+        // Esto es más una salvaguarda. La creación y vinculación inicial ocurre en payWithBalance.
+
+        $this->markTestSkipped('El Job actual espera que ClientService ya esté creado y vinculado por payWithBalance. Este test necesitaría reevaluación si el Job creara el ClientService.');
     }
 }
