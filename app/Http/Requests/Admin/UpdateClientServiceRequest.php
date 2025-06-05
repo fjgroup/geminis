@@ -43,8 +43,7 @@ class UpdateClientServiceRequest extends FormRequest
 
             'billing_amount' => ['required', 'numeric', 'min:0'],
 
-            'status' => ['required', Rule::in(['pending', 'active', 'suspended', 'terminated', 'cancelled',
-            'fraud'])],
+            'status' => ['required', Rule::in(['pending', 'active', 'suspended', 'terminated', 'cancelled', 'fraud', 'pending_configuration', 'provisioning_failed'])],
 
             'domain_name' => ['nullable', 'string', 'max:255'],
             // Ejemplo de unicidad ignorando el actual, si domain_name tuviera que ser único:

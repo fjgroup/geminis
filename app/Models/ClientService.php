@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Log; // ¡Añadir esta línea!
 use Illuminate\Support\Facades\DB; // ¡Añadir esta línea!
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Models\OrderItem; // Added
 
 class ClientService extends Model
 {
@@ -17,6 +18,7 @@ class ClientService extends Model
         'client_id',
         'reseller_id',
         'order_id',
+        'order_item_id', // Added
         'product_id',
         'product_pricing_id',
         'billing_cycle_id',
@@ -82,11 +84,27 @@ class ClientService extends Model
        return $this->belongsTo(BillingCycle::class);
    }
 
+    /**
+     * Get the order item associated with the service.
+     */
+    public function orderItem(): BelongsTo
+    {
+        return $this->belongsTo(OrderItem::class, 'order_item_id');
+    }
+
 
    // TODO: Definir las siguientes relaciones cuando los modelos existan y estén listos:
-    // public function order(): BelongsTo
+    // public function order(): BelongsTo // Already have an order_id, so this could be direct or via orderItem->order
     // {
-    //     return $this->belongsTo(Order::class);
+    //     // If order_id directly on client_services is primary link:
+    //     // return $this->belongsTo(Order::class);
+    //     // If through orderItem:
+    //     // return $this->orderItem ? $this->orderItem->order() : null; // This is not how you define a relationship.
+    //     // Best to keep a direct order_id if it's always present, or rely on orderItem->order.
+    //     // For now, assuming order_id is directly on client_services and is the primary link.
+    //     // If ClientService is ALWAYS created from an OrderItem, then order_id might be redundant if order_item_id is present.
+    //     // But the Job populates order_id directly too.
+    //     return $this->belongsTo(Order::class); // Assuming direct order_id link is maintained
     // }
 
     // public function server(): BelongsTo

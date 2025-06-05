@@ -75,6 +75,22 @@ const formatDate = (datetime) => {
     const date = new Date(datetime);
     return date.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 };
+
+const getFriendlyInvoiceStatusText = (status) => {
+    const mappings = {
+        'unpaid': 'No Pagada',
+        'paid': 'Pagada',
+        'overdue': 'Vencida',
+        'cancelled': 'Cancelada',
+        'refunded': 'Reembolsada',
+        'pending': 'Pendiente',
+        'collections': 'En Cobranza'
+    };
+    if (mappings[status]) {
+        return mappings[status];
+    }
+    return status ? status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'N/A';
+};
 </script>
 
 <template>
@@ -133,9 +149,11 @@ const formatDate = (datetime) => {
                   :class="{
                     'text-green-600 font-semibold': invoice.status === 'paid',
                     'text-red-600 font-semibold': invoice.status === 'overdue',
-                    'text-yellow-600 font-semibold': invoice.status === 'unpaid',
+                    'text-yellow-600 font-semibold': invoice.status === 'unpaid' || invoice.status === 'pending' || invoice.status === 'overdue', // Added pending and overdue
+                    'text-gray-500 font-semibold': invoice.status === 'cancelled' || invoice.status === 'refunded', // Adjusted for cancelled/refunded
+                    'text-purple-600 font-semibold': invoice.status === 'collections', // Added for collections
                   }"
-                  >{{ invoice.status }}</span
+                  >{{ getFriendlyInvoiceStatusText(invoice.status) }}</span
                 >
               </div>
               <div>

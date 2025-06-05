@@ -59,6 +59,21 @@ const invoiceTotalNumeric = computed(() => {
     return 0; // Default to 0 if not available
 });
 
+const getFriendlyOrderStatusText = (status) => {
+    const mappings = {
+        'pending_payment': 'Pendiente de Pago',
+        'pending_provisioning': 'Pago Confirmado, Procesando',
+        'paid_pending_execution': 'Pago Confirmado, En Espera',
+        'active': 'Activa',
+        'completed': 'Completada',
+        'cancelled': 'Cancelada',
+        'fraud': 'Fraude (Contacte Soporte)',
+        'cancellation_requested_by_client': 'Cancelación Solicitada'
+    };
+    // Fallback: Capitalize first letter and replace underscores if no specific mapping exists.
+    return mappings[status] || (status ? status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : '');
+};
+
 const payWithBalance = (invoiceId) => {
     if (confirm('¿Confirmas que deseas pagar esta factura utilizando tu saldo disponible?')) {
         router.post(route('client.invoices.payment.store', { invoice: invoiceId }), {
@@ -106,7 +121,7 @@ const payWithBalance = (invoiceId) => {
                                     'text-purple-600 font-semibold': order.status === 'cancellation_requested_by_client',
                                     'text-green-600 font-semibold': order.status === 'active' || order.status === 'completed',
                                     'text-red-600 font-semibold': order.status === 'fraud' || order.status === 'cancelled',
-                                }">{{ order.status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) }}</span>
+                                }">{{ getFriendlyOrderStatusText(order.status) }}</span>
                             </div>
                             <div><strong>Monto Total:</strong> {{ formatCurrency(order.total_amount, order.currency_code) }}</div>
                         </div>
@@ -126,9 +141,14 @@ const payWithBalance = (invoiceId) => {
                         </div>
                         
                         <h4 class="font-medium text-gray-700 mb-2">Ítems de la Orden:</h4>
-                        <ul v-if="order.items && order.items.length > 0" class="list-disc pl-5 text-sm text-gray-600">
+                        <ul v-if="order.items && order.items.length > 0" class="list-disc pl-5 text-sm text-gray-600 space-y-1">
                             <li v-for="item in order.items" :key="item.id">
                                 {{ item.description }} - {{ item.quantity }} x {{ formatCurrency(item.unit_price, order.currency_code) }}
+                                <span v-if="order.status === 'pending_provisioning' && item.client_service && item.client_service.status === 'pending_configuration'" class="text-xs text-blue-600 ml-2">(Servicio en configuración...)</span>
+                                <span v-else-if="item.client_service && item.client_service.status === 'active'" class="text-xs text-green-600 ml-2">(Servicio Activo)</span>
+                                <span v-else-if="item.client_service && item.client_service.status === 'suspended'" class="text-xs text-red-600 ml-2">(Servicio Suspendido)</span>
+                                <span v-else-if="item.client_service && item.client_service.status === 'cancelled'" class="text-xs text-gray-500 ml-2">(Servicio Cancelado)</span>
+                                <span v-else-if="item.client_service && item.client_service.status === 'terminated'" class="text-xs text-gray-700 ml-2">(Servicio Terminado)</span>
                             </li>
                         </ul>
                         <p v-else class="text-sm text-gray-500">No hay ítems en esta orden.</p>

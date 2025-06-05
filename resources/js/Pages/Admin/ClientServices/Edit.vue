@@ -1,7 +1,8 @@
 <script setup>
 import AdminLayout from '@/Layouts/AdminLayout.vue';
-import { Head, useForm } from '@inertiajs/vue3';
+import { Head, useForm, router } from '@inertiajs/vue3'; // Added router
 import ClientServiceForm from './_Form.vue'; // Cambiar a _Form.vue
+import PrimaryButton from '@/Components/Forms/Buttons/PrimaryButton.vue'; // Added
 
 
 const props = defineProps({
@@ -46,6 +47,17 @@ const submit = () => {
     });
 };
 
+const confirmRetryProvisioning = () => {
+    if (window.confirm('¿Estás seguro de que quieres reintentar el aprovisionamiento para este servicio?')) {
+        router.post(route('admin.client-services.retryProvisioning', props.clientService.id), {}, {
+            preserveScroll: true,
+            // onSuccess: () => {
+            //     // Optional: force a reload or expect Inertia to update props
+            //     // router.reload({ only: ['clientService'] });
+            // }
+        });
+    }
+};
 </script>
 
 <template>
@@ -72,6 +84,19 @@ const submit = () => {
                         :isEdit="true"
                         @submit="submit"
                     />
+
+                    <!-- Retry Provisioning Button Section -->
+                    <div v-if="clientService.status === 'provisioning_failed'" class="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+                        <div class="p-4 bg-yellow-50 dark:bg-gray-700/50 border border-yellow-300 dark:border-yellow-600 rounded-md">
+                            <p class="text-sm text-yellow-700 dark:text-yellow-300 mb-3">
+                                Este servicio falló durante el último intento de aprovisionamiento automático.
+                                Puedes revisar las notas del servicio para más detalles sobre el error.
+                            </p>
+                            <PrimaryButton @click="confirmRetryProvisioning" class="bg-orange-500 hover:bg-orange-600 focus:ring-orange-400">
+                                Reintentar Aprovisionamiento
+                            </PrimaryButton>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

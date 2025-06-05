@@ -72,24 +72,41 @@
                                 <InputError class="mt-2" :message="form.errors.notes_to_client" />
                             </div>
 
-                            <!-- TODO: Add Configurable Options Selection Here -->
-                            <!-- Example for configurable options:
-                            <div v-for="group in product.configurable_option_groups" :key="group.id" class="mb-4">
-                                <h3 class="text-lg font-medium text-gray-900">{{ group.name }}</h3>
-                                <p v-if="group.description" class="mb-2 text-sm text-gray-500">{{ group.description }}</p>
-                                <div v-for="option in group.options" :key="option.id">
-                                     Display option based on its type (e.g., dropdown, radio, checkbox)
-                                     Example for a dropdown:
-                                    <InputLabel :for="'option_' + option.id" :value="option.name" />
-                                    <SelectInput
-                                        :id="'option_' + option.id"
-                                        class="block w-full mt-1"
-                                        v-model="form.configurable_options[group.id][option.id]"
-                                        :options="option.values" <!- Assuming option values are structured for SelectInput ->
-                                    />
+                            <!-- Configurable Options Selection -->
+                            <div v-if="product.configurable_option_groups && product.configurable_option_groups.length > 0" class="mt-6">
+                                <h2 class="text-xl font-semibold mb-3 text-gray-800">Opciones Configurables</h2>
+                                <div v-for="group in product.configurable_option_groups" :key="group.id" class="mb-6 p-4 border border-gray-200 rounded-md shadow-sm">
+                                    <h3 class="text-lg font-medium text-gray-900">{{ group.name }}</h3>
+                                    <p v-if="group.description" class="mb-3 text-sm text-gray-600">{{ group.description }}</p>
+
+                                    <div v-for="option in group.options" :key="option.id" class="mt-4">
+                                        <InputLabel :for="'config_option_' + group.id + '_' + option.id" :value="option.name" />
+
+                                        <!-- Example for 'select' type using option.values -->
+                                        <!-- Assumes option.values is an array of strings or objects like {value: '...', label: '...'} -->
+                                        <!-- Add more v-if/v-else-if for other option.type like 'radio', 'checkbox' -->
+                                        <SelectInput
+                                            v-if="option.option_type === 'select' && option.values"
+                                            :id="'config_option_' + group.id + '_' + option.id"
+                                            class="block w-full mt-1"
+                                            v-model="form.configurable_options[group.id][option.id]"
+                                            :options="option.values.map(val => typeof val === 'object' && val !== null && val.hasOwnProperty('value') ? val : { value: val, label: String(val) })"
+                                            option-value="value"
+                                            option-label="label"
+                                            required
+                                        />
+                                        <!-- Fallback or other input types can be added here -->
+                                        <p v-else-if="!option.values || option.values.length === 0" class="text-sm text-gray-500 mt-1">
+                                            No hay valores disponibles para esta opción.
+                                        </p>
+                                        <p v-else class="text-sm text-gray-500 mt-1">
+                                            Tipo de opción '{{ option.option_type }}' no soportado actualmente en el formulario.
+                                        </p>
+
+                                        <InputError class="mt-2" :message="form.errors[`configurable_options.${group.id}.${option.id}`] || form.errors.configurable_options" />
+                                    </div>
                                 </div>
                             </div>
-                            -->
 
                             <div class="mt-6">
                                 <PrimaryButton :class="{ 'opacity-25': form.processing }" :disabled="form.processing">
@@ -124,8 +141,34 @@ const form = useForm({
   quantity: 1,
   notes_to_client: '',
   domainNames: [''], // Added
-  // configurable_options: {}, // Initialize as an empty object for future use
+  configurable_options: {}, // Initialize
 });
+
+// Initialize configurable_options in the form based on product data
+if (props.product.configurable_option_groups) {
+    props.product.configurable_option_groups.forEach(group => {
+        if (!form.configurable_options[group.id]) {
+            // Ensure the group object exists before assigning options to it
+            form.configurable_options[group.id] = {};
+        }
+        group.options.forEach(option => {
+            // Assuming option.values is an array like [{ value: 'val', label: 'Label'}]
+            // or simple strings. We'll try to set the first one as default if available.
+            let defaultValue = null;
+            if (option.values && option.values.length > 0) {
+                // This depends on the structure of option.values.
+                // If option.values are simple strings, map them.
+                // If they are objects like { id: ..., name: ... }, use option.values[0].id
+                // For this subtask, assume option.values are {value: any, label: string} or simple strings
+                 const firstValue = option.values[0];
+                 defaultValue = (typeof firstValue === 'object' && firstValue !== null && firstValue.hasOwnProperty('value'))
+                                ? firstValue.value
+                                : firstValue;
+            }
+            form.configurable_options[group.id][option.id] = defaultValue;
+        });
+    });
+}
 
 watch(() => form.quantity, (newQuantity, oldQuantity) => {
     const currentLength = form.domainNames.length;
@@ -166,17 +209,7 @@ const billingCycleOptions = computed(() => {
 
 // Initialize configurable_options in the form based on product data
 // This is a basic setup; actual structure might depend on how options are selected and submitted
-/*
-if (props.product.configurable_option_groups) {
-  props.product.configurable_option_groups.forEach(group => {
-    form.configurable_options[group.id] = {};
-    group.options.forEach(option => {
-      // Set a default value if necessary, e.g., first value or null
-      form.configurable_options[group.id][option.id] = null;
-    });
-  });
-}
-*/
+// The pre-population logic is now above the watch block.
 
 function submitOrder() {
   form.post(route('client.order.placeOrder', { product: props.product.id }), {
