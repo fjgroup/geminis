@@ -118,10 +118,10 @@ const getLowestPrice = (productPricings) => {
             </div>
             <div class="p-6 bg-gray-50 dark:bg-gray-700/50">
               <Link
-                :href="route('client.client.checkout.product', { product: product.id })"
+                :href="route('client.checkout.product', { product: product.id })"
                 class="w-full"
               >
-                <PrimaryButton class="justify-center w-full"> Order Now </PrimaryButton>
+                <PrimaryButton class="justify-center w-full"> Ordenar Ahora </PrimaryButton>
               </Link>
             </div>
           </div>
