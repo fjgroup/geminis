@@ -2,9 +2,9 @@
 
 namespace App\Jobs;
 
-use App\Models\OrderItem;
+use App\Models\InvoiceItem; // Changed from OrderItem
 use App\Models\ClientService;
-use App\Models\OrderActivity; // Not directly used in this version of the job, ClientServiceObserver handles OrderActivity
+// use App\Models\OrderActivity; // Not used
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
@@ -21,18 +21,18 @@ class ProvisionClientServiceJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public OrderItem $orderItem;
+    public InvoiceItem $invoiceItem; // Changed from OrderItem
 
     /**
      * Create a new job instance.
      *
-     * @param OrderItem $orderItem
+     * @param InvoiceItem $invoiceItem
      */
-    public function __construct(OrderItem $orderItem)
+    public function __construct(InvoiceItem $invoiceItem) // Changed from OrderItem
     {
         // Store a version of the model without relations to prevent issues with serialization.
         // Relations needed in handle() should be reloaded.
-        $this->orderItem = $orderItem->withoutRelations();
+        $this->invoiceItem = $invoiceItem->withoutRelations();
     }
 
     /**
@@ -43,135 +43,130 @@ class ProvisionClientServiceJob implements ShouldQueue
      */
     public function handle()
     {
-        // Reload the orderItem with necessary relations to ensure fresh data and access to related models.
-        // This is crucial because the model passed to the constructor had relations removed.
-        $orderItem = OrderItem::with(['order.client', 'product', 'productPricing.billingCycle'])
-                                ->find($this->orderItem->id);
+        // Reload the invoiceItem with necessary relations
+        $invoiceItem = InvoiceItem::with(['invoice.client', 'product.productType', 'productPricing.billingCycle', 'clientService'])
+                                ->find($this->invoiceItem->id);
 
-        if (!$orderItem) {
-            Log::error("ProvisionClientServiceJob: OrderItem ID {$this->orderItem->id} not found. Skipping job.");
+        if (!$invoiceItem) {
+            Log::error("ProvisionClientServiceJob: InvoiceItem ID {$this->invoiceItem->id} not found. Skipping job.");
             return;
         }
 
-        // Re-assign to the class property if needed elsewhere, or just use the local var.
-        // $this->orderItem = $orderItem;
-
-        $order = $orderItem->order;
-
-        if (!$order) {
-            Log::error("ProvisionClientServiceJob: Order not found for OrderItem ID: {$orderItem->id}. Skipping job.");
+        if (!$invoiceItem->invoice || !$invoiceItem->invoice->client) {
+            Log::error("ProvisionClientServiceJob: Invoice or Client not found for InvoiceItem ID: {$invoiceItem->id}. Skipping job.");
             return;
         }
-        if (!$orderItem->product) {
-             Log::error("ProvisionClientServiceJob: Product not found for OrderItem ID: {$orderItem->id}. Skipping job.");
+        if (!$invoiceItem->product || !$invoiceItem->product->productType) {
+             Log::error("ProvisionClientServiceJob: Product or ProductType not found for InvoiceItem ID: {$invoiceItem->id}. Skipping job.");
             return;
         }
-         if (!$orderItem->productPricing || !$orderItem->productPricing->billingCycle) {
-             Log::error("ProvisionClientServiceJob: ProductPricing or BillingCycle not found for OrderItem ID: {$orderItem->id}. Skipping job.");
+         if (!$invoiceItem->productPricing || !$invoiceItem->productPricing->billingCycle) {
+             Log::error("ProvisionClientServiceJob: ProductPricing or BillingCycle not found for InvoiceItem ID: {$invoiceItem->id}. Skipping job.");
             return;
         }
 
+        Log::info("ProvisionClientServiceJob: Iniciando aprovisionamiento para InvoiceItem ID: {$invoiceItem->id} de la Factura ID: {$invoiceItem->invoice_id}");
 
-        Log::info("ProvisionClientServiceJob: Iniciando aprovisionamiento para OrderItem ID: {$orderItem->id} de la Orden ID: {$order->id}");
+        $clientService = $invoiceItem->clientService; // Service should have been created in 'pending' state
 
-        // Check if a ClientService already exists for this order_item_id
-        $clientService = ClientService::where('order_item_id', $orderItem->id)->first();
+        if (!$clientService) {
+            Log::error("ProvisionClientServiceJob: ClientService no encontrado para InvoiceItem ID: {$invoiceItem->id}, aunque debería haber sido creado. Revisar flujo de pago.");
+            // Optionally, attempt to create it here if that's desired fallback.
+            // For now, we assume it must exist.
+            return;
+        }
 
-        if ($clientService && $clientService->status === 'active') {
-            Log::info("ProvisionClientServiceJob: Servicio ya activo (ID: {$clientService->id}) para OrderItem ID: {$orderItem->id}. Saliendo.");
-            // Ensure orderItem->client_service_id is set if it somehow wasn't (data consistency check)
-            if (is_null($orderItem->client_service_id) || $orderItem->client_service_id !== $clientService->id) {
-                 $orderItem->client_service_id = $clientService->id;
-                 $orderItem->saveQuietly(); // Avoid triggering observers if not needed
-            }
+        // If service is already active or in a non-pending state that shouldn't be auto-processed
+        if ($clientService->status !== 'pending') {
+            Log::info("ProvisionClientServiceJob: ClientService ID {$clientService->id} para InvoiceItem ID {$invoiceItem->id} no está en estado 'pending' (estado actual: {$clientService->status}). Saliendo del job.");
             return;
         }
 
         DB::beginTransaction();
         try {
-            if (!$clientService) {
-                $clientService = new ClientService();
-                $clientService->order_item_id = $orderItem->id;
-                $clientService->client_id = $order->client_id;
-                // Ensure client relation is loaded for reseller_id. The 'order.client' load above should handle this.
-                $clientService->reseller_id = $order->client->reseller_id ?? null;
-                $clientService->order_id = $order->id;
-                $clientService->product_id = $orderItem->product_id;
-                $clientService->product_pricing_id = $orderItem->product_pricing_id;
-                $clientService->billing_cycle_id = $orderItem->productPricing->billingCycle->id;
-                $clientService->domain_name = $orderItem->domain_name;
-                $clientService->billing_amount = $orderItem->unit_price;
-                $clientService->status = 'pending_configuration'; // Initial status before provisioning
-            } else if ($clientService->status === 'provisioning_failed') {
-                 Log::info("ProvisionClientServiceJob: Reintentando aprovisionamiento para ClientService ID: {$clientService->id} (OrderItem ID: {$orderItem->id}).");
-            }
+            // Update existing ClientService, assuming it was created with basic details
+            $clientService->client_id = $invoiceItem->invoice->client_id;
+            $clientService->reseller_id = $invoiceItem->invoice->client->reseller_id ?? null;
+            $clientService->product_id = $invoiceItem->product_id;
+            $clientService->product_pricing_id = $invoiceItem->product_pricing_id;
+            $clientService->billing_cycle_id = $invoiceItem->productPricing->billingCycle->id; // Ensure this relation is loaded
+            $clientService->domain_name = $invoiceItem->domain_name;
+            // billing_amount should have been set on creation, but can be re-confirmed
+            $clientService->billing_amount = $invoiceItem->total_price; // total_price from InvoiceItem
 
+            // === LÓGICA DE APROVISIONAMIENTO REAL (SIMULADA) ===
+            // sleep(2); // Simulate work
+            $clientService->username = $clientService->username ?: ('user_' . strtolower(Str::random(6)));
+            $clientService->password_encrypted = $clientService->password_encrypted ?: ('sim_pass_' . Str::random(10));
 
-            // === INICIO LÓGICA DE APROVISIONAMIENTO REAL (SIMULADA) ===
-            // Simulating some processing time
-            // sleep(5);
-
-            $clientService->username = 'user_' . strtolower(Str::random(6));
-            // In a real app, ensure this is properly encrypted by model's mutator or here directly
-            $clientService->password_encrypted = 'simulated_password_' . Str::random(10);
-
-            // Set registration_date only if it's a new service or was not set
             if (empty($clientService->registration_date)) {
                 $clientService->registration_date = Carbon::now();
             }
-
-            $billingCycle = $orderItem->productPricing->billingCycle;
             // Use registration_date as the base for next_due_date calculation
             $currentRegistrationDate = Carbon::parse($clientService->registration_date);
             $nextDueDate = $currentRegistrationDate->copy();
+            $billingCycle = $invoiceItem->productPricing->billingCycle;
 
             if ($billingCycle) {
-                switch ($billingCycle->type) {
-                    case 'day': $nextDueDate->addDays($billingCycle->multiplier); break;
-                    case 'month': $nextDueDate->addMonthsNoOverflow($billingCycle->multiplier); break;
-                    case 'year': $nextDueDate->addYearsNoOverflow($billingCycle->multiplier); break;
-                    default:
-                        Log::warning("ProvisionClientServiceJob: Ciclo de facturación desconocido '{$billingCycle->type}' para OrderItem ID: {$orderItem->id}. Usando 1 mes por defecto.");
-                        $nextDueDate->addMonth();
+                 // Assuming BillingCycle has 'period_unit' and 'period_amount'
+                if (isset($billingCycle->period_unit) && isset($billingCycle->period_amount) && is_numeric($billingCycle->period_amount) && $billingCycle->period_amount > 0) {
+                    switch (strtolower($billingCycle->period_unit)) {
+                        case 'day': $nextDueDate->addDays($billingCycle->period_amount); break;
+                        case 'month': $nextDueDate->addMonthsNoOverflow($billingCycle->period_amount); break;
+                        case 'year': $nextDueDate->addYearsNoOverflow($billingCycle->period_amount); break;
+                        default:
+                            Log::warning("ProvisionClientServiceJob: Unknown billing cycle unit '{$billingCycle->period_unit}' for InvoiceItem ID: {$invoiceItem->id}. Using 1 month default.");
+                            $nextDueDate->addMonth();
+                    }
+                } elseif (isset($billingCycle->days) && is_numeric($billingCycle->days) && $billingCycle->days > 0) { // Fallback to 'days'
+                    $nextDueDate->addDays((int)$billingCycle->days);
+                } else {
+                    Log::warning("ProvisionClientServiceJob: BillingCycle period info missing/invalid for InvoiceItem ID: {$invoiceItem->id}. Using 1 month default.");
+                    $nextDueDate->addMonth();
                 }
             } else {
-                 Log::warning("ProvisionClientServiceJob: Ciclo de facturación no encontrado para OrderItem ID: {$orderItem->id}. Usando 1 mes por defecto para fecha de vencimiento.");
+                Log::warning("ProvisionClientServiceJob: BillingCycle not found for InvoiceItem ID: {$invoiceItem->id}. Using 1 month default for due date.");
                 $nextDueDate->addMonth();
             }
             $clientService->next_due_date = $nextDueDate->toDateString();
-            $clientService->notes = ($clientService->notes ? $clientService->notes . "\n" : '') . "Servicio aprovisionado automáticamente por Job el " . Carbon::now()->toDateTimeString();
+            $clientService->notes = ($clientService->notes ? $clientService->notes . "\n" : '') . "Servicio (re)aprovisionado por Job el " . Carbon::now()->toDateTimeString();
             // === FIN LÓGICA DE APROVISIONAMIENTO REAL (SIMULADA) ===
 
-            $clientService->status = 'active'; // Mark as active
-            $clientService->save(); // This will trigger ClientServiceObserver if status changed to 'active'
+            // Determine final status based on product type
+            if (str_contains(strtolower($invoiceItem->product->productType->slug ?? ''), 'domain')) {
+                // For domain types, leave as 'pending' or set to a specific pending domain state.
+                // Admin will activate it via AdminInvoiceController@activateServices.
+                // If it's already 'pending', no change needed here for status.
+                // Or, if a specific state for domains post-job is desired:
+                // $clientService->status = 'pending_domain_registration';
+                Log::info("ProvisionClientServiceJob: ClientService ID {$clientService->id} (Domain) for InvoiceItem ID {$invoiceItem->id} remains/set to '{$clientService->status}'. Admin to activate.");
+            } else {
+                $clientService->status = 'active'; // Mark non-domains as active
+            }
 
-            // Ensure the original OrderItem is updated with the ClientService ID
-            if (is_null($orderItem->client_service_id) || $orderItem->client_service_id !== $clientService->id) {
-                 $orderItem->client_service_id = $clientService->id;
-                 $orderItem->save(); // Use save() to trigger any OrderItem observers if necessary
+            $clientService->save();
+
+            // Ensure InvoiceItem is linked to ClientService if not already (should be done in payWithBalance)
+            if (is_null($invoiceItem->client_service_id) || $invoiceItem->client_service_id !== $clientService->id) {
+                 $invoiceItem->client_service_id = $clientService->id;
+                 $invoiceItem->save();
             }
 
             DB::commit();
-            Log::info("ProvisionClientServiceJob: Servicio ID {$clientService->id} aprovisionado y activado exitosamente para OrderItem ID: {$orderItem->id}.");
-
-            // The ClientServiceObserver (if service status became 'active')
-            // should handle updating the parent Order's status to 'active'.
+            Log::info("ProvisionClientServiceJob: ClientService ID {$clientService->id} procesado para InvoiceItem ID: {$invoiceItem->id}. Estado final: {$clientService->status}.");
 
         } catch (Throwable $e) {
             DB::rollBack();
-            Log::error("ProvisionClientServiceJob: Fallo al aprovisionar OrderItem ID: {$orderItem->id}. Error: " . $e->getMessage(), [
+            Log::error("ProvisionClientServiceJob: Fallo al aprovisionar InvoiceItem ID: {$invoiceItem->id}. Error: " . $e->getMessage(), [
                 'exception_class' => get_class($e),
-                'trace_snippet' => substr($e->getTraceAsString(), 0, 500) // Log a snippet of the trace
+                'trace_snippet' => substr($e->getTraceAsString(), 0, 500)
             ]);
 
-            if ($clientService && ($clientService->exists || $clientService->wasRecentlyCreated)) {
-                // Attempt to save failure status without triggering observers again.
-                $clientService->status = 'provisioning_failed'; // Ensure this status exists in ENUM
-                $clientService->notes = ($clientService->notes ? $clientService->notes . "\n" : '') . "Fallo de aprovisionamiento automático: " . $e->getMessage();
+            if ($clientService && $clientService->exists) {
+                $clientService->status = 'provisioning_failed';
+                $clientService->notes = ($clientService->notes ? $clientService->notes . "\n" : '') . "Fallo de aprovisionamiento por Job: " . $e->getMessage();
                 $clientService->saveQuietly();
             }
-
-            // Re-throw the exception to let the queue worker handle it (e.g., mark as failed, retry)
             throw $e;
         }
     }

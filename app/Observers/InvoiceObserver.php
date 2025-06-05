@@ -3,8 +3,10 @@
 namespace App\Observers;
 
 use App\Models\Invoice;
-use App\Models\Order;
-use App\Models\OrderActivity;
+// use App\Models\Order; // Removed
+// use App\Models\OrderActivity; // Removed
+use App\Jobs\ProvisionClientServiceJob;
+// use App\Models\InvoiceItem; // Not strictly needed if using $invoice->items
 
 class InvoiceObserver
 {
@@ -16,32 +18,30 @@ class InvoiceObserver
      */
     public function updating(Invoice $invoice)
     {
-        // Check if the status attribute is being changed to 'paid' and was not 'paid' before.
-        if ($invoice->isDirty('status') && $invoice->status === 'paid' && $invoice->getOriginal('status') !== 'paid') {
-            // Retrieve the associated Order using the order() relationship.
-            $order = $invoice->order;
+        // Check if the status attribute is being changed to 'paid' or 'pending_activation'
+        if ($invoice->isDirty('status') &&
+            in_array($invoice->status, ['paid', 'pending_activation'])) {
 
-            // If an Order exists and its status is currently 'pending_payment' or 'paid_pending_execution':
-            if ($order && in_array($order->status, ['pending_payment', 'paid_pending_execution'])) {
-                $original_order_status = $order->status;
+            // Load necessary relationships if not already loaded.
+            // Ensure productType and clientService are loaded for each item.
+            $invoice->loadMissing(['items.product.productType', 'items.clientService']);
 
-                // Update the Order's status to 'pending_provisioning'.
-                $order->status = 'pending_provisioning';
-                // Save the Order.
-                $order->save();
+            foreach ($invoice->items as $invoiceItem) {
+                // Check if the product type associated with this item is meant to create a service instance
+                if ($invoiceItem->product &&
+                    $invoiceItem->product->productType &&
+                    $invoiceItem->product->productType->creates_service_instance) {
 
-                // Create an OrderActivity record.
-                OrderActivity::create([
-                    'order_id' => $order->id,
-                    'user_id' => null, // For now, using null as it's an automated process.
-                    'type' => 'order_status_auto_updated_to_pending_provisioning',
-                    'details' => json_encode([
-                        'invoice_id' => $invoice->id,
-                        'invoice_number' => $invoice->invoice_number,
-                        'previous_order_status' => $original_order_status,
-                        'new_order_status' => 'pending_provisioning',
-                    ]),
-                ]);
+                    // Check if a client service does not exist for this item,
+                    // or if it exists and its status is 'pending' (or another initial state you define)
+                    if (!$invoiceItem->clientService || $invoiceItem->clientService->status === 'pending') {
+                        // Dispatch the job to provision this specific invoice item
+                        ProvisionClientServiceJob::dispatch($invoiceItem);
+
+                        // Optional: Log or add an internal note to the invoice item or invoice itself
+                        // Log::info("Dispatched ProvisionClientServiceJob for InvoiceItem ID: {$invoiceItem->id}");
+                    }
+                }
             }
         }
     }

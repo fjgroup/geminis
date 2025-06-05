@@ -5,7 +5,7 @@ namespace App\Services;
 use App\Interfaces\PaymentGatewayInterface;
 use App\Models\Invoice;
 use App\Models\Transaction;
-use App\Models\Order; // Keep for context, though not directly newed up in methods here
+// use App\Models\Order; // Removed
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Srmklive\PayPal\Services\PayPal as PayPalClient;
@@ -215,8 +215,8 @@ class PaypalGatewayService implements PaymentGatewayInterface
                 Transaction::create([
                     'client_id' => $invoice->client_id,
                     'invoice_id' => $invoice->id,
-                    'order_id' => $invoice->order_id,
-                    'payment_method_id' => null,
+                    // 'order_id' => $invoice->order_id, // LÍNEA ELIMINADA
+                    'payment_method_id' => null, // Asumiendo que se asigna después o no es relevante para PayPal directo
                     'gateway_slug' => 'paypal',
                     'gateway_transaction_id' => $paypalCaptureId,
                     'amount' => $paypalAmount,
