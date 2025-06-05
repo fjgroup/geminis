@@ -8,8 +8,8 @@ use App\Models\Invoice;
 use App\Observers\InvoiceObserver;
 // use App\Models\Order; // Removed
 // use App\Observers\OrderObserver; // Removed
-use App\Models\ClientService;
-use App\Observers\ClientServiceObserver;
+// use App\Models\ClientService; // Removed
+// use App\Observers\ClientServiceObserver; // Removed
 use App\Interfaces\PaymentGatewayInterface;
 use App\Services\PaypalGatewayService;
 
@@ -31,6 +31,6 @@ class AppServiceProvider extends ServiceProvider
         Vite::prefetch(concurrency: 3);
         Invoice::observe(InvoiceObserver::class);
         // Order::observe(OrderObserver::class); // Removed
-        ClientService::observe(ClientServiceObserver::class);
+        // ClientService::observe(ClientServiceObserver::class); // Removed
     }
 }
