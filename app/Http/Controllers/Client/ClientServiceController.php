@@ -4,11 +4,11 @@ namespace App\Http\Controllers\Client;
 
 use App\Http\Controllers\Controller;
 use App\Models\ClientService;
-use App\Models\User; // Not strictly needed for this method, but good for consistency
+// use App\Models\User; // Removed
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
-use App\Models\OrderActivity; // Using OrderActivity as per instructions
-use Illuminate\Support\Facades\Auth;
+// use App\Models\OrderActivity; // Removed
+use Illuminate\Support\Facades\Auth; // Keep if Auth::id() is used, or if user() is typehinted User
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use App\Models\ProductPricing; // Added for fetching pricing options
@@ -35,9 +35,10 @@ class ClientServiceController extends Controller
                                 ->with(['product', 'productPricing', 'billingCycle'])
                                 ->get();
 
-        $pendingOrdersCount = $user->orders()
-                                   ->whereIn('status', ['paid_pending_execution', 'pending_provisioning'])
-                                   ->count();
+        // Contar facturas que están pagadas y en proceso de activación o confirmación
+        $actionableInvoicesCount = $user->invoices()
+                                     ->whereIn('status', ['pending_activation', 'pending_confirmation', 'unpaid']) // Incluimos unpaid para "acción requerida"
+                                     ->count();
 
         $unpaidInvoicesCount = $user->invoices()
                                     ->where('status', 'unpaid')
@@ -46,7 +47,7 @@ class ClientServiceController extends Controller
         // Assuming there's a view for client services list, not the full dashboard
         return Inertia::render('Client/Services/Index', [ // NOTE: Assuming the view is Client/Services/Index
             'clientServices' => $clientServices,
-            'pendingOrdersCount' => $pendingOrdersCount,
+            'actionableInvoicesCount' => $actionableInvoicesCount, // Nombre de variable actualizado
             'unpaidInvoicesCount' => $unpaidInvoicesCount,
             'accountBalance' => $user->balance,
             'formattedAccountBalance' => $user->formatted_balance,
@@ -75,26 +76,7 @@ class ClientServiceController extends Controller
             $service->status = 'Cancellation Requested'; // Consistent status value
             $service->save();
 
-            // Logging (using OrderActivity for now)
-            // Ensure service->product relationship is loaded if not already for product_name
-            $service->loadMissing('product');
-
-            OrderActivity::create([
-                'client_id' => $service->client_id,
-                // order_id might be null if service was not created via an order
-                // Ensure OrderActivity's order_id column is nullable in the database schema
-                'order_id' => $service->order_id,
-                'user_id' => Auth::id(),
-                'type' => 'service_cancellation_requested',
-                'details' => json_encode([
-                    'client_service_id' => $service->id,
-                    'product_name' => $service->product ? $service->product->name : 'N/A',
-                    'domain_name' => $service->domain_name,
-                    'previous_status' => $originalStatus,
-                    'new_status' => $service->status,
-                ])
-            ]);
-
+            // OrderActivity::create([...]) // ELIMINADO
             DB::commit();
 
             return redirect()->route('client.services.index')->with('success', 'Service cancellation requested successfully.');
@@ -193,31 +175,7 @@ class ClientServiceController extends Controller
                               ". Changes apply on next renewal.";
             $service->save();
 
-            // Load new pricing details for logging
-            $newProductPricing->loadMissing('billingCycle');
-            $new_billing_cycle_name = $newProductPricing->billingCycle?->name ?? 'N/A';
-
-
-            // Logging
-            OrderActivity::create([
-                'client_id' => $service->client_id,
-                'order_id' => $service->order_id, // Nullable if service not from order
-                'user_id' => Auth::id(),
-                'type' => 'service_plan_changed',
-                'details' => json_encode([
-                    'client_service_id' => $service->id,
-                    'product_name' => $service->product?->name ?? 'N/A', // Assuming product relationship is loaded or accessible
-                    'domain_name' => $service->domain_name,
-                    'old_product_pricing_id' => $old_product_pricing_id,
-                    'old_billing_cycle_name' => $old_billing_cycle_name,
-                    'old_billing_amount' => $old_billing_amount,
-                    'new_product_pricing_id' => $newProductPricing->id,
-                    'new_billing_cycle_name' => $new_billing_cycle_name,
-                    'new_billing_amount' => $newProductPricing->price,
-                    'effective_on_next_due_date' => $service->next_due_date ? $service->next_due_date->toDateString() : 'N/A',
-                ]),
-            ]);
-
+            // OrderActivity::create([...]) // ELIMINADO
             DB::commit();
 
             return redirect()->route('client.services.index')
@@ -307,20 +265,7 @@ class ClientServiceController extends Controller
                 'taxable' => $service->product->taxable ?? false, // Assuming product has a taxable attribute
             ]);
 
-            // Logging
-            OrderActivity::create([
-                'client_id' => $service->client_id,
-                'order_id' => $service->order_id, // Nullable
-                'user_id' => Auth::id(),
-                'type' => 'service_renewal_invoice_generated',
-                'details' => json_encode([
-                    'client_service_id' => $service->id,
-                    'invoice_id' => $newInvoice->id,
-                    'invoice_number' => $newInvoice->invoice_number,
-                    'renewal_amount' => $renewalAmount,
-                ]),
-            ]);
-
+            // OrderActivity::create([...]) // ELIMINADO
             DB::commit();
 
             return redirect()->route('client.invoices.show', $newInvoice->id)
