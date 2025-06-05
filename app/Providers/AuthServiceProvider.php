@@ -4,9 +4,9 @@ namespace App\Providers;
 
 // use Illuminate\Support\Facades\Gate; // Descomentar si usas Gates directamente
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
-use App\Models\Order;
+// use App\Models\Order; // Removed
 use App\Models\User;
-use App\Policies\OrderPolicy;
+// use App\Policies\OrderPolicy; // Removed
 use App\Policies\UserPolicy;
 use App\Models\Product;
 use App\Policies\ProductPolicy;
@@ -29,7 +29,7 @@ class AuthServiceProvider extends ServiceProvider
         User::class => UserPolicy::class,
         Product::class => ProductPolicy::class,
         ProductPricing::class => ProductPricingPolicy::class,
-        Order::class => OrderPolicy::class,
+        // Order::class => OrderPolicy::class, // Removed
         Invoice::class => InvoicePolicy::class,
         Transaction::class => TransactionPolicy::class, // Added TransactionPolicy
         \App\Models\ClientService::class => \App\Policies\ClientServicePolicy::class,

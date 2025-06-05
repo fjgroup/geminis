@@ -11,12 +11,18 @@ class InvoiceItem extends Model
     protected $fillable = [
         'invoice_id',
         'client_service_id',
-        'order_item_id',
+        // 'order_item_id', // Eliminado
         'description',
         'quantity',
         'unit_price',
         'total_price',
         'taxable',
+        'product_id',
+        'product_pricing_id',
+        'setup_fee',
+        'domain_name',
+        'registration_period_years',
+        'item_type',
     ];
 
 
@@ -29,12 +35,21 @@ class InvoiceItem extends Model
     }
 
     /**
-     * Get the order item associated with the invoice item (for items from an order).
+     * Get the product associated with this item.
      */
-    public function orderItem(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    public function product(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\OrderItem::class);
+        return $this->belongsTo(Product::class, 'product_id');
     }
+
+    /**
+     * Get the product pricing associated with this item.
+     */
+    public function productPricing(): BelongsTo
+    {
+        return $this->belongsTo(ProductPricing::class, 'product_pricing_id');
+    }
+
     /**
      * Get the client service associated with the invoice item (for items from a service).
     */

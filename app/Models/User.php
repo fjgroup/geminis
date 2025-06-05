@@ -147,13 +147,6 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         return $this->belongsTo(User::class, 'reseller_id');
     }
-    /**
-     * Get the orders for the user.
-     */
-    public function orders(): HasMany
-    {
-        return $this->hasMany(Order::class, 'client_id');
-    }
 
     //Example for a future relationship (ResellerProfile)
         public function resellerProfile():HasOne

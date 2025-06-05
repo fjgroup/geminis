@@ -23,7 +23,7 @@ return new class extends Migration
             $table->string('name');
             $table->string('slug')->unique();
             $table->text('description')->nullable();
-            $table->enum('type', ['shared_hosting', 'vps', 'dedicated_server', 'domain_registration', 'ssl_certificate', 'other'])->index();
+            // $table->enum('type', ['shared_hosting', 'vps', 'dedicated_server', 'domain_registration', 'ssl_certificate', 'other'])->index(); // ELIMINAR ESTA LÍNEA
             $table->string('module_name')->nullable()->index(); // Para integración con cPanel, Plesk, etc.
             $table->boolean('is_publicly_available')->default(true);
             $table->boolean('is_resellable_by_default')->default(true); // Para productos de plataforma

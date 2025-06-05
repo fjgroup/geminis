@@ -16,6 +16,8 @@ use Illuminate\Support\Str; // New
 use Illuminate\Support\Facades\Log; // New
 use Illuminate\Http\RedirectResponse; // New
 use App\Http\Requests\Admin\UpdateInvoiceRequest; // New
+use App\Models\ClientService; // Asegurarse de importar ClientService
+use Exception; // Importar Exception
 // use Illuminate\Support\Carbon; // Already imported
 // use Illuminate\Support\Facades\DB; // Already imported
 
@@ -273,5 +275,95 @@ class AdminInvoiceController extends Controller
     public function destroy(Invoice $invoice)
     {
         //
+    }
+
+    /**
+     * Activate services associated with a paid invoice.
+     *
+     * @param  Invoice  $invoice
+     * @return RedirectResponse
+     */
+    public function activateServices(Invoice $invoice): RedirectResponse
+    {
+        $this->authorize('update', $invoice); // O una política más específica como 'activateServices'
+
+        // Verificar que la factura esté en un estado que permita la activación de servicios
+        if (!in_array($invoice->status, ['paid', 'pending_activation'])) {
+            return redirect()->route('admin.invoices.show', $invoice->id)
+                             ->with('error', "Los servicios para esta factura no pueden activarse en su estado actual ('{$invoice->status}'). Se esperaba 'paid' o 'pending_activation'.");
+        }
+
+        $invoice->loadMissing(['items.clientService', 'items.product.productType', 'client']);
+
+        $allServicesActivated = true;
+        $servicesProcessedCount = 0;
+
+        DB::beginTransaction();
+        try {
+            foreach ($invoice->items as $item) {
+                // Solo procesar ítems que tienen un producto asociado y cuyo tipo de producto crea una instancia de servicio
+                if (!$item->product || !$item->product->productType || !$item->product->productType->creates_service_instance) {
+                    continue;
+                }
+
+                if ($item->clientService) {
+                    if ($item->clientService->status === 'pending') {
+                        $item->clientService->status = 'Active';
+                        // Opcional: Actualizar registration_date si es relevante en la activación
+                        // $item->clientService->registration_date = Carbon::now();
+                        $item->clientService->save();
+                        $servicesProcessedCount++;
+                        // Log o actividad específica de la activación del ClientService si es necesario
+                    } elseif ($item->clientService->status === 'Active') {
+                        // Ya está activo, no hacer nada o solo log.
+                        $servicesProcessedCount++; // Contar como procesado si ya está activo.
+                    } else {
+                        // El servicio existe pero está en un estado inesperado (ej. cancelled, suspended)
+                        Log::warning("ClientService ID {$item->clientService->id} para InvoiceItem ID {$item->id} está en estado '{$item->clientService->status}' y no se activará automáticamente.");
+                        $allServicesActivated = false; // Marcar que no todos los servicios aplicables se activaron
+                    }
+                } else {
+                    // No hay ClientService vinculado. Esto indica un problema en el flujo de pago,
+                    // ya que ClientInvoiceController@payWithBalance debería haber creado el ClientService en estado 'pending'.
+                    Log::error("No se encontró ClientService vinculado para InvoiceItem ID {$item->id} (Producto: {$item->product->name}) en Invoice ID {$invoice->id} durante la activación por admin.");
+                    $allServicesActivated = false; // Marcar que no todos los servicios se pudieron activar/verificar
+                }
+            }
+
+            if ($servicesProcessedCount > 0 && $allServicesActivated) {
+                $invoice->status = 'active_service'; // Nuevo estado de Invoice
+                $invoice->save();
+                 // Log o actividad general de la factura
+                $invoice->admin_notes = ($invoice->admin_notes ? $invoice->admin_notes . "\n" : '') . "Servicios activados por admin el " . Carbon::now() . ".";
+                $invoice->save();
+
+                DB::commit();
+                return redirect()->route('admin.invoices.show', $invoice->id)
+                                 ->with('success', 'Servicios activados exitosamente. El estado de la factura se ha actualizado.');
+            } elseif ($servicesProcessedCount === 0 && $allServicesActivated) {
+                // No había servicios que crear/activar (ej. factura manual sin items que creen servicios)
+                // O todos los servicios ya estaban activos.
+                // Podríamos cambiar el estado de la factura a 'completed' o 'active_service' si no hay nada más que hacer.
+                // Por ahora, si no se procesó nada, no cambiamos estado y damos info.
+                DB::commit(); // Cometer cualquier cambio menor (ej. notas si se añadieran)
+                return redirect()->route('admin.invoices.show', $invoice->id)
+                                 ->with('info', 'No había servicios pendientes de activación para esta factura o ya estaban activos.');
+            } else {
+                // No todos los servicios aplicables se pudieron activar o estaban en estado correcto.
+                // No cambiamos el estado de la factura a 'active_service' para revisión manual.
+                // Se podría usar un estado como 'activation_issue'. Por ahora, la mantenemos como 'paid' o 'pending_activation'.
+                $invoice->admin_notes = ($invoice->admin_notes ? $invoice->admin_notes . "\n" : '') . "Intento de activación de servicios el " . Carbon::now() . ". Algunos servicios requieren atención.";
+                $invoice->save();
+                DB::commit();
+                return redirect()->route('admin.invoices.show', $invoice->id)
+                                 ->with('warning', 'Algunos servicios no pudieron ser activados o requieren atención. Revise los logs y los servicios del cliente.');
+            }
+
+        } catch (Exception $e) {
+            DB::rollBack();
+            Log::error("Error activando servicios para Factura ID {$invoice->id}: " . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return redirect()->route('admin.invoices.show', $invoice->id)
+                             ->with('error', 'Ocurrió un error al activar los servicios: ' . $e->getMessage());
+        }
     }
 }

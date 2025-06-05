@@ -23,7 +23,7 @@ return new class extends Migration
             $table->string('username')->nullable();
             $table->text('password_encrypted')->nullable(); // Considerar encriptación real
             // $table->foreignId('server_id')->nullable()->constrained('servers'); // Comentado temporalmente
-            $table->enum('status', ['pending', 'active', 'suspended', 'terminated', 'cancelled', 'fraud'])->default('pending')->index();
+            $table->enum('status', ['pending', 'active', 'suspended', 'terminated', 'cancelled', 'fraud', 'pending_configuration', 'provisioning_failed'])->default('pending')->index();
             $table->date('registration_date');
             $table->date('next_due_date')->index();
             $table->date('termination_date')->nullable();

@@ -37,6 +37,9 @@ class Invoice extends Model
         'currency_code',
         'notes_to_client',
         'admin_notes',
+        'requested_date',
+        'ip_address',
+        'payment_gateway_slug',
     ];
 
     /**
@@ -48,6 +51,7 @@ class Invoice extends Model
         'issue_date' => 'date',
         'due_date' => 'date',
         'paid_date' => 'date',
+        'requested_date' => 'datetime',
     ];
 
     /**
@@ -64,15 +68,6 @@ class Invoice extends Model
     public function reseller(): BelongsTo
     {
         return $this->belongsTo(User::class, 'reseller_id');
-    }
-
-    /**
-     * Get the order associated with this invoice.
-     * An invoice is typically generated for one order.
-     */
-    public function order(): HasOne
-    {
-        return $this->hasOne(Order::class, 'invoice_id');
     }
 
     /**
