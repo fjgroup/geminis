@@ -252,8 +252,7 @@ const selectedCategoryData = computed(() => {
     <div v-else-if="serviceData" class="flex flex-col min-h-screen bg-slate-900">
         <!-- Renderizar los componentes traducidos -->
         <Header :appName="serviceData.appName" :serviceCategories="serviceData.serviceCategories" :canLogin="canLogin"
-            :canRegister="canRegister" :auth="$page.props.auth" @contactClick="handleOpenModal()"
-            @navigate="handleNavigation" />
+            :canRegister="canRegister" :auth="$page.props.auth" @contactClick="handleOpenModal()" />
 
         <main ref="appMainRef" class="flex-grow overflow-y-auto">
             <div v-if="currentPage === 'landing'">
@@ -267,7 +266,7 @@ const selectedCategoryData = computed(() => {
                     :markupPercentage="serviceData.markupPercentage" :planButtonText="serviceData.planButtonText"
                     @planContact="handleOpenModal" />
                 <AllCategoriesList :title="serviceData.serviceCategoriesTitle"
-                    :categories="serviceData.serviceCategories" @navigate="handleNavigation" />
+                    :categories="serviceData.serviceCategories" />
             </div>
 
             <div v-else-if="currentPage === 'categoryDetail' && selectedCategoryData">
@@ -278,8 +277,7 @@ const selectedCategoryData = computed(() => {
         </main>
 
         <Footer :appName="serviceData.appName" :paymentMethods="serviceData.paymentMethods"
-            :contactInfo="serviceData.contactInfo" :serviceCategories="serviceData.serviceCategories"
-            @navigate="handleNavigation" />
+            :contactInfo="serviceData.contactInfo" :serviceCategories="serviceData.serviceCategories" />
 
         <ContactModal :isOpen="isModalOpen" :contactInfo="serviceData.contactInfo" :contactedPlan="contactedPlanName"
             @close="handleCloseModal" />
