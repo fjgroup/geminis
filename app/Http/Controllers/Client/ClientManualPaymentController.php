@@ -31,7 +31,7 @@ class ClientManualPaymentController extends Controller
             ->get(['id', 'name', 'account_holder_name', 'account_number', 'bank_name', 'branch_name', 'swift_code', 'iban', 'instructions', 'logo_url']);
 
         return Inertia::render('Client/Payments/ManualPaymentForm', [
-            'invoice' => $invoice->load('order:id,order_number'), // Eager load necessary order details
+            'invoice' => $invoice, // Eager load necessary order details
             'paymentMethods' => $paymentMethods,
         ]);
     }
@@ -53,7 +53,6 @@ class ClientManualPaymentController extends Controller
         Transaction::create([
             'client_id' => Auth::id(),
             'invoice_id' => $invoice->id,
-            'order_id' => $invoice->order_id, // Assumes invoice always has an order_id if it's for an order
             'payment_method_id' => $validated['payment_method_id'],
             'gateway_slug' => 'manual_payment', // Specific slug for these types of transactions
             'gateway_transaction_id' => $validated['reference_number'], // Client's reference

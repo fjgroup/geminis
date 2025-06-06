@@ -169,7 +169,7 @@ const payInvoiceUsingBalance = (invoiceId) => { // Renombrado para claridad
               {{ $page.props.flash.success }}
             </div>
             <div
-              vif="$page.props.flash && $page.props.flash.error"
+              v-if="$page.props.flash && $page.props.flash.error"
               class="mb-4 p-4 bg-red-100 text-red-700 rounded dark:bg-red-800 dark:text-red-200"
             >
               {{ $page.props.flash.error }}
