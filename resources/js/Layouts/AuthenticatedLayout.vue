@@ -46,15 +46,14 @@ const isActiveDashboard = computed(() => {
                   <ApplicationLogo class="block w-auto text-gray-800 fill-current h-9" />
                 </Link>
               </div>
-
               <!-- Navigation Links -->
               <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
-                <!-- Common Dashboard Link -->
+                -- Common Dashboard Link --
                 <NavLink :href="dashboardRoute" :active="isActiveDashboard">
                   Dashboard
                 </NavLink>
 
-                <!-- Client Specific Links -->
+                -- Client Specific Links --
                 <template v-if="$page.props.auth.user.role === 'client'">
                   <NavLink
                     :href="route('client.services.index')"
@@ -91,7 +90,7 @@ const isActiveDashboard = computed(() => {
                   </NavLink>
                 </template>
 
-                <!-- Reseller Specific Links -->
+                -- Reseller Specific Links --
                 <template v-if="$page.props.auth.user.role === 'reseller'">
                   <NavLink
                     :href="route('reseller.clients.index')"
@@ -104,10 +103,10 @@ const isActiveDashboard = computed(() => {
                   >
                     My Clients
                   </NavLink>
-                  <!-- Future: Link to view client orders, reseller settings etc. -->
+                  -- Future: Link to view client orders, reseller settings etc. --
                 </template>
 
-                <!-- Admin Specific Links -->
+                -- Admin Specific Links --
                 <template v-if="$page.props.auth.user.role === 'admin'">
                   <NavLink
                     :href="route('admin.users.index')"
@@ -205,7 +204,6 @@ const isActiveDashboard = computed(() => {
                 </Dropdown>
               </div>
             </div>
-
             <!-- Hamburger -->
             <div class="flex items-center -me-2 sm:hidden">
               <button

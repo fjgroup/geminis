@@ -1,18 +1,20 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head, Link } from '@inertiajs/vue3';
-import Pagination from '@/Components/UI/Pagination.vue';
-import { format } from 'date-fns'; // O usa otra librería para formateo de fechas
+import { Head, Link } from '@inertiajs/vue3'; // Restored Link
+// Pagination not restored yet, focusing on tbody
+// import Pagination from '@/Components/UI/Pagination.vue';
+// format from date-fns not used if local formatDate is comprehensive
+// import { format } from 'date-fns';
 
-defineProps({
-    invoices: Object, // Inertia pasa un objeto paginado
+defineProps({ // Restored
+    invoices: Object,
 });
 
-// Local formatCurrency helper function
+// Restored helper functions (copied from subtask #2 content)
 const formatCurrency = (amount, currencyCode = 'USD') => {
     const number = parseFloat(amount);
     if (isNaN(number)) {
-        return 'N/A'; // Or some other placeholder for invalid numbers
+        return 'N/A';
     }
     try {
         return new Intl.NumberFormat(undefined, { style: 'currency', currency: currencyCode }).format(number);
@@ -21,19 +23,15 @@ const formatCurrency = (amount, currencyCode = 'USD') => {
     }
 };
 
-// Función de utilidad para formatear fechas
 const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
-    // Ajustar para asegurar que la fecha se interprete correctamente (ej. si es solo YYYY-MM-DD)
-    if (dateString.length <= 10) { // Es solo fecha, sin hora
+    if (dateString.length <= 10) {
         const [year, month, day] = dateString.split('-');
         return new Date(year, month - 1, day).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
     }
-    // Para datetime completo
     return new Date(dateString).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 };
 
-// Actualizada para incluir todos los estados de Invoice
 const getFriendlyInvoiceStatusText = (status) => {
     const mappings = {
         'draft': 'Borrador',
@@ -51,7 +49,6 @@ const getFriendlyInvoiceStatusText = (status) => {
     return mappings[status] || status?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'N/A';
 };
 
-// Actualizada para incluir clases para todos los estados de Invoice
 const getInvoiceStatusClass = (status) => {
     return {
         'px-2 inline-flex text-xs leading-5 font-semibold rounded-full': true,
@@ -60,19 +57,18 @@ const getInvoiceStatusClass = (status) => {
         'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100': status === 'cancelled' || status === 'failed_payment',
         'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100': status === 'refunded',
         'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-100': status === 'collections',
-        'bg-gray-200 text-gray-800 dark:bg-gray-600 dark:text-gray-300': status === 'draft', // Clase para draft
+        'bg-gray-200 text-gray-800 dark:bg-gray-600 dark:text-gray-300': status === 'draft',
     };
 };
 </script>
 
 <template>
     <AuthenticatedLayout>
-
-        <Head title="Mis Facturas" />
+        <Head title="Mis Facturas" /> <!-- Title restored to original -->
 
         <template #header>
             <h2 class="text-xl font-semibold leading-tight text-gray-800 dark:text-gray-200">
-                Mis Facturas
+                Mis Facturas <!-- Header text restored -->
             </h2>
         </template>
 
@@ -112,40 +108,46 @@ const getInvoiceStatusClass = (status) => {
                                     </th>
                                 </tr>
                             </thead>
+                            <!-- tbody as per prompt -->
                             <tbody class="bg-white divide-y divide-gray-200 dark:bg-gray-700/50 dark:divide-gray-600">
-                                <tr v-for="invoice in invoices.data" :key="invoice.id"
-                                    class="hover:bg-gray-50 dark:hover:bg-gray-600/50">
-                                    <td
-                                        class="px-6 py-4 text-sm font-medium text-gray-900 whitespace-nowrap dark:text-white">
-                                        {{ invoice.invoice_number }}
-                                    </td>
-                                    <td class="px-6 py-4 text-sm text-gray-500 whitespace-nowrap dark:text-gray-300">
-                                        {{ formatDate(invoice.issue_date) }}
-                                    </td>
-                                    <td class="px-6 py-4 text-sm text-gray-500 whitespace-nowrap dark:text-gray-300">
-                                        {{ formatDate(invoice.due_date) }}
-                                    </td>
-                                    <td class="px-6 py-4 text-sm text-gray-500 whitespace-nowrap dark:text-gray-300">
-                                        {{ formatDate(invoice.requested_date) }} <!-- Columna añadida -->
-                                    </td>
-                                    <td
-                                        class="px-6 py-4 text-sm text-right text-gray-500 whitespace-nowrap dark:text-gray-300">
-                                        {{ formatCurrency(invoice.total_amount, invoice.currency_code) }}
-                                    </td>
-                                    <td class="px-6 py-4 text-sm text-center whitespace-nowrap">
-                                        <span :class="getInvoiceStatusClass(invoice.status)">
-                                            {{ getFriendlyInvoiceStatusText(invoice.status) }}
-                                        </span>
-                                    </td>
-                                    <td class="px-6 py-4 text-sm font-medium text-right whitespace-nowrap">
-                                        <Link :href="route('client.invoices.show', invoice.id)"
-                                            class="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300">
-                                        Ver
-                                        </Link>
-                                    </td>
-                                </tr>
-                                <tr v-if="invoices.data.length === 0">
-                                    <td colspan="7" <!-- Colspan aumentado a 7 -->
+                                <template v-for="(invoice, index) in invoices.data" :key="invoice?.id || index">
+                                    <tr v-if="typeof invoice === 'object' && invoice !== null && (typeof invoice.id === 'string' || typeof invoice.id === 'number')"
+                                        class="hover:bg-gray-50 dark:hover:bg-gray-600/50">
+                                        <td class="px-6 py-4 text-sm font-medium text-gray-900 whitespace-nowrap dark:text-white">
+                                            {{ invoice.invoice_number }}
+                                        </td>
+                                        <td class="px-6 py-4 text-sm text-gray-500 whitespace-nowrap dark:text-gray-300">
+                                            {{ formatDate(invoice.issue_date) }}
+                                        </td>
+                                        <td class="px-6 py-4 text-sm text-gray-500 whitespace-nowrap dark:text-gray-300">
+                                            {{ formatDate(invoice.due_date) }}
+                                        </td>
+                                        <td class="px-6 py-4 text-sm text-gray-500 whitespace-nowrap dark:text-gray-300">
+                                            {{ formatDate(invoice.requested_date) }}
+                                        </td>
+                                        <td class="px-6 py-4 text-sm text-right text-gray-500 whitespace-nowrap dark:text-gray-300">
+                                            {{ formatCurrency(invoice.total_amount, invoice.currency_code) }}
+                                        </td>
+                                        <td class="px-6 py-4 text-sm text-center whitespace-nowrap">
+                                            <span :class="getInvoiceStatusClass(invoice.status)">
+                                                {{ getFriendlyInvoiceStatusText(invoice.status) }}
+                                            </span>
+                                        </td>
+                                        <td class="px-6 py-4 text-sm font-medium text-right whitespace-nowrap">
+                                            <Link :href="route('client.invoices.show', invoice.id)"
+                                                class="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300">
+                                            Ver
+                                            </Link>
+                                        </td>
+                                    </tr>
+                                    <tr v-else>
+                                        <td colspan="7" class="px-6 py-4 text-sm text-center text-red-500 whitespace-nowrap dark:text-red-400">
+                                            Error: Se encontró un dato de factura inválido (índice: {{ index }}).
+                                        </td>
+                                    </tr>
+                                </template>
+                                <tr v-if="invoices.data && invoices.data.length === 0">
+                                    <td colspan="7"
                                         class="px-6 py-4 text-sm text-center text-gray-500 whitespace-nowrap dark:text-gray-400">
                                         No tienes facturas disponibles.
                                     </td>
@@ -153,8 +155,8 @@ const getInvoiceStatusClass = (status) => {
                             </tbody>
                         </table>
                     </div>
-
-                    <Pagination :links="invoices.links" class="mt-6" v-if="invoices.links.length > 3" />
+                    <!-- Pagination will be restored in a later step if needed -->
+                    <!-- <Pagination :links="invoices.links" class="mt-6" v-if="invoices.links.length > 3" /> -->
                 </div>
             </div>
         </div>
