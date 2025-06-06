@@ -121,7 +121,9 @@ const getLowestPrice = (productPricings) => {
                 :href="route('client.checkout.product', { product: product.id })"
                 class="w-full"
               >
-                <PrimaryButton class="justify-center w-full"> Ordenar Ahora </PrimaryButton>
+                <PrimaryButton class="justify-center w-full">
+                  Ordenar Ahora
+                </PrimaryButton>
               </Link>
             </div>
           </div>

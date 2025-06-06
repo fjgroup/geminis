@@ -126,8 +126,9 @@ Route::prefix('client')->name('client.')->middleware(['auth'])->group(function (
   Route::get('/', [ClientDashboardController::class, 'index'])->name('dashboard'); // Route for client dashboard
 
   // Checkout Route
-  Route::get('/checkout/product/{product}', [ClientCheckoutController::class, 'showProductCheckoutPage'])->name('client.checkout.product');
-  Route::post('/checkout/product/{product}/submit', [ClientCheckoutController::class, 'submitProductCheckout'])->name('client.checkout.submit');
+  Route::get('/checkout/product/{product}', [ClientCheckoutController::class, 'showProductCheckoutPage'])->name('checkout.product');
+  Route::post('/checkout/product/{product}/submit', [ClientCheckoutController::class, 'submitProductCheckout'])->name('checkout.submit');
+
 
   // Rutas de Recurso para la gestión de servicios de cliente
   Route::resource('services', ClientServiceController::class); // Consolidated service routes using resource including index

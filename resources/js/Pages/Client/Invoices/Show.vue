@@ -167,7 +167,7 @@ const payInvoiceUsingBalance = (invoiceId) => { // Renombrado para claridad
                             class="p-4 mb-4 text-green-700 bg-green-100 rounded dark:bg-green-800 dark:text-green-200">
                             {{ $page.props.flash.success }}
                         </div>
-                        <div vif="$page.props.flash && $page.props.flash.error"
+                        <div v-if="$page.props.flash && $page.props.flash.error"
                             class="p-4 mb-4 text-red-700 bg-red-100 rounded dark:bg-red-800 dark:text-red-200">
                             {{ $page.props.flash.error }}
                         </div>
@@ -318,7 +318,7 @@ const payInvoiceUsingBalance = (invoiceId) => { // Renombrado para claridad
                                     v-if="invoice.transactions[0].payment_method && invoice.transactions[0].payment_method.formatted_details">
                                     <p><strong>Método de Pago:</strong> {{ invoice.transactions[0].payment_method.name
                                         || 'N/A'
-                                        }}</p>
+                }}</p>
 
                                     <template
                                         v-if="typeof invoice.transactions[0].payment_method.formatted_details === 'object' && invoice.transactions[0].payment_method.formatted_details !== null">

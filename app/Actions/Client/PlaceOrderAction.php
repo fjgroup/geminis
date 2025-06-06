@@ -26,7 +26,7 @@ class PlaceOrderAction
      */
     public function execute(Product $product, array $data, User $client): ?Invoice
     {
-        $product->loadMissing('productType', 'productType.productCategory'); // Ensure necessary relations are loaded
+        $product->loadMissing('productType'); // Ensure necessary relations are loaded
 
         $billingCycleId = $data['billing_cycle_id'];
         $quantity = (int)$data['quantity']; // Overall quantity for the product
@@ -74,7 +74,7 @@ class PlaceOrderAction
                     'product_pricing_id' => $productPricing->id,
                     'quantity' => $quantity, // Use the overall quantity
                     'domain_name' => $domainName,
-                    'item_type' => $product->productType->slug ?? ($product->productType?->productCategory?->slug ?? 'general_service'),
+                    'item_type' => $product->productType?->slug ?? 'general_service',
                     'product_object' => $product,
                     'product_pricing_object' => $productPricing,
                     'registration_period_years' => $productPricing->billingCycle->period_in_years ?? null,
@@ -175,8 +175,6 @@ class PlaceOrderAction
             $itemType = 'general'; // Default value
             if (isset($product->productType) && $product->productType !== null && is_string($product->productType->slug) && !empty($product->productType->slug)) {
                 $itemType = $product->productType->slug;
-            } elseif (isset($product->productType, $product->productType->productCategory) && $product->productType->productCategory !== null && is_string($product->productType->productCategory->slug) && !empty($product->productType->productCategory->slug)) {
-                 $itemType = $product->productType->productCategory->slug;
             }
 
 

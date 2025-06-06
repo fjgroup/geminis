@@ -59,7 +59,7 @@ const getInvoiceStatusClass = (status) => {
         'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100': status === 'cancelled' || status === 'failed_payment',
         'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100': status === 'refunded',
         'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-100': status === 'collections',
-        'bg-gray-200 text-gray-800 dark:bg-gray-600 dark:text-gray-300': status === 'draft', // Clase para draft
+        'bg-gray-200 text-gray-800 dark:bg-gray-600 dark:text-gray-300': status === 'draft',
     };
 };
 </script>
