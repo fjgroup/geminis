@@ -72,6 +72,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'verified', 'admin']
     // Rutas para Facturas de Administración
     Route::resource('invoices', AdminInvoiceController::class);
     Route::post('/invoices/{invoice}/activate-services', [AdminInvoiceController::class, 'activateServices'])->name('invoices.activateServices');
+    Route::post('/invoices/{invoice}/manual-transaction', [AdminInvoiceController::class, 'storeManualTransaction'])->name('invoices.storeManualTransaction');
 
     Route::resource('products', AdminProductController::class);
 
