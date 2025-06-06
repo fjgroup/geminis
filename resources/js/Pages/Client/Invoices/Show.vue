@@ -15,6 +15,35 @@ const props = defineProps({
 const page = usePage();
 const user = computed(() => page.props.auth.user);
 
+const relevantTransaction = computed(() => {
+    return (props.invoice.transactions && props.invoice.transactions.length > 0) ? props.invoice.transactions[0] : null;
+});
+
+const showPaymentInfoSection = computed(() => {
+    const relevantStatuses = ['paid', 'pending_confirmation', 'active_service', 'pending_activation'];
+    return relevantStatuses.includes(props.invoice.status) && relevantTransaction.value;
+});
+
+const paymentInfo = computed(() => {
+    if (!showPaymentInfoSection.value) return {};
+
+  let dateToShow = null;
+    // Usar paid_date si la factura está pagada o el servicio activo/pendiente activación
+    if (['paid', 'active_service', 'pending_activation'].includes(props.invoice.status) && props.invoice.paid_date) {
+        dateToShow = formatDate(props.invoice.paid_date);
+   }
+    // Si está pendiente de confirmación, usar la fecha de la transacción
+    else if (props.invoice.status === 'pending_confirmation' && relevantTransaction.value) {
+        dateToShow = formatDate(relevantTransaction.value.transaction_date);
+    }
+
+    return {
+        method: relevantTransaction.value?.payment_method?.name || (relevantTransaction.value?.gateway_slug === 'balance' ? 'Saldo de Cuenta' : 'No especificado'),
+        transactionId: relevantTransaction.value?.gateway_transaction_id || 'N/A',
+        date: dateToShow,
+    };
+});
+
 // Helper for currency formatting
 const formatCurrency = (amount, currencyCode = "USD") => {
     if (amount === null || amount === undefined || isNaN(parseFloat(amount))) {
@@ -161,6 +190,35 @@ const payInvoiceUsingBalance = (invoiceId) => { // Renombrado para claridad
                         <h3 class="mb-4 text-lg font-semibold">
                             Factura #{{ invoice.invoice_number }}
                         </h3>
+
+                        <!-- Información del Pago -->
+                        <div v-if="showPaymentInfoSection"
+                            class="p-4 mt-3 mb-4 space-y-1 text-sm border border-gray-200 rounded-md dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50">
+                            <h4 class="mb-2 font-semibold text-gray-800 text-md dark:text-gray-100">Información del Pago
+                                Registrado:</h4>
+                            <div v-if="paymentInfo.method" class="flex justify-between">
+                                <span class="text-gray-600 dark:text-gray-400">Método de Pago:</span>
+                                <strong class="text-gray-900 dark:text-gray-100">{{ paymentInfo.method }}</strong>
+                            </div>
+                            <div v-if="paymentInfo.transactionId && paymentInfo.transactionId !== 'N/A'"
+                                class="flex justify-between">
+                                <span class="text-gray-600 dark:text-gray-400">Referencia:</span>
+                                <strong class="text-gray-900 dark:text-gray-100">{{ paymentInfo.transactionId
+                                    }}</strong>
+                            </div>
+                            <div v-if="paymentInfo.date" class="flex justify-between">
+                                <span class="text-gray-600 dark:text-gray-400">{{ (invoice.status ===
+                                    'pending_confirmation') ?
+                                    'Fecha de Registro:' : 'Fecha de Pago:' }}</span>
+                                <strong class="text-gray-900 dark:text-gray-100">{{ paymentInfo.date }}</strong>
+                            </div>
+                            <div v-if="invoice.status === 'pending_confirmation'" class="pt-2">
+                                <p class="text-sm text-yellow-700 dark:text-yellow-400">Este pago está pendiente de
+                                    confirmación
+                                    por un administrador.</p>
+                            </div>
+                        </div>
+                        <!-- Fin Información del Pago -->
 
                         <!-- Flash Messages -->
                         <div v-if="$page.props.flash && $page.props.flash.success"

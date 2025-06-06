@@ -48,12 +48,10 @@ const isActiveDashboard = computed(() => {
 
                             <!-- Navigation Links -->
                             <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
-                                <!-- Common Dashboard Link -->
                                 <NavLink :href="dashboardRoute" :active="isActiveDashboard">
                                     Dashboard
                                 </NavLink>
 
-                                <!-- Client Specific Links -->
                                 <template v-if="$page.props.auth.user.role === 'client'">
                                     <NavLink :href="route('client.services.index')"
                                         :active="route().current('client.services.index')">
@@ -77,16 +75,13 @@ const isActiveDashboard = computed(() => {
                                     </NavLink>
                                 </template>
 
-                                <!-- Reseller Specific Links -->
                                 <template v-if="$page.props.auth.user.role === 'reseller'">
                                     <NavLink :href="route('reseller.clients.index')"
                                         :active="route().current('reseller.clients.index') || route().current('reseller.clients.create') || route().current('reseller.clients.edit') || route().current('reseller.clients.show')">
                                         My Clients
                                     </NavLink>
-                                    <!-- Future: Link to view client orders, reseller settings etc. -->
                                 </template>
 
-                                <!-- Admin Specific Links -->
                                 <template v-if="$page.props.auth.user.role === 'admin'">
                                     <NavLink :href="route('admin.users.index')"
                                         :active="route().current('admin.users.index') || route().current('admin.users.show') || route().current('admin.users.edit')">
@@ -177,7 +172,6 @@ const isActiveDashboard = computed(() => {
                         <ResponsiveNavLink :href="dashboardRoute" :active="isActiveDashboard">
                             Dashboard
                         </ResponsiveNavLink>
-                        <!-- Client Specific Responsive Links -->
                         <template v-if="$page.props.auth.user.role === 'client'">
                             <ResponsiveNavLink :href="route('client.services.index')"
                                 :active="route().current('client.services.index')">
@@ -200,14 +194,12 @@ const isActiveDashboard = computed(() => {
                                 Agregar Fondos
                             </ResponsiveNavLink>
                         </template>
-                        <!-- Reseller Specific Responsive Links -->
                         <template v-if="$page.props.auth.user.role === 'reseller'">
                             <ResponsiveNavLink :href="route('reseller.clients.index')"
                                 :active="route().current('reseller.clients.index') || route().current('reseller.clients.create') || route().current('reseller.clients.edit') || route().current('reseller.clients.show')">
                                 My Clients
                             </ResponsiveNavLink>
                         </template>
-                        <!-- Admin Specific Responsive Links -->
                         <template v-if="$page.props.auth.user.role === 'admin'">
                             <ResponsiveNavLink :href="route('admin.users.index')"
                                 :active="route().current('admin.users.index') || route().current('admin.users.show') || route().current('admin.users.edit')">
@@ -236,7 +228,6 @@ const isActiveDashboard = computed(() => {
                         </template>
                     </div>
 
-                    <!-- Responsive Settings Options -->
                     <div class="pt-4 pb-1 border-t border-gray-200">
                         <div class="px-4">
                             <div class="text-base font-medium text-gray-800">
@@ -263,16 +254,13 @@ const isActiveDashboard = computed(() => {
                 </div>
             </nav>
 
-            <!-- Page Heading -->
             <header class="bg-white shadow" v-if="$slots.header">
                 <div class="px-4 py-6 mx-auto max-w-7xl sm:px-6 lg:px-8">
                     <slot name="header" />
                 </div>
             </header>
 
-            <!-- Page Content -->
             <main>
-                <!-- Flash Messages -->
                 <div v-if="$page.props.flash && $page.props.flash.success"
                     class="p-4 mb-4 text-green-800 bg-green-200 rounded">
                     {{ $page.props.flash.success }}
@@ -281,7 +269,6 @@ const isActiveDashboard = computed(() => {
                     class="p-4 mb-4 text-red-800 bg-red-200 rounded">
                     {{ $page.props.flash.error }}
                 </div>
-
                 <slot />
             </main>
         </div>

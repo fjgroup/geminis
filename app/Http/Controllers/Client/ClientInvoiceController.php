@@ -50,27 +50,15 @@ class ClientInvoiceController extends Controller
             'items.productPricing.billingCycle', // Direct relation
             // 'order', // order relation on Invoice will be removed
             'transactions' => function ($query) {
-                $query->where('status', 'completed')
+                $query->where('type', 'payment')
                       ->with('paymentMethod')
-                      ->latest('transaction_date');
+                      ->latest('transaction_date')
+                      ->limit(1);
             }
         ]);
 
-        $userResource = null;
-        $authUser = Auth::user();
-        if ($authUser) {
-            $userResource = [
-                'id' => $authUser->id,
-                'name' => $authUser->name,
-                'email' => $authUser->email,
-                'balance' => $authUser->balance,
-                'formatted_balance' => $authUser->formatted_balance,
-            ];
-        }
-
         return Inertia::render('Client/Invoices/Show', [
             'invoice' => $invoice,
-            'auth' => ['user' => $userResource]
         ]);
     }
 
