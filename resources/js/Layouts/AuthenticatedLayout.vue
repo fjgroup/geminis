@@ -28,6 +28,7 @@ const isActiveDashboard = computed(() => {
   } else if (userRole === "reseller") {
     return route().current("reseller.dashboard"); // Asegúrate que esta ruta exista para resellers
   }
+  }
   return route().current("admin.dashboard"); // Default para admin u otros roles
 });
 </script>

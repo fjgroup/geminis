@@ -56,21 +56,8 @@ class ClientInvoiceController extends Controller
             }
         ]);
 
-        $userResource = null;
-        $authUser = Auth::user();
-        if ($authUser) {
-            $userResource = [
-                'id' => $authUser->id,
-                'name' => $authUser->name,
-                'email' => $authUser->email,
-                'balance' => $authUser->balance,
-                'formatted_balance' => $authUser->formatted_balance,
-            ];
-        }
-
         return Inertia::render('Client/Invoices/Show', [
             'invoice' => $invoice,
-            'auth' => ['user' => $userResource]
         ]);
     }
 
