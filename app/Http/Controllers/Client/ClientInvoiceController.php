@@ -50,9 +50,10 @@ class ClientInvoiceController extends Controller
             'items.productPricing.billingCycle', // Direct relation
             // 'order', // order relation on Invoice will be removed
             'transactions' => function ($query) {
-                $query->where('status', 'completed')
+                $query->where('type', 'payment')
                       ->with('paymentMethod')
-                      ->latest('transaction_date');
+                      ->latest('transaction_date')
+                      ->limit(1);
             }
         ]);
 
