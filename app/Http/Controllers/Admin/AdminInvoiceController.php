@@ -19,7 +19,7 @@ use App\Http\Requests\Admin\UpdateInvoiceRequest; // New
 use App\Models\ClientService; // Asegurarse de importar ClientService
 use App\Models\ProductPricing; // Added for ClientService creation
 use App\Models\BillingCycle; // Added for ClientService creation (though accessed via relationship)
-use App\Models\InvoiceItem; // Added for updating client_service_id on item
+// use App\Models\InvoiceItem; // Duplicate: Added for updating client_service_id on item - First one on line 12 is kept.
 use Exception; // Importar Exception
 // use Illuminate\Support\Carbon; // Already imported
 // use Illuminate\Support\Facades\DB; // Already imported
@@ -176,14 +176,43 @@ class AdminInvoiceController extends Controller
         ]);
 
         // Indica si se debe mostrar el formulario de pago manual en la vista
-        $showManualPaymentForm = in_array($invoice->status, ['unpaid', 'pending_confirmation']);
+        $showManualPaymentForm = in_array($invoice->status, ['unpaid', 'pending_confirmation', 'overdue', 'failed_payment']); // Ampliado para incluir 'overdue' y 'failed_payment'
+
+        // Comentario en español: Intentar obtener datos de una transacción existente (fallida o pendiente) para pre-llenar el formulario.
+        $existingTransaction = $invoice->transactions()
+                                      ->with('paymentMethod') // Cargar la relación paymentMethod
+                                      ->whereIn('status', ['pending', 'failed', 'pending_confirmation']) // Estados que podrían necesitar reintento o corrección manual
+                                      ->orderBy('created_at', 'desc')
+                                      ->first();
+
+        $defaultPaymentGatewayName = '';
+        $defaultGatewayTransactionId = '';
+
+        if ($existingTransaction) {
+            // Comentario en español: Si hay una transacción existente relevante, usar sus datos.
+            $defaultGatewayTransactionId = $existingTransaction->gateway_transaction_id ?? ''; // Usar ID de pasarela si existe
+
+            if ($existingTransaction->paymentMethod && $existingTransaction->paymentMethod->name) {
+                // Comentario en español: Usar el nombre del método de pago si está disponible.
+                $defaultPaymentGatewayName = $existingTransaction->paymentMethod->name;
+            } elseif ($existingTransaction->gateway_slug) {
+                // Comentario en español: Como fallback, usar el slug de la pasarela de la transacción.
+                $defaultPaymentGatewayName = ucwords(str_replace(['_', '-'], ' ', $existingTransaction->gateway_slug));
+            }
+        } elseif ($invoice->payment_gateway_slug) {
+            // Comentario en español: Si no hay transacción relevante, pero la factura tiene un slug de pasarela (de la solicitud original), usarlo.
+            $defaultPaymentGatewayName = ucwords(str_replace(['_', '-'], ' ', $invoice->payment_gateway_slug));
+        }
+        // Consideración: Podríamos cargar una lista de PaymentMethods activos para que el admin seleccione uno si $defaultPaymentGatewayName está vacío.
 
         // Prepara datos para el formulario de registro de transacción manual
         $manualPaymentFormData = [
             'amount' => $invoice->total_amount, // Asume que total_amount es el monto pendiente o total de la factura
             'currency_code' => $invoice->currency_code,
             'transaction_date' => now()->toDateString(), // Fecha actual por defecto
-            // Considera añadir 'payment_method_id' si quieres preseleccionar uno o pasar una lista de métodos de pago
+            'payment_gateway_name' => $defaultPaymentGatewayName,      // Nuevo
+            'gateway_transaction_id' => $defaultGatewayTransactionId,  // Nuevo
+            // Considera añadir 'payment_method_id' si quieres preseleccionar uno o pasar una lista de métodos de pago disponibles
         ];
 
         return Inertia::render('Admin/Invoices/Show', [
