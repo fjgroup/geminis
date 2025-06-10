@@ -29,9 +29,9 @@ const manualTransactionForm = useForm({
     transaction_date: props.manualPaymentFormData?.transaction_date || new Date().toISOString().slice(0,10),
     amount: props.manualPaymentFormData?.amount || 0.00,
     currency_code: props.manualPaymentFormData?.currency_code || props.invoice?.currency_code || 'USD',
-    payment_gateway_name: '', // El admin debe llenar esto: Nombre descriptivo de la pasarela (ej. "Transferencia Bancaria")
-    gateway_transaction_id: '', // El admin debe llenar esto: ID de referencia externo
-    description: `Pago manual para Factura #${props.invoice?.invoice_number}`,
+    payment_gateway_name: props.manualPaymentFormData?.payment_gateway_name || '', // Actualizado para usar props
+    gateway_transaction_id: props.manualPaymentFormData?.gateway_transaction_id || '', // Actualizado para usar props
+    description: `Pago manual para Factura #${props.invoice?.invoice_number}`, // Mantenido como estaba, ya que el backend no envía 'description' en manualPaymentFormData
 });
 
 // Comentario en español: Envía el formulario de transacción manual específica
@@ -51,42 +51,8 @@ const submitStoreManualTransaction = () => {
     }
 };
 
-
-// Formulario EXISTENTE para registrar transacción manual genérica (se mantiene por si tiene otros usos)
-const paymentForm = useForm({
-    transaction_date: new Date().toISOString().slice(0, 10),
-    amount: props.invoice.status === 'unpaid' ? props.invoice.total_amount : null, // Pre-fill amount if unpaid
-    currency_code: props.invoice.currency_code || 'USD',
-    gateway_slug: 'manual_payment', // Este es un slug, diferente a 'payment_gateway_name'
-    type: 'payment',
-    status: 'completed',
-    description: `Pago para Factura #${props.invoice.invoice_number}`,
-    fees_amount: null,
-    gateway_transaction_id: null,
-});
-
-const transactionTypes = [
-    { value: 'payment', label: 'Pago' },
-    { value: 'refund', label: 'Reembolso' },
-    // { value: 'credit_added', label: 'Crédito Añadido' }, // Menos común aquí
-];
-const transactionStatuses = [
-    { value: 'completed', label: 'Completado' },
-    { value: 'pending', label: 'Pendiente' },
-    { value: 'failed', label: 'Fallido' },
-];
-
-const submitPayment = () => {
-    paymentForm.post(route('admin.invoices.transactions.store', props.invoice.id), {
-        preserveScroll: true,
-        onSuccess: () => {
-            paymentForm.reset('amount', 'description', 'gateway_transaction_id', 'fees_amount');
-            // La página se recargará por Inertia si el backend redirige, actualizando el estado.
-        },
-    });
-};
-
 // Funciones Helper (consistentes con las usadas en el lado del cliente)
+// La lógica de paymentForm, transactionTypes, transactionStatuses y submitPayment ha sido eliminada.
 const formatCurrency = (amount, currencyCode = 'USD') => {
     const number = parseFloat(amount);
     if (isNaN(number)) return 'N/A';
@@ -313,66 +279,12 @@ const submitActivateServices = () => {
                     <p v-else class="text-sm text-gray-500 dark:text-gray-400">No hay transacciones registradas para esta factura.</p>
                 </div>
 
-
-                <!-- Payment Registration Form -->
-                <div class="p-6 bg-white dark:bg-gray-900 shadow-sm sm:rounded-lg" v-if="['unpaid', 'pending_confirmation', 'overdue', 'failed_payment'].includes(invoice.status)">
-                    <h3 class="text-lg font-medium text-gray-900 dark:text-white">Registrar Transacción Manual</h3>
-                    <form @submit.prevent="submitPayment" class="mt-6 space-y-6">
-                        <div>
-                            <InputLabel for="transaction_date_generic" value="Fecha de Transacción (Genérico)" />
-                            <TextInput id="transaction_date_generic" type="date" class="mt-1 block w-full" v-model="paymentForm.transaction_date" required />
-                            <InputError class="mt-2" :message="paymentForm.errors.transaction_date" />
-                        </div>
-                        <div>
-                            <InputLabel for="amount_generic" value="Monto (Genérico)" />
-                            <TextInput id="amount_generic" type="number" step="0.01" class="mt-1 block w-full" v-model="paymentForm.amount" required />
-                            <InputError class="mt-2" :message="paymentForm.errors.amount" />
-                        </div>
-                        <div>
-                            <InputLabel for="currency_code_generic" value="Moneda (Genérico)" />
-                            <TextInput id="currency_code_generic" type="text" class="mt-1 block w-full" v-model="paymentForm.currency_code" required :disabled="true" />
-                            <InputError class="mt-2" :message="paymentForm.errors.currency_code" />
-                        </div>
-                        <div>
-                            <InputLabel for="gateway_slug_generic" value="Pasarela de Pago (Slug - Genérico)" />
-                            <TextInput id="gateway_slug_generic" type="text" class="mt-1 block w-full" v-model="paymentForm.gateway_slug" placeholder="Ej: manual_transfer, bank_deposit" required />
-                            <InputError class="mt-2" :message="paymentForm.errors.gateway_slug" />
-                        </div>
-                        <div>
-                            <InputLabel for="gateway_transaction_id_generic" value="ID Transacción Pasarela / Referencia (Genérico)" />
-                            <TextInput id="gateway_transaction_id_generic" type="text" class="mt-1 block w-full" v-model="paymentForm.gateway_transaction_id" />
-                            <InputError class="mt-2" :message="paymentForm.errors.gateway_transaction_id" />
-                        </div>
-                        <div>
-                            <InputLabel for="type_generic" value="Tipo (Genérico)" />
-                            <SelectInput id="type_generic" class="mt-1 block w-full" v-model="paymentForm.type" :options="transactionTypes" required />
-                            <InputError class="mt-2" :message="paymentForm.errors.type" />
-                        </div>
-                        <div>
-                            <InputLabel for="status_transaction_generic" value="Estado de la Transacción (Genérico)" />
-                            <SelectInput id="status_transaction_generic" class="mt-1 block w-full" v-model="paymentForm.status" :options="transactionStatuses" required />
-                            <InputError class="mt-2" :message="paymentForm.errors.status" />
-                        </div>
-                        <div>
-                            <InputLabel for="description_transaction_generic" value="Descripción (Notas de la transacción - Genérico)" />
-                            <TextInput id="description_transaction_generic" type="text" class="mt-1 block w-full" v-model="paymentForm.description" />
-                            <InputError class="mt-2" :message="paymentForm.errors.description" />
-                        </div>
-                        <div class="flex items-center gap-4">
-                            <PrimaryButton :disabled="paymentForm.processing">Registrar Transacción (Genérico)</PrimaryButton>
-                            <Transition enter-active-class="transition ease-in-out" enter-from-class="opacity-0" leave-active-class="transition ease-in-out" leave-to-class="opacity-0">
-                                <p v-if="paymentForm.recentlySuccessful" class="text-sm text-gray-600 dark:text-gray-300">Transacción genérica registrada.</p>
-                            </Transition>
-                        </div>
-                    </form>
-                </div>
-
-                <!-- NUEVO Formulario para Registrar Pago Manual Específico -->
+                <!-- Formulario Consolidado para Registrar Pago Manual -->
                 <div v-if="props.showManualPaymentForm" class="p-6 bg-white dark:bg-gray-900 shadow-sm sm:rounded-lg mt-6 border-t border-indigo-300 dark:border-indigo-700">
-                    <h3 class="text-lg font-medium text-gray-900 dark:text-white">Registrar Pago Manual Específico</h3>
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-white">Registrar Pago Manual Recibido</h3>
                     <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                        Utilice este formulario para registrar un pago que ya ha sido recibido externamente (ej. transferencia bancaria).
-                        Esto marcará la factura como pagada y creará los servicios correspondientes si aplica.
+                        Utilice este formulario para registrar un pago que ya ha sido recibido externamente (ej. transferencia bancaria o efectivo).
+                        Esto marcará la factura como pagada y creará/activará los servicios correspondientes si aplica.
                     </p>
                     <form @submit.prevent="submitStoreManualTransaction" class="mt-6 space-y-6">
                         <div>
