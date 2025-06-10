@@ -432,6 +432,7 @@ class AdminInvoiceController extends Controller
      */
     public function storeManualTransaction(Request $request, Invoice $invoice): RedirectResponse
     {
+        Log::info('AdminInvoiceController@storeManualTransaction: Iniciando proceso para factura ID ' . $invoice->id, ['request_data' => $request->all()]);
         $this->authorize('update', $invoice); // O una política más específica como 'managePayments'
 
         $validatedData = $request->validate([
@@ -442,6 +443,7 @@ class AdminInvoiceController extends Controller
             'gateway_transaction_id' => 'nullable|string|max:255', // ID de referencia para el pago manual
             'description' => 'nullable|string|max:1000', // Notas para la transacción
         ]);
+        Log::info('Datos validados para factura ID ' . $invoice->id . ':', $validatedData);
 
         // Consideración: Se podría añadir una validación para asegurar que amount y currency_code
         // coincidan con los de la factura ($invoice->total_amount, $invoice->currency_code).
@@ -471,22 +473,25 @@ class AdminInvoiceController extends Controller
 
         DB::beginTransaction();
         try {
-            // Crear el registro de la transacción
-            $transaction = $invoice->transactions()->create([
+            $transactionData = [
                 'client_id' => $invoice->client_id,
-                'reseller_id' => $invoice->reseller_id, // Added reseller_id
-                'payment_method_id' => null, // Opcional: buscar/crear uno para 'manual' o permitir seleccionar uno existente
-                'gateway_slug' => 'manual', // Slug genérico para pagos manuales, podría ser el payment_gateway_name normalizado
+                'reseller_id' => $invoice->reseller_id,
+                'payment_method_id' => null,
+                'gateway_slug' => 'manual',
                 'gateway_transaction_id' => $validatedData['gateway_transaction_id'],
                 'type' => 'payment',
                 'amount' => $validatedData['amount'],
                 'currency_code' => $validatedData['currency_code'],
-                'status' => 'completed', // Asumimos que si el admin lo registra, está completado
+                'status' => 'completed',
                 'description' => $validatedData['description'] ?? 'Pago manual para factura ' . $invoice->invoice_number . '. Método: ' . $validatedData['payment_gateway_name'],
                 'transaction_date' => Carbon::parse($validatedData['transaction_date']),
-                'fees_amount' => 0, // Opcional, si aplica
-                'is_manual_payment' => true, // Indicador de que fue un pago manual
-            ]);
+                'fees_amount' => 0,
+                'is_manual_payment' => true,
+            ];
+            Log::info('Creando Transaction para factura ID ' . $invoice->id . ' con datos:', $transactionData);
+            // Crear el registro de la transacción
+            $transaction = $invoice->transactions()->create($transactionData);
+            Log::info('Transaction creada con ID: ' . $transaction->id . ' para factura ID ' . $invoice->id);
 
             // Actualizar el estado de la factura a pagada
             $invoice->status = 'paid'; // O 'pending_activation' si los servicios deben activarse después
@@ -499,6 +504,7 @@ class AdminInvoiceController extends Controller
             }
             $invoice->admin_notes = trim(($invoice->admin_notes ? $invoice->admin_notes . "\n" : '') . $adminNote);
 
+            Log::info('Actualizando Invoice ID ' . $invoice->id . ' a estado: ' . $invoice->status . ', paid_date: ' . ($invoice->paid_date ? $invoice->paid_date->toIso8601String() : 'null'));
             $invoice->save();
 
             // Comentario en español: Cargar relaciones necesarias para crear servicios
@@ -512,6 +518,19 @@ class AdminInvoiceController extends Controller
 
             // Comentario en español: Iterar sobre los ítems de la factura para crear servicios si aplica
             foreach ($invoice->items as $invoiceItem) { // Renombrado $item a $invoiceItem para claridad
+                Log::info('Procesando InvoiceItem ID: ' . $invoiceItem->id . ' para Factura ID ' . $invoice->id, ['item_data' => $invoiceItem->toArray()]);
+                if ($invoiceItem->product) {
+                    Log::info('Producto asociado (ID ' . $invoiceItem->product_id . ') a InvoiceItem ID ' . $invoiceItem->id . ':', ['product_data' => $invoiceItem->product->toArray()]);
+                    if ($invoiceItem->product->productType) {
+                        Log::info('ProductType asociado a Producto ID ' . $invoiceItem->product_id . ':', ['product_type_data' => $invoiceItem->product->productType->toArray(), 'creates_service_instance' => $invoiceItem->product->productType->creates_service_instance]);
+                    } else {
+                        Log::info('Producto ID ' . $invoiceItem->product_id . ' NO tiene ProductType asociado.');
+                    }
+                } else {
+                    Log::info('InvoiceItem ID ' . $invoiceItem->id . ' NO tiene Producto asociado.');
+                }
+                Log::info('Valor de invoiceItem->client_service_id antes de procesar para InvoiceItem ID ' . $invoiceItem->id . ': ' . ($invoiceItem->client_service_id ?? 'null'));
+
                 // Comentario en español: Condición para crear un nuevo servicio:
                 // 1. El InvoiceItem tiene un producto asociado.
                 // 2. El InvoiceItem NO está ya asociado a un ClientService.
@@ -527,6 +546,20 @@ class AdminInvoiceController extends Controller
                     $invoiceItem->product->productType &&
                     $invoiceItem->product->productType->creates_service_instance
                 ) {
+                    $conditionProductId = !is_null($invoiceItem->product_id); // Ya chequeado arriba, pero para logueo explícito
+                    $conditionClientServiceIsNull = is_null($invoiceItem->clientService); // Corregido de client_service_id a la relación
+                    $conditionProductPricing = !is_null($invoiceItem->productPricing);
+                    $conditionBillingCycle = $invoiceItem->productPricing && !is_null($invoiceItem->productPricing->billingCycle);
+                    $conditionCreatesService = $invoiceItem->product && $invoiceItem->product->productType && $invoiceItem->product->productType->creates_service_instance;
+                    Log::info('Condiciones para crear ClientService para InvoiceItem ID ' . $invoiceItem->id . ':', [
+                        'product_id_exists' => $conditionProductId,
+                        'client_service_is_null' => $conditionClientServiceIsNull,
+                        'product_pricing_exists' => $conditionProductPricing,
+                        'billing_cycle_exists' => $conditionBillingCycle,
+                        'product_type_creates_service' => $conditionCreatesService,
+                        'all_met' => ($conditionProductId && $conditionClientServiceIsNull && $conditionProductPricing && $conditionBillingCycle && $conditionCreatesService)
+                    ]);
+
                     // Comentario en español: Obtener datos para el nuevo servicio del cliente
                     $productPricing = $invoiceItem->productPricing;
                     $billingCycle = $productPricing->billingCycle;
@@ -539,36 +572,35 @@ class AdminInvoiceController extends Controller
                     // Comentario en español: Determinar el monto de facturación recurrente
                     $recurringAmount = $productPricing->price; // Precio recurrente desde ProductPricing
 
-                    // Comentario en español: Crear el servicio del cliente
-                    $clientService = new ClientService([
+                    $clientServiceData = [
                         'client_id' => $invoice->client_id,
                         'reseller_id' => $invoice->reseller_id,
                         'product_id' => $invoiceItem->product_id,
                         'product_pricing_id' => $productPricing->id,
                         'billing_cycle_id' => $billingCycle->id,
-                        'domain_name' => $invoiceItem->domain_name, // Puede ser null, tomado del InvoiceItem
-                        'status' => 'pending_provisioning', // Estado inicial para servicios que requieren aprovisionamiento
+                        'domain_name' => $invoiceItem->domain_name,
+                        'status' => 'pending_configuration', // Changed from pending_provisioning
                         'registration_date' => $registrationDate->toDateString(),
                         'next_due_date' => $nextDueDate->toDateString(),
                         'billing_amount' => $recurringAmount,
                         'notes' => 'Servicio creado automáticamente desde factura ' . $invoice->invoice_number . ' (pago manual).',
-                        // 'server_id' => null, // Si aplica y se puede determinar
-                        // 'username' => null, // Si aplica y se puede determinar/generar
-                        // 'password' => null, // Si aplica y se debe generar (¡encriptar!)
-                    ]);
+                    ];
+                    Log::info('Preparando datos para crear ClientService para InvoiceItem ID ' . $invoiceItem->id . ':', $clientServiceData);
+                    // Comentario en español: Crear el servicio del cliente
+                    $clientService = new ClientService($clientServiceData);
                     $clientService->save();
+                    Log::info('ClientService creado con ID: ' . $clientService->id . ' para InvoiceItem ID ' . $invoiceItem->id);
 
                     // Comentario en español: Actualizar el invoice_item con el ID del servicio creado
+                    Log::info('Actualizando InvoiceItem ID ' . $invoiceItem->id . ' con ClientService ID: ' . $clientService->id);
                     $invoiceItem->client_service_id = $clientService->id;
                     $invoiceItem->save();
-
-                    Log::info("ClientService ID {$clientService->id} creado para InvoiceItem ID {$invoiceItem->id} de Factura ID {$invoice->id}.");
                 }
             }
 
             // Aquí podrías disparar un evento, como InvoicePaidEvent($invoice), si tienes listeners para ello (ej. activar servicios)
             // O un evento específico para ClientServiceCreated si el aprovisionamiento es manejado por listeners.
-
+            Log::info('Proceso storeManualTransaction completado para Factura ID ' . $invoice->id . ', realizando DB::commit()');
             DB::commit();
 
             return redirect()->route('admin.invoices.show', $invoice->id)->with('success', 'Transacción manual registrada, factura actualizada y servicios (si aplican) creados exitosamente.');
@@ -576,8 +608,10 @@ class AdminInvoiceController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error("Error al registrar transacción manual para factura ID {$invoice->id}: " . $e->getMessage(), [
-                'exception' => $e,
-                'data' => $validatedData
+                'exception_class' => get_class($e), // Log exception class
+                'invoice_id' => $invoice->id,
+                'validated_data' => $validatedData, // Log data that was being processed
+                'trace' => $e->getTraceAsString() // Be cautious with trace in production, can be very verbose
             ]);
             return back()->withInput()->with('error', 'Error al registrar la transacción manual: ' . $e->getMessage());
         }
