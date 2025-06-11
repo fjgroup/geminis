@@ -27,11 +27,11 @@ const showPaymentInfoSection = computed(() => {
 const paymentInfo = computed(() => {
     if (!showPaymentInfoSection.value) return {};
 
-  let dateToShow = null;
+    let dateToShow = null;
     // Usar paid_date si la factura está pagada o el servicio activo/pendiente activación
     if (['paid', 'active_service', 'pending_activation'].includes(props.invoice.status) && props.invoice.paid_date) {
         dateToShow = formatDate(props.invoice.paid_date);
-   }
+    }
     // Si está pendiente de confirmación, usar la fecha de la transacción
     else if (props.invoice.status === 'pending_confirmation' && relevantTransaction.value) {
         dateToShow = formatDate(relevantTransaction.value.transaction_date);
@@ -170,6 +170,15 @@ const payInvoiceUsingBalance = (invoiceId) => { // Renombrado para claridad
     }
 };
 
+const cancelPaymentReportHandler = (invoiceId) => {
+    if (confirm('¿Estás seguro de que quieres anular el reporte de pago para esta factura? La factura volverá al estado "No Pagada".')) {
+        router.post(route('client.invoices.cancelPaymentReport', { invoice: invoiceId }), {}, {
+            preserveScroll: true,
+            // onSuccess y onError serán manejados por los mensajes flash globales
+            // que ya configuramos para que se muestren en esta página.
+        });
+    }
+};
 </script>
 
 <template>
@@ -204,7 +213,7 @@ const payInvoiceUsingBalance = (invoiceId) => { // Renombrado para claridad
                                 class="flex justify-between">
                                 <span class="text-gray-600 dark:text-gray-400">Referencia:</span>
                                 <strong class="text-gray-900 dark:text-gray-100">{{ paymentInfo.transactionId
-                                    }}</strong>
+                                }}</strong>
                             </div>
                             <div v-if="paymentInfo.date" class="flex justify-between">
                                 <span class="text-gray-600 dark:text-gray-400">{{ (invoice.status ===
@@ -216,6 +225,12 @@ const payInvoiceUsingBalance = (invoiceId) => { // Renombrado para claridad
                                 <p class="text-sm text-yellow-700 dark:text-yellow-400">Este pago está pendiente de
                                     confirmación
                                     por un administrador.</p>
+                                <div class="mt-3">
+                                    <button @click="cancelPaymentReportHandler(invoice.id)" type="button"
+                                        class="px-4 py-2 text-xs font-semibold text-red-700 bg-red-100 border border-red-300 rounded-md hover:bg-red-200 hover:text-red-800 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 dark:bg-red-800/30 dark:border-red-600 dark:text-red-400 dark:hover:bg-red-700/50 dark:hover:text-red-300">
+                                        Anular Pago Reportado
+                                    </button>
+                                </div>
                             </div>
                         </div>
                         <!-- Fin Información del Pago -->
@@ -263,7 +278,7 @@ const payInvoiceUsingBalance = (invoiceId) => { // Renombrado para claridad
                                 <strong>Estado:</strong>
                                 <span class="px-2 py-1 text-xs font-semibold rounded-full"
                                     :class="getInvoiceStatusClass(invoice.status)">{{
-                                    getFriendlyInvoiceStatusText(invoice.status) }}</span>
+                                        getFriendlyInvoiceStatusText(invoice.status) }}</span>
                             </div>
                             <div>
                                 <strong>Total:</strong>
@@ -314,7 +329,7 @@ const payInvoiceUsingBalance = (invoiceId) => { // Renombrado para claridad
                                                 <div class="text-xs text-gray-500 dark:text-gray-400">
                                                     <span
                                                         v-if="item.product_pricing && item.product_pricing.billing_cycle">{{
-                                                        item.product_pricing.billing_cycle.name }}</span>
+                                                            item.product_pricing.billing_cycle.name }}</span>
                                                     <span v-if="item.domain_name"> - {{ item.domain_name }}</span>
                                                     <span v-if="item.item_type && item.item_type !== 'manual_item'"> ({{
                                                         getFriendlyItemType(item.item_type) }})</span>
@@ -376,7 +391,7 @@ const payInvoiceUsingBalance = (invoiceId) => { // Renombrado para claridad
                                     v-if="invoice.transactions[0].payment_method && invoice.transactions[0].payment_method.formatted_details">
                                     <p><strong>Método de Pago:</strong> {{ invoice.transactions[0].payment_method.name
                                         || 'N/A'
-                }}</p>
+                                        }}</p>
 
                                     <template
                                         v-if="typeof invoice.transactions[0].payment_method.formatted_details === 'object' && invoice.transactions[0].payment_method.formatted_details !== null">
@@ -386,7 +401,7 @@ const payInvoiceUsingBalance = (invoiceId) => { // Renombrado para claridad
                                             <p
                                                 v-if="String(key).toLowerCase() !== 'name' && String(key).toLowerCase() !== 'id' && !/^\d+$/.test(String(key))">
                                                 <strong>{{String(key).replace(/_/g, ' ').replace(/\b\w/g, l =>
-                                                    l.toUpperCase()) }}:</strong> {{ value }}
+                                                    l.toUpperCase())}}:</strong> {{ value }}
                                             </p>
                                         </template>
                                     </template>
@@ -402,7 +417,7 @@ const payInvoiceUsingBalance = (invoiceId) => { // Renombrado para claridad
                                 <div v-else-if="invoice.transactions[0].payment_method">
                                     <p><strong>Método de Pago:</strong> {{ invoice.transactions[0].payment_method.name
                                         || 'N/A'
-                                        }}</p>
+                                    }}</p>
                                     <p>No se proporcionaron detalles adicionales para este método de pago.</p>
                                 </div>
                                 <div v-else>
@@ -421,7 +436,7 @@ const payInvoiceUsingBalance = (invoiceId) => { // Renombrado para claridad
                                     :class="canPayWithBalance ? 'bg-green-600 hover:bg-green-700 focus:ring-green-500' : 'bg-gray-400 cursor-not-allowed'">
                                     <span v-if="canPayWithBalance">Pagar con Saldo (Disponible: {{
                                         user.formatted_balance
-                                        }})</span>
+                                    }})</span>
                                     <span v-else>Saldo Insuficiente (Disponible: {{ user.formatted_balance }})</span>
                                 </PrimaryButton>
                                 <p v-if="hasSomeBalance && !canPayWithBalance"

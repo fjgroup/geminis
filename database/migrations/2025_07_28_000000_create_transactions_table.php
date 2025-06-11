@@ -18,11 +18,11 @@ return new class extends Migration
             $table->foreignId('reseller_id')->nullable()->constrained('users');
             $table->foreignId('payment_method_id')->nullable()->constrained('payment_methods')->onDelete('set null');
             $table->string('gateway_slug');
-            $table->string('gateway_transaction_id')->nullable()->index();
+            $table->string('gateway_transaction_id')->nullable()->unique();
             $table->enum('type', ['payment', 'refund', 'chargeback', 'credit_added', 'credit_used'])->index();
             $table->decimal('amount', 10, 2);
             $table->string('currency_code', 3);
-            $table->enum('status', ['pending', 'completed', 'failed', 'reversed'])->index();
+            $table->enum('status', ['pending', 'completed', 'failed', 'reversed', 'client_cancelled'])->index();
             $table->decimal('fees_amount', 10, 2)->nullable();
             $table->string('description', 255)->nullable();
             $table->timestamp('transaction_date')->useCurrent();

@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\ConfirmManualPaymentRequest;
 use App\Models\Invoice;
 use App\Models\Transaction;
+use App\Models\User; // Added User model import
+use Illuminate\Http\RedirectResponse; // Added RedirectResponse import
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Redirect;
@@ -115,4 +117,101 @@ class AdminTransactionController extends Controller
     }
 
     // TODO: Añadir otros métodos CRUD para Transacciones si son necesarios (create, store, edit, update, destroy)
+
+    /**
+     * Confirma una transacción pendiente.
+     * Si es una adición de fondos (credit_added), actualiza el balance del cliente.
+     */
+    public function confirm(Transaction $transaction): RedirectResponse
+    {
+        // TODO: Implementar una Policy más robusta para la autorización.
+        // Por ahora, una verificación simple o Gate::authorize si ya está configurado.
+        // $this->authorize('confirm', $transaction);
+
+        if ($transaction->status === 'completed') {
+            return Redirect::route('admin.invoices.index')->with('info', 'Esta transacción ya ha sido confirmada anteriormente.');
+        }
+
+        if ($transaction->status !== 'pending') {
+            return Redirect::route('admin.invoices.index')->with('error', 'Solo las transacciones pendientes pueden ser confirmadas. Estado actual: ' . $transaction->status);
+        }
+
+        DB::beginTransaction();
+        try {
+            // Primero, actualizamos el estado de la transacción
+            $transaction->status = 'completed';
+            $transaction->save(); // Guardamos el cambio de estado de la transacción
+
+            // Si es una adición de fondos, actualizamos el balance del cliente
+            if ($transaction->type === 'credit_added') {
+                $client = User::find($transaction->client_id);
+                if ($client) {
+                    $client->balance += $transaction->amount;
+                    $client->save(); // Guardamos el cambio en el balance del cliente
+                    Log::info("Balance actualizado para cliente ID {$client->id}. Nuevo balance: {$client->balance}. Transacción ID: {$transaction->id}");
+                } else {
+                    Log::error("Cliente no encontrado (ID: {$transaction->client_id}) para la transacción de adición de fondos ID: {$transaction->id}. No se actualizó el balance. La transacción fue marcada como completada.");
+                    // Considerar si se debe lanzar una excepción aquí para revertir el cambio de estado de la transacción si el cliente no se encuentra.
+                    // throw new \Exception("Cliente no encontrado (ID: {$transaction->client_id}) para la transacción ID: {$transaction->id}. No se pudo actualizar el balance.");
+                }
+            }
+
+            // Lógica adicional podría ir aquí para otros tipos de transacciones si es necesario.
+            // Por ejemplo, si es un 'payment' para una factura, podríamos querer actualizar el estado de la factura aquí
+            // si no se maneja ya por un observer o el flujo de `confirmManualPayment`.
+
+            DB::commit();
+
+            Log::info("Transacción ID {$transaction->id} procesada para confirmación.");
+            return Redirect::route('admin.invoices.index')->with('success', 'Transacción confirmada exitosamente.');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error("Error al confirmar la transacción ID {$transaction->id}: " . $e->getMessage(), ['exception' => $e]);
+            // Asegurarse de que el estado de la transacción se revierte si falló después de cambiarlo y antes del commit
+            // Esto es manejado por DB::rollBack() si la $transaction->save() estaba dentro del try-catch
+            // y la excepción ocurrió después. Si $transaction->save() fue antes del try,
+            // entonces su estado no se revertiría automáticamente por el rollback de esta transacción DB.
+            // La forma en que está ahora (save() dentro del try) es correcta.
+            return Redirect::route('admin.invoices.index')->with('error', 'Error al confirmar la transacción: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Rechaza una transacción pendiente.
+     * Simplemente cambia el estado de la transacción a 'rejected'.
+     */
+    public function reject(Transaction $transaction): RedirectResponse
+    {
+        // TODO: Implementar una Policy más robusta para la autorización.
+        // $this->authorize('reject', $transaction);
+
+        if ($transaction->status === 'rejected') {
+            return Redirect::route('admin.invoices.index')->with('info', 'Esta transacción ya ha sido rechazada anteriormente.');
+        }
+
+        if ($transaction->status === 'completed') {
+            return Redirect::route('admin.invoices.index')->with('info', 'Esta transacción ya ha sido completada y no puede ser rechazada.');
+        }
+
+        if ($transaction->status !== 'pending') {
+            return Redirect::route('admin.invoices.index')->with('error', 'Solo las transacciones pendientes pueden ser rechazadas. Estado actual: ' . $transaction->status);
+        }
+
+        DB::beginTransaction();
+        try {
+            $transaction->status = 'failed'; // O 'failed' o 'cancelled' según la semántica deseada
+            $transaction->save();
+
+            DB::commit();
+
+            Log::info("Transacción ID {$transaction->id} rechazada exitosamente.");
+            return Redirect::route('admin.invoices.index')->with('success', 'Transacción rechazada exitosamente.');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error("Error al rechazar la transacción ID {$transaction->id}: " . $e->getMessage(), ['exception' => $e]);
+            return Redirect::route('admin.invoices.index')->with('error', 'Error al rechazar la transacción: ' . $e->getMessage());
+        }
+    }
 }

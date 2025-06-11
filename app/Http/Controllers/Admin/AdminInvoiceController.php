@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Invoice;
+use App\Models\Transaction; // Added Transaction model import
 use Illuminate\Http\Request;
 use Inertia\Inertia; // Importar Inertia
 use App\Models\User; // Added User model import
@@ -40,10 +41,21 @@ class AdminInvoiceController extends Controller
     {
         $this->authorize('viewAny', Invoice::class); // Verificación de autorización
 
-        $invoices = Invoice::with(['client', 'items'])->paginate(10); // Obtener facturas paginadas con relaciones
+        $invoices = Invoice::with(['client', 'items'])
+            ->orderByRaw("CASE WHEN status = 'pending_confirmation' THEN 0 ELSE 1 END ASC") // pending_confirmation first
+            ->orderByRaw("CASE WHEN status = 'pending_confirmation' THEN updated_at ELSE issue_date END ASC") // Sort by updated_at for pending_confirmation, else by issue_date
+            ->orderBy('id', 'desc') // Add a final tie-breaker for consistent ordering if dates are identical
+            ->paginate(10);
+
+        $pendingFundAdditions = Transaction::with(['client', 'paymentMethod']) // Eager load client and paymentMethod
+                                ->where('type', 'credit_added')
+                                ->where('status', 'pending') // Assuming 'pending' is the status for unconfirmed fund additions
+                                ->orderBy('transaction_date', 'asc') // Or 'created_at', oldest first
+                                ->get();
 
         return Inertia::render('Admin/Invoices/Index', [
             'invoices' => $invoices,
+            'pendingFundAdditions' => $pendingFundAdditions,
         ]);
     }
 

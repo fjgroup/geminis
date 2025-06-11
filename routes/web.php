@@ -141,6 +141,8 @@ Route::prefix('client')->name('client.')->middleware(['auth'])->group(function (
   // Manual Payment Routes for Client
   Route::get('/invoices/{invoice}/manual-payment', [ClientManualPaymentController::class, 'showPaymentForm'])->name('invoices.manualPayment.create');
   Route::post('/invoices/{invoice}/manual-payment', [ClientManualPaymentController::class, 'processManualPayment'])->name('invoices.manualPayment.store');
+  Route::post('/invoices/{invoice}/cancel-payment-report', [App\Http\Controllers\Client\ClientInvoiceController::class, 'cancelPaymentReport'])->name('invoices.cancelPaymentReport');
+
 
   // Simulated payment route (if you keep it for other gateways)
   Route::post('/invoices/{invoice}/pay', [ClientInvoicePaymentController::class, 'store'])->name('invoices.payment.store');

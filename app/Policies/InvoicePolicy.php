@@ -28,7 +28,7 @@ class InvoicePolicy
             return true;
         }
         // Ensure client relationship is loaded for efficiency if not already
-        $invoice->loadMissing('client'); 
+        $invoice->loadMissing('client');
         if ($user->hasRole('reseller') && $invoice->client && $invoice->client->reseller_id === $user->id) {
             return true;
         }
@@ -101,5 +101,15 @@ class InvoicePolicy
     {
         // User must be the client of the invoice and the invoice must be unpaid.
         return $user->id === $invoice->client_id && $invoice->status === 'unpaid';
+    }
+
+    /**
+     * Determine whether the user can cancel a reported payment for the invoice.
+     */
+    public function cancelPaymentReport(User $user, Invoice $invoice): bool
+    {
+        // The user must be the client who owns the invoice,
+        // and the invoice must be in 'pending_confirmation' status.
+        return $user->id === $invoice->client_id && $invoice->status === 'pending_confirmation';
     }
 }

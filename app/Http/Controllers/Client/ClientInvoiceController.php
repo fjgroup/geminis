@@ -18,6 +18,7 @@ use Inertia\Inertia;
 use Exception; // Added for general \Exception
 use App\Models\ClientService; // Added for ClientService creation
 use Illuminate\Support\Facades\Log; // Ensure Log is imported
+use Illuminate\Support\Facades\Redirect; // Ensure Redirect facade is available if used directly
 
 class ClientInvoiceController extends Controller
 {
@@ -202,6 +203,61 @@ class ClientInvoiceController extends Controller
             Log::error("Error processing payment for invoice ID {$invoice->id} with balance: " . $e->getMessage(), ['exception' => $e->getTraceAsString()]);
             return redirect()->route('client.invoices.show', $invoice->id)
                              ->with('error', 'An error occurred while processing your payment. Please try again.');
+        }
+    }
+
+    /**
+     * Allows a client to cancel their previously reported manual payment
+     * if the invoice is still pending confirmation.
+     */
+    public function cancelPaymentReport(Invoice $invoice): RedirectResponse
+    {
+        // Authorization: Ensure the authenticated user owns this invoice
+        // Using 'update' policy assuming clients can update (which includes this action) invoices they own.
+        // Adjust if a more specific policy like 'cancelPaymentReport' is created.
+        $this->authorize('cancelPaymentReport', $invoice);
+
+        if ($invoice->status !== 'pending_confirmation') {
+            Log::warning("User " . Auth::id() . " attempted to cancel payment report for invoice {$invoice->id} which is not in 'pending_confirmation' status. Current status: {$invoice->status}");
+            return Redirect::route('client.invoices.show', $invoice->id)
+                             ->with('error', 'Este reporte de pago no puede ser anulado porque la factura no está pendiente de confirmación.');
+        }
+
+        DB::beginTransaction();
+        try {
+            // Find the latest pending payment transaction for this invoice
+            // This assumes that when a client reports a payment, a 'payment' type transaction is created with 'pending' status.
+            $paymentTransaction = $invoice->transactions()
+                ->where('type', 'payment')
+                ->where('status', 'pending')
+                ->latest('created_at') // Get the most recent one if multiple somehow exist
+                ->first();
+
+            if ($paymentTransaction) {
+                $paymentTransaction->status = 'client_cancelled'; // This is the line to ensure is correct
+                $paymentTransaction->save();
+                Log::info("Payment transaction ID {$paymentTransaction->id} for invoice {$invoice->id} was cancelled by client " . Auth::id());
+            } else {
+                // This case might indicate an inconsistency, as an invoice 'pending_confirmation'
+                // should ideally have a corresponding 'pending' payment transaction.
+                Log::warning("No pending payment transaction found for invoice {$invoice->id} (status 'pending_confirmation') when client " . Auth::id() . " tried to cancel payment report.");
+            }
+
+            $invoice->status = 'unpaid';
+            // Optionally, clear paid_date if it was set, though for pending_confirmation it usually wouldn't be.
+            // $invoice->paid_date = null;
+            $invoice->save();
+
+            DB::commit();
+
+            return Redirect::route('client.invoices.show', $invoice->id)
+                             ->with('success', 'Tu reporte de pago ha sido anulado. La factura está nuevamente marcada como no pagada.');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error("Error when client " . Auth::id() . " tried to cancel payment report for invoice {$invoice->id}: " . $e->getMessage(), ['exception' => $e]);
+            return Redirect::route('client.invoices.show', $invoice->id)
+                             ->with('error', 'Ocurrió un error al intentar anular tu reporte de pago. Por favor, inténtalo de nuevo.');
         }
     }
 }
