@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Support\Facades\Log; // ¡Añadir esta línea!
 use Illuminate\Support\Facades\DB; // ¡Añadir esta línea!
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -137,4 +138,19 @@ class ClientService extends Model
         }
     }
 
+    /**
+     * Get invoices associated with this client service where item_type is 'renewal'.
+     * These are potential invoices generated for the renewal of this service.
+     */
+    public function renewalInvoices(): HasManyThrough
+    {
+        return $this->hasManyThrough(
+            Invoice::class,       // The final model we want to access
+            InvoiceItem::class,   // The intermediate model
+            'client_service_id',  // Foreign key on InvoiceItem table (links to ClientService)
+            'id',                 // Foreign key on Invoice table (links to InvoiceItem's invoice_id)
+            'id',                 // Local key on ClientService table
+            'invoice_id'          // Local key on InvoiceItem table
+        )->where('invoice_items.item_type', 'renewal'); // Filter items to be of type 'renewal'
+    }
 }
