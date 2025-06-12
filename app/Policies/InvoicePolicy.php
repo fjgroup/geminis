@@ -112,4 +112,14 @@ class InvoicePolicy
         // and the invoice must be in 'pending_confirmation' status.
         return $user->id === $invoice->client_id && $invoice->status === 'pending_confirmation';
     }
+
+    /**
+     * Determine whether the user can request cancellation for a new service invoice.
+     */
+    public function requestCancellationForNewServiceInvoice(User $user, Invoice $invoice): bool
+    {
+        // Check if the user is the client who owns the invoice
+        // and if the invoice is cancellable as a new service.
+        return $user->id === $invoice->client_id && $invoice->isCancellableAsNewService();
+    }
 }

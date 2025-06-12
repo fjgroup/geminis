@@ -122,7 +122,7 @@ Route::middleware(['auth', 'verified', 'role.reseller'])->prefix('reseller-panel
 
 
 // Rutas para el área de cliente
-Route::prefix('client')->name('client.')->middleware(['auth'])->group(function () {
+Route::prefix('client')->name('client.')->middleware(['auth', 'verified'])->group(function () { // Added 'verified' middleware
   // Ruta para el dashboard de cliente
   Route::get('/', [ClientDashboardController::class, 'index'])->name('dashboard'); // Route for client dashboard
 
@@ -207,6 +207,9 @@ Route::prefix('client')->name('client.')->middleware(['auth'])->group(function (
 
     // Ruta para solicitar renovación de servicio
     Route::post('/services/{service}/request-renewal', [ClientServiceController::class, 'requestRenewal'])->name('services.requestRenewal');
+
+    // Ruta para solicitar la cancelación de una nueva orden/factura
+    Route::post('/invoices/{invoice}/cancel-new-order', [App\Http\Controllers\Client\ClientInvoiceController::class, 'requestInvoiceCancellation'])->name('invoices.cancelNewOrder');
 });
 
 // Comment out or remove the existing landing page route

@@ -72,7 +72,7 @@ class ClientServicePolicy
             return true;
         }
         // Ensure client relationship is loaded for efficiency
-        $service->loadMissing('client'); 
+        $service->loadMissing('client');
         if ($user->hasRole('reseller') && $service->client && $service->client->reseller_id === $user->id) {
             return true;
         }
@@ -91,7 +91,7 @@ class ClientServicePolicy
      */
     public function requestCancellation(User $user, ClientService $clientService): bool
     {
-        return $user->id === $clientService->client_id && $clientService->status === 'Active';
+        return $user->id === $clientService->client_id && in_array($clientService->status, ['Active', 'Suspended']);
     }
 
     /**

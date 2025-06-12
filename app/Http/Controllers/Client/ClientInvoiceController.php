@@ -260,4 +260,49 @@ class ClientInvoiceController extends Controller
                              ->with('error', 'Ocurrió un error al intentar anular tu reporte de pago. Por favor, inténtalo de nuevo.');
         }
     }
+
+    /**
+     * Request cancellation of an invoice and its associated pending services.
+     *
+     * @param Invoice $invoice
+     * @return RedirectResponse
+     */
+    public function requestInvoiceCancellation(Invoice $invoice): RedirectResponse
+    {
+        $this->authorize('requestCancellationForNewServiceInvoice', $invoice);
+
+        DB::beginTransaction();
+
+        try {
+            $invoice->status = 'cancelled';
+
+            // Load items and their related client services if not already loaded
+            $invoice->loadMissing('items.clientService');
+
+            foreach ($invoice->items as $item) {
+                // Check if the item has a related client service and if that service is pending
+                if ($item->clientService && $item->clientService->status === 'pending') {
+                    $item->clientService->status = 'cancelled';
+                    $item->clientService->save();
+                }
+            }
+
+            $invoice->save();
+
+            DB::commit();
+
+            return redirect()->route('client.invoices.show', $invoice)
+                             ->with('success', 'La factura y los servicios pendientes asociados han sido cancelados.');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error("Error requesting invoice cancellation for Invoice ID {$invoice->id}: " . $e->getMessage(), [
+                'invoice_id' => $invoice->id,
+                'user_id' => Auth::id(),
+                'exception' => $e
+            ]);
+            return redirect()->route('client.invoices.show', $invoice)
+                             ->with('error', 'Ocurrió un error al intentar cancelar la factura.');
+        }
+    }
 }

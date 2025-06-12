@@ -24,12 +24,11 @@ const formatCurrency = (amount, currencyCode = 'USD') => {
 // Función de utilidad para formatear fechas
 const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
-    if (dateString.length <= 10) { // Es solo fecha, sin hora
-        const [year, month, day] = dateString.split('-');
-        return new Date(year, month - 1, day).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
-    }
-    // Para datetime completo
-    return new Date(dateString).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    // Siempre mostrar solo la fecha, independientemente de si la cadena de entrada tiene hora.
+    // La creación del objeto Date a partir de la cadena ISO (YYYY-MM-DD o YYYY-MM-DD HH:MM:SS)
+    // manejará correctamente la parte de la fecha.
+    const date = new Date(dateString);
+    return date.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
 };
 
 // Actualizada para incluir todos los estados de Invoice
@@ -91,14 +90,6 @@ const getInvoiceStatusClass = (status) => {
                                         Emitida
                                     </th>
                                     <th scope="col"
-                                        class="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase dark:text-gray-400">
-                                        Vencimiento
-                                    </th>
-                                    <th scope="col"
-                                        class="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase dark:text-gray-400">
-                                        Solicitada
-                                    </th>
-                                    <th scope="col"
                                         class="px-6 py-3 text-xs font-medium tracking-wider text-right text-gray-500 uppercase dark:text-gray-400">
                                         Total
                                     </th>
@@ -124,14 +115,6 @@ const getInvoiceStatusClass = (status) => {
                                             {{ formatDate(invoice.issue_date) }}
                                         </td>
                                         <td
-                                            class="px-6 py-4 text-sm text-gray-500 whitespace-nowrap dark:text-gray-300">
-                                            {{ formatDate(invoice.due_date) }}
-                                        </td>
-                                        <td
-                                            class="px-6 py-4 text-sm text-gray-500 whitespace-nowrap dark:text-gray-300">
-                                            {{ formatDate(invoice.requested_date) }}
-                                        </td>
-                                        <td
                                             class="px-6 py-4 text-sm text-right text-gray-500 whitespace-nowrap dark:text-gray-300">
                                             {{ formatCurrency(invoice.total_amount, invoice.currency_code) }}
                                         </td>
@@ -148,14 +131,14 @@ const getInvoiceStatusClass = (status) => {
                                         </td>
                                     </tr>
                                     <tr v-else>
-                                        <td colspan="7"
+                                        <td colspan="5"
                                             class="px-6 py-4 text-sm text-center text-red-500 whitespace-nowrap dark:text-red-400">
                                             Error: Se encontró un dato de factura inválido (índice: {{ index }}).
                                         </td>
                                     </tr>
                                 </template>
                                 <tr v-if="invoices.data && invoices.data.length === 0">
-                                    <td colspan="7"
+                                    <td colspan="5"
                                         class="px-6 py-4 text-sm text-center text-gray-500 whitespace-nowrap dark:text-gray-400">
                                         No tienes facturas disponibles.
                                     </td>

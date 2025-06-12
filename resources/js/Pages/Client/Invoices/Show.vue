@@ -58,13 +58,8 @@ const formatCurrency = (amount, currencyCode = "USD") => {
 
 const formatDate = (datetime) => {
     if (!datetime) return 'N/A';
-    const date = new Date(datetime);
-    // Ajustar para asegurar que la fecha se interprete correctamente (ej. si es solo YYYY-MM-DD)
-    if (datetime.length <= 10) { // Es solo fecha, sin hora
-        const [year, month, day] = datetime.split('-');
-        return new Date(year, month - 1, day).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
-    }
-    return date.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    const date = new Date(datetime); // Handles both 'YYYY-MM-DD' and full ISO strings
+    return date.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
 };
 
 const getFriendlyInvoiceStatusText = (status) => {
@@ -179,6 +174,60 @@ const cancelPaymentReportHandler = (invoiceId) => {
         });
     }
 };
+
+const isUnpaidInvoice = computed(() => {
+    return props.invoice.status === 'unpaid';
+});
+
+const canAttemptCancellation = computed(() => {
+    if (props.invoice.status !== 'unpaid') {
+        return false;
+    }
+    if (props.invoice.items && props.invoice.items.length > 0) {
+        const hasNewServiceItem = props.invoice.items.some(item => item.item_type === 'new_service' || item.item_type === 'web-hosting');
+        const hasRenewalItem = props.invoice.items.some(item => item.item_type === 'renewal');
+        // Allow cancellation if there's at least one new service item and no renewal items.
+        return hasNewServiceItem && !hasRenewalItem;
+    }
+    return false; // No items, can't determine
+});
+
+const requestCancelNewServiceOrder = (invoiceId) => {
+    if (confirm('¿Estás seguro de que deseas cancelar este pedido de nuevo servicio? Esta acción no se puede deshacer y los servicios asociados que estén pendientes también se cancelarán.')) {
+        router.post(route('client.invoices.cancelNewOrder', { invoice: invoiceId }), {}, {
+            preserveScroll: true,
+            // onSuccess and onError will be handled by global flash messages
+        });
+    }
+};
+
+const isUnpaidRenewalOfRelevantService = computed(() => {
+    if (!props.invoice || props.invoice.status !== 'unpaid') {
+        return false;
+    }
+
+    if (!props.invoice.items || props.invoice.items.length === 0) {
+        return false;
+    }
+
+    return props.invoice.items.some(item => {
+        return item.item_type === 'renewal' &&
+               item.client_service_id &&
+               item.clientService &&
+               (item.clientService.status === 'Active' || item.clientService.status === 'Suspended'); // Changed to capitalized
+    });
+});
+
+const confirmServiceCancellationFromInvoice = (event, serviceId, serviceName) => {
+    event.preventDefault();
+    const message = `¿Estás seguro de que deseas solicitar la cancelación para el servicio "${serviceName || serviceId}"? Esto NO cancela la factura inmediatamente, pero inicia el proceso para dar de baja el servicio.`;
+    if (confirm(message)) {
+        router.post(route('client.services.requestCancellation', { service: serviceId }), { source_invoice_id: props.invoice.id }, {
+            preserveScroll: true,
+            // onSuccess: (page) => { /* Optional: specific feedback */ }
+        });
+    }
+};
 </script>
 
 <template>
@@ -234,6 +283,20 @@ const cancelPaymentReportHandler = (invoiceId) => {
                             </div>
                         </div>
                         <!-- Fin Información del Pago -->
+
+                        <!-- Sección para Cancelar Pedido de Nuevo Servicio (si aplica) -->
+                        <div v-if="canAttemptCancellation.value && !isUnpaidRenewalOfRelevantService.value"
+                            class="p-4 mt-3 mb-4 text-sm border border-gray-200 rounded-md dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50">
+                            <h4 class="mb-1 font-semibold text-gray-800 text-md dark:text-gray-100">Acciones Adicionales</h4>
+                            <p class="mb-3 text-xs text-gray-600 dark:text-gray-400">
+                                Si ya no deseas este pedido de nuevo servicio, puedes cancelarlo aquí.
+                            </p>
+                            <PrimaryButton
+                                @click="requestCancelNewServiceOrder(invoice.id)"
+                                class="px-4 py-2 text-xs font-semibold text-white bg-orange-500 hover:bg-orange-600 focus:ring-orange-400">
+                                Cancelar Factura
+                            </PrimaryButton>
+                        </div>
 
                         <!-- Flash Messages -->
                         <div v-if="$page.props.flash && $page.props.flash.success"
@@ -429,46 +492,81 @@ const cancelPaymentReportHandler = (invoiceId) => {
 
                         <!-- Payment Options -->
                         <div class="mt-6 space-y-4 text-center">
-                            <div v-if="invoice.status === 'unpaid' && user && user.balance > 0">
-                                <PrimaryButton @click="payInvoiceUsingBalance(invoice.id)"
-                                    :disabled="!canPayWithBalance"
-                                    class="px-6 py-3 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-opacity-50 disabled:opacity-50"
-                                    :class="canPayWithBalance ? 'bg-green-600 hover:bg-green-700 focus:ring-green-500' : 'bg-gray-400 cursor-not-allowed'">
-                                    <span v-if="canPayWithBalance">Pagar con Saldo (Disponible: {{
-                                        user.formatted_balance
-                                    }})</span>
-                                    <span v-else>Saldo Insuficiente (Disponible: {{ user.formatted_balance }})</span>
-                                </PrimaryButton>
-                                <p v-if="hasSomeBalance && !canPayWithBalance"
-                                    class="mt-2 text-sm text-yellow-600 dark:text-yellow-400">
+                            <div v-if="invoice.status === 'unpaid' && !isUnpaidRenewalOfRelevantService.value">
+                                <!-- 1. Introductory Text -->
+                                <p class="mb-3 text-sm text-gray-700 dark:text-gray-300">
+                                    Selecciona un método de pago o informa un pago manual:
+                                </p>
+                                <hr class="my-4 dark:border-gray-600" v-if="user && user.balance > 0">
+
+                                <!-- 2. Flex Container for ALL three payment action items -->
+                                <div class="flex flex-wrap items-center justify-center gap-3 py-2 md:gap-4">
+
+                                    <!-- 2a. Pagar con Saldo Button -->
+                                    <div v-if="user && user.balance > 0">
+                                        <PrimaryButton @click="payInvoiceUsingBalance(invoice.id)"
+                                            :disabled="!canPayWithBalance"
+                                            :class="canPayWithBalance ? 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500' : 'bg-gray-400 cursor-not-allowed'"
+                                            class="px-6 py-3 text-sm font-medium text-white rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-opacity-50 disabled:opacity-50">
+                                            <span v-if="canPayWithBalance">
+                                                Pagar con Saldo
+                                                <template v-if="user && user.formatted_balance">(Disponible: {{ user.formatted_balance }})</template>
+                                            </span>
+                                            <span v-else>
+                                                Saldo Insuficiente
+                                                <template v-if="user && user.formatted_balance">(Disponible: {{ user.formatted_balance }})</template>
+                                                <template v-else>(Saldo no disponible)</template>
+                                            </span>
+                                        </PrimaryButton>
+                                    </div>
+
+                                    <!-- 2b. Informar Pago Manual Link/Button -->
+                                    <Link :href="route('client.invoices.manualPayment.create', { invoice: invoice.id })">
+                                        <PrimaryButton class="px-6 py-3 text-sm font-medium text-white bg-blue-600 rounded-md shadow-sm hover:bg-blue-700 focus:ring-blue-500 focus:outline-none focus:ring-2 focus:ring-opacity-50">
+                                            Informar Pago Manual
+                                        </PrimaryButton>
+                                    </Link>
+
+                                    <!-- 2c. Pagar con PayPal Link/Button -->
+                                    <Link :href="route('client.paypal.checkout', { invoice: invoice.id })">
+                                        <button type="button" class="inline-flex items-center px-6 py-3 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                            Pagar con PayPal
+                                        </button>
+                                    </Link>
+                                </div>
+
+                                <!-- 3. Insufficient Balance Text (if applicable, AFTER the flex container) -->
+                                <p v-if="hasSomeBalance && !canPayWithBalance" class="mt-3 text-sm text-yellow-600 dark:text-yellow-400">
                                     Tu saldo actual no es suficiente para cubrir el monto total de esta factura.
-                                    Necesitas {{ formatCurrency(parseFloat(props.invoice.total_amount) -
-                                        parseFloat(user.value.balance), props.invoice.currency_code) }} más.
+                                    Necesitas {{ formatCurrency(parseFloat(props.invoice.total_amount) - parseFloat(user.value.balance), props.invoice.currency_code) }} más.
                                 </p>
                             </div>
 
-                            <div v-if="invoice.status === 'unpaid'">
-                                <hr class="my-4 dark:border-gray-600" v-if="user && user.balance > 0">
-                                <p class="mb-2 text-sm text-gray-700 dark:text-gray-300">¿O ya realizaste el pago por
-                                    otro medio
-                                    (transferencia, depósito)?</p>
-                                <Link :href="route('client.invoices.manualPayment.create', { invoice: invoice.id })"
-                                    class="mr-2">
-                                <PrimaryButton class="bg-blue-600 hover:bg-blue-700 focus:ring-blue-500">Informar Pago
-                                    Manual
-                                </PrimaryButton>
-                                </Link>
-                            </div>
-                            <div v-if="invoice.status === 'unpaid'" class="mt-2">
-                                <Link :href="route('client.paypal.checkout', { invoice: invoice.id })"
-                                    class="inline-flex items-center px-4 py-2 text-xs font-semibold tracking-widest text-white uppercase transition duration-150 ease-in-out bg-blue-500 border border-transparent rounded-md hover:bg-blue-600 active:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
-                                Pagar con PayPal
-                                </Link>
-                            </div>
-
-                            <div v-if="!['unpaid', 'pending_confirmation'].includes(invoice.status)"
+                            <div v-if="!['unpaid', 'pending_confirmation'].includes(invoice.status) && !isUnpaidRenewalOfRelevantService.value"
                                 class="text-sm text-gray-600 dark:text-gray-400">
                                 Esta factura no está actualmente pendiente de pago.
+                            </div>
+                        </div>
+
+                        <!-- New Section for Renewal Invoice Actions -->
+                        <div v-if="isUnpaidRenewalOfRelevantService.value" class="p-6 mt-6 border border-yellow-300 rounded-md bg-yellow-50 dark:bg-gray-800 dark:border-yellow-700">
+                            <h4 class="mb-3 text-lg font-semibold text-yellow-800 dark:text-yellow-200">Acción Requerida para Renovación</h4>
+                            <p class="mb-4 text-sm text-yellow-700 dark:text-yellow-300">
+                                Esta factura es para la renovación de uno de sus servicios existentes.
+                                Si ya no desea continuar con este servicio, por favor, solicite su cancelación directamente.
+                                Ignorar esta factura no cancelará el servicio automáticamente y podría llevar a suspensiones.
+                            </p>
+
+                            <div v-for="item in invoice.items" :key="item.id" class="mt-2">
+                                <template v-if="item.item_type === 'renewal' && item.client_service_id && item.clientService && (item.clientService.status === 'Active' || item.clientService.status === 'Suspended')"> {/* Changed to capitalized */}
+                                    <Link :href="route('client.services.requestCancellation', { service: item.client_service_id })"
+                                          method="post"
+                                          as="button"
+                                          class="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                                          @click.prevent="confirmServiceCancellationFromInvoice($event, item.client_service_id, item.clientService.domain_name || item.clientService.product?.name)">
+                                        Solicitar Cancelación del Servicio: {{ item.clientService.domain_name || item.clientService.product?.name || 'Servicio ID ' + item.client_service_id }}
+                                    </Link>
+                                </template>
                             </div>
                         </div>
 

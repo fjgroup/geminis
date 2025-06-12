@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne; // Added HasOne import
+use App\Models\ClientService; // Added ClientService import
 
 class Invoice extends Model
 {
@@ -84,5 +85,37 @@ class Invoice extends Model
     public function transactions(): HasMany
     {
         return $this->hasMany(Transaction::class);
+    }
+
+    /**
+     * Check if the invoice can be cancelled as a new service.
+     *
+     * @return bool
+     */
+    public function isCancellableAsNewService(): bool
+    {
+        if ($this->status !== 'unpaid') {
+            return false;
+        }
+
+        $this->loadMissing(['items', 'items.clientService']);
+
+        foreach ($this->items as $item) {
+            // Allow cancellation if item types are 'new_service' or 'web-hosting'
+            if (!in_array($item->item_type, ['new_service', 'web-hosting'])) {
+                return false;
+            }
+
+            if ($item->client_service_id !== null) {
+                if ($item->clientService) {
+                    $status = $item->clientService->status;
+                    if ($status === 'active' || $status === 'suspended') {
+                        return false;
+                    }
+                }
+            }
+        }
+
+        return true;
     }
 }

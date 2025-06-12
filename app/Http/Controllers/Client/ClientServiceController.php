@@ -65,27 +65,55 @@ class ClientServiceController extends Controller
     {
         $this->authorize('requestCancellation', $service);
 
-        if ($service->status !== 'Active') {
+        // Allow cancellation for 'Active' or 'Suspended' services.
+        // Note: ClientServicePolicy@requestCancellation might also need adjustment.
+        if (!in_array($service->status, ['Active', 'Suspended'])) {
             return redirect()->back()->with('error', 'This service cannot be cancelled at its current stage.');
         }
 
         DB::beginTransaction();
 
         try {
+            $sourceInvoiceId = $request->input('source_invoice_id');
+
             $originalStatus = $service->status;
             $service->status = 'Cancellation Requested'; // Consistent status value
             $service->save();
 
-            // OrderActivity::create([...]) // ELIMINADO
+            if ($sourceInvoiceId) {
+                $invoice = \App\Models\Invoice::where('id', $sourceInvoiceId)
+                                    ->where('client_id', $request->user()->id) // Ensure invoice belongs to user
+                                    ->where('status', 'unpaid')
+                                    ->first();
+
+                if ($invoice) {
+                    // Further check: ensure this invoice is indeed for the service being cancelled.
+                    $isRenewalForThisService = $invoice->items()->where('client_service_id', $service->id)
+                                                        ->where('item_type', 'renewal')
+                                                        ->exists();
+
+                    if ($isRenewalForThisService) {
+                        $invoice->status = 'cancelled';
+                        $invoice->save();
+                        Log::info("Source renewal invoice ID {$invoice->id} cancelled due to service ID {$service->id} cancellation request by user ID {$request->user()->id}.");
+                    } else {
+                        Log::warning("Service cancellation for service ID {$service->id}: Source invoice ID {$sourceInvoiceId} provided but it's not a valid renewal invoice for this service for user ID {$request->user()->id}.");
+                    }
+                } else {
+                    Log::warning("Service cancellation for service ID {$service->id}: Source invoice ID {$sourceInvoiceId} provided but not found, not owned by user {$request->user()->id}, or not unpaid.");
+                }
+            }
+
             DB::commit();
 
-            return redirect()->route('client.services.index')->with('success', 'Service cancellation requested successfully.');
+            return redirect()->route('client.services.index')->with('success', 'Service cancellation requested successfully. Any associated unpaid renewal invoice has also been cancelled.');
 
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Service cancellation request failed: ' . $e->getMessage(), [
                 'client_service_id' => $service->id,
-                'user_id' => Auth::id(),
+                'user_id' => $request->user()->id, // Changed Auth::id() to $request->user()->id for consistency
+                'source_invoice_id' => $sourceInvoiceId ?? null,
                 'exception' => $e
             ]);
             return redirect()->back()->with('error', 'Could not process cancellation request. Please try again.');
