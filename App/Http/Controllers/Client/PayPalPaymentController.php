@@ -161,4 +161,3 @@ class PayPalPaymentController extends Controller
         }
     }
 }
-```
