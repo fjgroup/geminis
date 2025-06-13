@@ -5,10 +5,12 @@ namespace App\Http\Controllers\Client;
 use App\Http\Controllers\Controller;
 use App\Models\Invoice;
 use App\Models\Transaction; // Added for future use
+use App\Models\PaymentMethod; // Import PaymentMethod model
 use App\Services\PayPalService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Inertia\Inertia;
 // Remove Illuminate\Support\Facades\Redirect; if using redirect() helper
 // Remove use Carbon\Carbon; if using now() helper
 
@@ -41,8 +43,8 @@ class PayPalPaymentController extends Controller
 
         try {
             // Estas rutas se definirán más adelante. Asegúrate de que los nombres coincidan.
-            $successUrl = route('paypal.payment.success');
-            $cancelUrl = route('paypal.payment.cancel');
+            $successUrl = route('client.paypal.payment.success');
+            $cancelUrl = route('client.paypal.payment.cancel');
 
             $paypalOrder = $this->payPalService->createOrder($invoice, $successUrl, $cancelUrl);
 
@@ -50,7 +52,7 @@ class PayPalPaymentController extends Controller
                 $request->session()->put('paypal_payment_order_id', $paypalOrder['order_id']); // Usar paypal_payment_order_id para claridad
                 $request->session()->put('paypal_invoice_id', $invoice->id); // Para referencia al volver
 
-                return redirect()->away($paypalOrder['approval_link']);
+                return Inertia::location($paypalOrder['approval_link']);
             } else {
                 // Log::error("No se pudo obtener el enlace de aprobación de PayPal para la factura ID {$invoice->id}.");
                  // Asumiendo que tienes una ruta 'client.invoices.show' o similar
@@ -102,10 +104,12 @@ class PayPalPaymentController extends Controller
                 $invoice->paid_date = now(); // Or Carbon::parse($captureResponse['full_response']['purchase_units'][0]['payments']['captures'][0]['create_time'])
                 $invoice->save();
 
+                $paypalPaymentMethod = PaymentMethod::where('slug', 'paypal')->first();
+
                 Transaction::create([
                     'client_id' => $invoice->client_id,
                     'invoice_id' => $invoice->id,
-                    'payment_method_id' => null, // Or a specific ID for PayPal
+                    'payment_method_id' => $paypalPaymentMethod ? $paypalPaymentMethod->id : null,
                     'gateway_slug' => 'paypal',
                     'gateway_transaction_id' => $captureResponse['paypal_capture_id'],
                     'amount' => $invoice->total_amount, // Consistent with invoice

@@ -23,6 +23,7 @@ class DatabaseSeeder extends Seeder
         $this->call([
             BillingCycleSeeder::class,
             ProductTypeSeeder::class, // Added ProductTypeSeeder
+            PaymentMethodSeeder::class, // Se añade PaymentMethodSeeder
         ]);
     }
 }

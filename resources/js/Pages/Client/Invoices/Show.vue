@@ -38,7 +38,9 @@ const paymentInfo = computed(() => {
     }
 
     return {
-        method: relevantTransaction.value?.payment_method?.name || (relevantTransaction.value?.gateway_slug === 'balance' ? 'Saldo de Cuenta' : 'No especificado'),
+        method: relevantTransaction.value?.payment_method?.name ||
+                (relevantTransaction.value?.gateway_slug === 'balance' ? 'Saldo de Cuenta' :
+                'No especificado'),
         transactionId: relevantTransaction.value?.gateway_transaction_id || 'N/A',
         date: dateToShow,
     };
