@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Interfaces\PaymentGatewayInterface;
 use App\Models\Invoice;
 use App\Models\Transaction;
+use App\Models\PaymentMethod; // Import PaymentMethod model
 // use App\Models\Order; // Removed
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -212,11 +213,13 @@ class PaypalGatewayService implements PaymentGatewayInterface
                 $invoice->paid_date = Carbon::parse($webhookResource['create_time'] ?? now());
                 $invoice->save();
 
+                $paypalPaymentMethod = PaymentMethod::where('slug', 'paypal')->first();
+
                 Transaction::create([
                     'client_id' => $invoice->client_id,
                     'invoice_id' => $invoice->id,
                     // 'order_id' => $invoice->order_id, // LÍNEA ELIMINADA
-                    'payment_method_id' => null, // Asumiendo que se asigna después o no es relevante para PayPal directo
+                    'payment_method_id' => $paypalPaymentMethod ? $paypalPaymentMethod->id : null,
                     'gateway_slug' => 'paypal',
                     'gateway_transaction_id' => $paypalCaptureId,
                     'amount' => $paypalAmount,

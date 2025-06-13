@@ -11,6 +11,7 @@ class PaymentMethod extends Model
 
     protected $fillable = [
         'name',
+        'slug', // Nuevo campo añadido
         'type', // Added
         'account_holder_name',
         'identification_number', // Added
@@ -24,11 +25,13 @@ class PaymentMethod extends Model
         'iban',
         'instructions',
         'is_active',
+        'is_automatic', // Nuevo campo añadido
         'logo_url',
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
+        'is_automatic' => 'boolean', // Cast for the new field
         // 'type' => PaymentMethodTypeEnum::class, // Example if using Enums in future
     ];
 
