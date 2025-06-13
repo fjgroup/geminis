@@ -6,6 +6,7 @@ use App\Interfaces\PaymentGatewayInterface;
 use App\Models\Invoice;
 use App\Models\Transaction;
 use App\Models\PaymentMethod; // Import PaymentMethod model
+use App\Services\ServiceProvisioningService; // Import the new service
 // use App\Models\Order; // Removed
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -18,11 +19,13 @@ use Illuminate\Support\Carbon;
 class PaypalGatewayService implements PaymentGatewayInterface
 {
     protected PayPalClient $payPalClient;
+    protected ServiceProvisioningService $serviceProvisioningService;
 
-    public function __construct()
+    public function __construct(ServiceProvisioningService $serviceProvisioningService)
     {
         $this->payPalClient = new PayPalClient(config('paypal'));
         $this->payPalClient->setApiCredentials(config('paypal'));
+        $this->serviceProvisioningService = $serviceProvisioningService;
     }
 
     /**
@@ -232,6 +235,12 @@ class PaypalGatewayService implements PaymentGatewayInterface
                 ]);
 
                 DB::commit();
+
+                Log::info("[PaypalGatewayService] Attempting to provision services for Invoice ID: {$invoice->id} after webhook processing.");
+                // La factura ($invoice) ya ha sido actualizada y guardada, y la transacción commiteada.
+                // El ServiceProvisioningService cargará las relaciones necesarias de la factura.
+                $this->serviceProvisioningService->provisionServicesForInvoice($invoice);
+
                 Log::info("PaypalGatewayService (PAYMENT.CAPTURE.COMPLETED): Processed for Invoice ID {$invoice->id}.");
                 return ['status' => 'success', 'message' => 'Webhook processed successfully. Invoice marked as paid.'];
 

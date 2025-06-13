@@ -7,6 +7,7 @@ use App\Models\Invoice;
 use App\Models\Transaction; // Added for future use
 use App\Models\PaymentMethod; // Import PaymentMethod model
 use App\Services\PayPalService;
+use App\Services\ServiceProvisioningService; // Import the new service
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -16,11 +17,15 @@ use Inertia\Inertia;
 
 class PayPalPaymentController extends Controller
 {
-    protected $payPalService;
+    protected PayPalService $payPalService;
+    protected ServiceProvisioningService $serviceProvisioningService;
 
-    public function __construct(PayPalService $payPalService)
-    {
+    public function __construct(
+        PayPalService $payPalService,
+        ServiceProvisioningService $serviceProvisioningService
+    ) {
         $this->payPalService = $payPalService;
+        $this->serviceProvisioningService = $serviceProvisioningService;
         // Ejemplo: $this->middleware('auth'); // Aplicar a todos los métodos o especificar
     }
 
@@ -122,6 +127,12 @@ class PayPalPaymentController extends Controller
                 ]);
 
                 Log::info("Payment captured successfully via controller for PayPal Order ID: {$orderId}, Invoice ID: {$invoiceId}. Capture ID: " . ($captureResponse['paypal_capture_id'] ?? 'N/A'));
+
+                // Provision services
+                Log::info("Attempting to provision services for Invoice ID: {$invoiceId} after PayPal payment.");
+                $this->serviceProvisioningService->provisionServicesForInvoice($invoice);
+                // The ServiceProvisioningService is expected to handle invoice status updates (e.g., to 'pending_activation')
+                // and save the invoice if its status changes. The $invoice object is already 'paid' here.
 
                 $request->session()->forget('paypal_payment_order_id');
                 $request->session()->forget('paypal_invoice_id');
