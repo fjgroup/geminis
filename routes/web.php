@@ -47,6 +47,7 @@ use App\Http\Controllers\Client\TransactionController as ClientTransactionContro
 use App\Http\Controllers\Client\ClientManualPaymentController; // Import the manual payment controller
 use App\Http\Controllers\Client\ClientFundAdditionController; // Import the fund addition controller
 use App\Http\Controllers\Client\PayPalController; // Import the PayPalController
+use App\Http\Controllers\Client\PayPalPaymentController; // Import the new PayPalPaymentController
 use App\Http\Controllers\Admin\AdminProductTypeController; // Import the new ProductTypeController
 use App\Http\Controllers\LandingPageController; // Import the new LandingPageController
 use App\Http\Controllers\Reseller\ResellerClientController;
@@ -147,10 +148,15 @@ Route::prefix('client')->name('client.')->middleware(['auth', 'verified'])->grou
   // Simulated payment route (if you keep it for other gateways)
   Route::post('/invoices/{invoice}/pay', [ClientInvoicePaymentController::class, 'store'])->name('invoices.payment.store');
 
-  // PayPal Routes
-  Route::get('/paypal/checkout/{invoice}', [PayPalController::class, 'checkout'])->name('paypal.checkout');
-  Route::get('/paypal/return/{invoice}', [PayPalController::class, 'success'])->name('paypal.success'); // Changed from PayerReturn to success
-  Route::get('/paypal/cancel/{invoice}', [PayPalController::class, 'cancel'])->name('paypal.cancel');
+  // Old PayPal Routes (Commented out)
+  // Route::get('/paypal/checkout/{invoice}', [PayPalController::class, 'checkout'])->name('paypal.checkout');
+  // Route::get('/paypal/return/{invoice}', [PayPalController::class, 'success'])->name('paypal.success'); // Changed from PayerReturn to success
+  // Route::get('/paypal/cancel/{invoice}', [PayPalController::class, 'cancel'])->name('paypal.cancel');
+
+  // New PayPal Payment Routes
+  Route::get('/paypal/payment/create/{invoice}', [PayPalPaymentController::class, 'createPayment'])->name('paypal.payment.create');
+  Route::get('/paypal/payment/success', [PayPalPaymentController::class, 'handlePaymentSuccess'])->name('paypal.payment.success');
+  Route::get('/paypal/payment/cancel', [PayPalPaymentController::class, 'handlePaymentCancel'])->name('paypal.payment.cancel');
 
   // Rutas para la gestión de transacciones de cliente
   Route::get('/transactions', [App\Http\Controllers\Client\ClientTransactionController::class, 'index'])->name('transactions.index');
