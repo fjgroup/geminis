@@ -41,8 +41,8 @@ class PayPalPaymentController extends Controller
 
         try {
             // Estas rutas se definirán más adelante. Asegúrate de que los nombres coincidan.
-            $successUrl = route('paypal.payment.success');
-            $cancelUrl = route('paypal.payment.cancel');
+            $successUrl = route('client.paypal.payment.success');
+            $cancelUrl = route('client.paypal.payment.cancel');
 
             $paypalOrder = $this->payPalService->createOrder($invoice, $successUrl, $cancelUrl);
 
