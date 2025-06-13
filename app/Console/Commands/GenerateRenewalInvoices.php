@@ -131,7 +131,7 @@ class GenerateRenewalInvoices extends Command
                     'invoice_id' => $invoice->id,
                     'client_service_id' => $service->id, // Link to the client service being renewed
                     'product_id' => $service->product_id,
-                    'item_description' => "Renovación: {$productName} " . ($service->domain_name ? "({$service->domain_name})" : "") . " - Ciclo: {$billingCycleName}",
+                    'description' => "Renovación: {$productName} " . ($service->domain_name ? "({$service->domain_name})" : "") . " - Ciclo: {$billingCycleName}",
                     'quantity' => 1,
                     'unit_price' => $service->billing_amount,
                     'total_price' => $service->billing_amount,
