@@ -96,5 +96,62 @@ class PayPalService
     // Futuros métodos:
     // public function captureOrder(string $orderId): ?array
     // public function verifyWebhookSignature(array $data, string $signature): bool
+
+    /**
+     * Captura un pago para una orden de PayPal existente.
+     *
+     * @param string $paypalOrderId El ID de la orden de PayPal a capturar.
+     * @return array Un array con el resultado de la captura.
+     */
+    public function captureOrder(string $paypalOrderId): array
+    {
+        try {
+            // Asegurarse de que el token de acceso está fresco si es necesario
+            $this->payPalClient->getAccessToken();
+
+            $response = $this->payPalClient->capturePaymentOrder($paypalOrderId);
+
+            Log::info("PayPal Capture Order Response for Order ID {$paypalOrderId}: ", $response);
+
+            if (isset($response['status']) && $response['status'] === 'COMPLETED') {
+                $captureId = null;
+                $feeAmount = null;
+
+                if (isset($response['purchase_units'][0]['payments']['captures'][0]['id'])) {
+                    $captureId = $response['purchase_units'][0]['payments']['captures'][0]['id'];
+                }
+                if (isset($response['purchase_units'][0]['payments']['captures'][0]['seller_receivable_breakdown']['paypal_fee']['value'])) {
+                    $feeAmount = $response['purchase_units'][0]['payments']['captures'][0]['seller_receivable_breakdown']['paypal_fee']['value'];
+                }
+
+                return [
+                    'status' => 'COMPLETED',
+                    'paypal_capture_id' => $captureId,
+                    'paypal_fee' => $feeAmount,
+                    'full_response' => $response
+                ];
+            } else {
+                $errorMessage = $response['message'] ?? 'Unknown error during capture.';
+                if (isset($response['details'][0]['description'])) { // PayPal often puts more details here
+                    $errorMessage = $response['details'][0]['description'];
+                }
+                Log::error("Failed to capture PayPal payment for Order ID {$paypalOrderId}. Status: " . ($response['status'] ?? 'Unknown'), $response);
+                return [
+                    'status' => $response['status'] ?? 'ERROR',
+                    'message' => $errorMessage,
+                    'full_response' => $response
+                ];
+            }
+        } catch (\Exception $e) {
+            Log::error("Exception during PayPal captureOrder for Order ID {$paypalOrderId}: " . $e->getMessage(), [
+                'trace' => $e->getTraceAsString()
+            ]);
+            return [
+                'status' => 'EXCEPTION',
+                'message' => $e->getMessage(),
+                'full_response' => null
+            ];
+        }
+    }
 }
 ```
