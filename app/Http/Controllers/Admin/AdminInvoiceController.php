@@ -17,10 +17,7 @@ use Illuminate\Support\Str; // New
 use Illuminate\Support\Facades\Log; // New
 use Illuminate\Http\RedirectResponse; // New
 use App\Http\Requests\Admin\UpdateInvoiceRequest; // New
-use App\Models\ClientService; // Asegurarse de importar ClientService
-use App\Models\ProductPricing; // Added for ClientService creation
-use App\Models\BillingCycle; // Added for ClientService creation (though accessed via relationship)
-// use App\Models\InvoiceItem; // Duplicate: Added for updating client_service_id on item - First one on line 12 is kept.
+use App\Services\ServiceProvisioningService; // Import the new service
 use Exception; // Importar Exception
 // use Illuminate\Support\Carbon; // Already imported
 // use Illuminate\Support\Facades\DB; // Already imported
@@ -34,6 +31,14 @@ use Exception; // Importar Exception
  */
 class AdminInvoiceController extends Controller
 {
+    protected ServiceProvisioningService $serviceProvisioningService;
+
+    public function __construct(ServiceProvisioningService $serviceProvisioningService)
+    {
+        $this->serviceProvisioningService = $serviceProvisioningService;
+        // If other dependencies were here, they would be preserved.
+    }
+
     /**
      * Display a listing of the resource.
      */
@@ -519,96 +524,13 @@ class AdminInvoiceController extends Controller
             Log::info('Actualizando Invoice ID ' . $invoice->id . ' a estado: ' . $invoice->status . ', paid_date: ' . ($invoice->paid_date ? $invoice->paid_date->toIso8601String() : 'null'));
             $invoice->save();
 
-            // Comentario en español: Cargar relaciones necesarias para crear servicios
-            // Asegurarse de que items, product, product.productType, productPricing, y productPricing.billingCycle están cargados.
-            // También clientService en el item para verificar si ya existe.
-            $invoice->loadMissing([
-                'items.product.productType', // Para verificar si el producto debe crear un servicio
-                'items.productPricing.billingCycle', // Para calcular next_due_date y obtener billing_amount
-                'items.clientService' // Para verificar si ya existe un servicio asociado al item
-            ]);
-
-            // Comentario en español: Iterar sobre los ítems de la factura para crear servicios si aplica
-            foreach ($invoice->items as $invoiceItem) { // Renombrado $item a $invoiceItem para claridad
-                Log::info('Procesando InvoiceItem ID: ' . $invoiceItem->id . ' para Factura ID ' . $invoice->id, ['item_data' => $invoiceItem->toArray()]);
-                if ($invoiceItem->product) {
-                    Log::info('Producto asociado (ID ' . $invoiceItem->product_id . ') a InvoiceItem ID ' . $invoiceItem->id . ':', ['product_data' => $invoiceItem->product->toArray()]);
-                    if ($invoiceItem->product->productType) {
-                        Log::info('ProductType asociado a Producto ID ' . $invoiceItem->product_id . ':', ['product_type_data' => $invoiceItem->product->productType->toArray(), 'creates_service_instance' => $invoiceItem->product->productType->creates_service_instance]);
-                    } else {
-                        Log::info('Producto ID ' . $invoiceItem->product_id . ' NO tiene ProductType asociado.');
-                    }
-                } else {
-                    Log::info('InvoiceItem ID ' . $invoiceItem->id . ' NO tiene Producto asociado.');
-                }
-                Log::info('Valor de invoiceItem->client_service_id antes de procesar para InvoiceItem ID ' . $invoiceItem->id . ': ' . ($invoiceItem->client_service_id ?? 'null'));
-
-                // Comentario en español: Condición para crear un nuevo servicio:
-                // 1. El InvoiceItem tiene un producto asociado.
-                // 2. El InvoiceItem NO está ya asociado a un ClientService.
-                // 3. El InvoiceItem tiene un ProductPricing asociado (de donde se saca el ciclo y precio recurrente).
-                // 4. El ProductPricing tiene un BillingCycle asociado.
-                // 5. El Producto asociado es de un tipo que debe generar una instancia de servicio.
-                if (
-                    $invoiceItem->product_id &&
-                    !$invoiceItem->clientService && // Chequea si la relación cargada es null
-                    $invoiceItem->productPricing &&
-                    $invoiceItem->productPricing->billingCycle &&
-                    $invoiceItem->product && // Asegurar que $invoiceItem->product no es null
-                    $invoiceItem->product->productType &&
-                    $invoiceItem->product->productType->creates_service_instance
-                ) {
-                    $conditionProductId = !is_null($invoiceItem->product_id); // Ya chequeado arriba, pero para logueo explícito
-                    $conditionClientServiceIsNull = is_null($invoiceItem->clientService); // Corregido de client_service_id a la relación
-                    $conditionProductPricing = !is_null($invoiceItem->productPricing);
-                    $conditionBillingCycle = $invoiceItem->productPricing && !is_null($invoiceItem->productPricing->billingCycle);
-                    $conditionCreatesService = $invoiceItem->product && $invoiceItem->product->productType && $invoiceItem->product->productType->creates_service_instance;
-                    Log::info('Condiciones para crear ClientService para InvoiceItem ID ' . $invoiceItem->id . ':', [
-                        'product_id_exists' => $conditionProductId,
-                        'client_service_is_null' => $conditionClientServiceIsNull,
-                        'product_pricing_exists' => $conditionProductPricing,
-                        'billing_cycle_exists' => $conditionBillingCycle,
-                        'product_type_creates_service' => $conditionCreatesService,
-                        'all_met' => ($conditionProductId && $conditionClientServiceIsNull && $conditionProductPricing && $conditionBillingCycle && $conditionCreatesService)
-                    ]);
-
-                    // Comentario en español: Obtener datos para el nuevo servicio del cliente
-                    $productPricing = $invoiceItem->productPricing;
-                    $billingCycle = $productPricing->billingCycle;
-
-                    $registrationDate = Carbon::parse($validatedData['transaction_date']); // Usar la fecha validada de la transacción
-
-                    // Comentario en español: Calcular la próxima fecha de vencimiento basado en el ciclo de facturación (días)
-                    $nextDueDate = $registrationDate->copy()->addDays($billingCycle->days);
-
-                    // Comentario en español: Determinar el monto de facturación recurrente
-                    $recurringAmount = $productPricing->price; // Precio recurrente desde ProductPricing
-
-                    $clientServiceData = [
-                        'client_id' => $invoice->client_id,
-                        'reseller_id' => $invoice->reseller_id,
-                        'product_id' => $invoiceItem->product_id,
-                        'product_pricing_id' => $productPricing->id,
-                        'billing_cycle_id' => $billingCycle->id,
-                        'domain_name' => $invoiceItem->domain_name,
-                        'status' => 'pending_configuration', // Changed from pending_provisioning
-                        'registration_date' => $registrationDate->toDateString(),
-                        'next_due_date' => $nextDueDate->toDateString(),
-                        'billing_amount' => $recurringAmount,
-                        'notes' => 'Servicio creado automáticamente desde factura ' . $invoice->invoice_number . ' (pago manual).',
-                    ];
-                    Log::info('Preparando datos para crear ClientService para InvoiceItem ID ' . $invoiceItem->id . ':', $clientServiceData);
-                    // Comentario en español: Crear el servicio del cliente
-                    $clientService = new ClientService($clientServiceData);
-                    $clientService->save();
-                    Log::info('ClientService creado con ID: ' . $clientService->id . ' para InvoiceItem ID ' . $invoiceItem->id);
-
-                    // Comentario en español: Actualizar el invoice_item con el ID del servicio creado
-                    Log::info('Actualizando InvoiceItem ID ' . $invoiceItem->id . ' con ClientService ID: ' . $clientService->id);
-                    $invoiceItem->client_service_id = $clientService->id;
-                    $invoiceItem->save();
-                }
-            }
+            // Provision services using the new service
+            // The ServiceProvisioningService is expected to handle loading necessary relationships,
+            // creating client services, and updating the invoice status (e.g., to 'pending_activation')
+            // and saving the invoice if its status changes.
+            $this->serviceProvisioningService->provisionServicesForInvoice($invoice);
+            // Note: The $provisioningResult is available if needed, but for now,
+            // we assume the service handles its responsibilities including logging and saving invoice status.
 
             // Aquí podrías disparar un evento, como InvoicePaidEvent($invoice), si tienes listeners para ello (ej. activar servicios)
             // O un evento específico para ClientServiceCreated si el aprovisionamiento es manejado por listeners.

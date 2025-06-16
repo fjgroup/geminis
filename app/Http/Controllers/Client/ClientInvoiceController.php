@@ -16,12 +16,19 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Exception; // Added for general \Exception
-use App\Models\ClientService; // Added for ClientService creation
+use App\Services\ServiceProvisioningService; // Import the new service
 use Illuminate\Support\Facades\Log; // Ensure Log is imported
 use Illuminate\Support\Facades\Redirect; // Ensure Redirect facade is available if used directly
 
 class ClientInvoiceController extends Controller
 {
+    protected ServiceProvisioningService $serviceProvisioningService;
+
+    public function __construct(ServiceProvisioningService $serviceProvisioningService)
+    {
+        $this->serviceProvisioningService = $serviceProvisioningService;
+    }
+
     /**
      * Display a listing of the resource.
      */
@@ -110,88 +117,13 @@ class ClientInvoiceController extends Controller
             $invoice->paid_date = Carbon::now();
             $invoice->save();
 
-            // Create Client Services from Invoice Items
-            $invoice->loadMissing(['items.product.productType', 'items.productPricing.billingCycle', 'client']);
-
-            foreach ($invoice->items as $invoiceItem) {
-                if ($invoiceItem->client_service_id && ClientService::find($invoiceItem->client_service_id)) {
-                    Log::info("ClientService ID {$invoiceItem->client_service_id} already exists and is linked to InvoiceItem ID {$invoiceItem->id}. Skipping creation.");
-                    continue;
-                }
-
-                if (!$invoiceItem->product || !$invoiceItem->productPricing || !$invoiceItem->productPricing->billingCycle) {
-                    Log::error("InvoiceItem ID {$invoiceItem->id} is missing product, productPricing, or billingCycle details. Skipping ClientService creation.");
-                    continue;
-                }
-
-                $registrationDate = Carbon::now();
-                $nextDueDate = $registrationDate->copy();
-                $billingCycle = $invoiceItem->productPricing->billingCycle;
-
-                if (isset($billingCycle->period_unit) && isset($billingCycle->period_amount) && is_numeric($billingCycle->period_amount) && $billingCycle->period_amount > 0) {
-                    switch (strtolower($billingCycle->period_unit)) {
-                        case 'day':
-                        case 'days':
-                            $nextDueDate->addDays($billingCycle->period_amount);
-                            break;
-                        case 'month':
-                        case 'months':
-                            $nextDueDate->addMonthsNoOverflow($billingCycle->period_amount);
-                            break;
-                        case 'year':
-                        case 'years':
-                            $nextDueDate->addYearsNoOverflow($billingCycle->period_amount);
-                            break;
-                        default:
-                            Log::warning("Unknown billing cycle unit '{$billingCycle->period_unit}' for ProductPricing ID: {$invoiceItem->product_pricing_id} on InvoiceItem ID: {$invoiceItem->id}. Defaulting next_due_date to 1 month.");
-                            $nextDueDate->addMonth();
-                    }
-                } elseif (isset($billingCycle->days) && is_numeric($billingCycle->days) && $billingCycle->days > 0) { // Fallback for 'days' attribute
-                     $nextDueDate->addDays((int)$billingCycle->days);
-                } else {
-                    Log::warning("BillingCycle period information not found or invalid for ProductPricing ID: {$invoiceItem->product_pricing_id} on InvoiceItem ID: {$invoiceItem->id}. Defaulting next_due_date to 100 years (error indicator).");
-                    $nextDueDate->addYears(100);
-                }
-
-                // All services are initially set to 'pending' to be picked up by the job or manual activation.
-                $serviceStatus = 'pending';
-
-                $clientService = ClientService::create([
-                    'client_id' => $invoice->client_id,
-                    'reseller_id' => $invoice->client->reseller_id,
-                    'product_id' => $invoiceItem->product_id,
-                    'product_pricing_id' => $invoiceItem->product_pricing_id,
-                    'domain_name' => $invoiceItem->domain_name,
-                    'status' => $serviceStatus, // Consistently 'pending'
-                    'registration_date' => $registrationDate->toDateString(),
-                    'next_due_date' => $nextDueDate->toDateString(),
-                    'billing_amount' => $invoiceItem->total_price,
-                    'currency_code' => $invoice->currency_code,
-                    'notes' => 'Servicio creado automáticamente desde Factura #' . $invoice->invoice_number,
-                    // 'invoice_item_id' => $invoiceItem->id, // Uncomment if/when this field is added to client_services table
-                ]);
-
-                $invoiceItem->client_service_id = $clientService->id;
-                $invoiceItem->save();
-            }
-
-            // Update Invoice status: if any item is expected to create a service, set to 'pending_activation'.
-            // Otherwise, it remains 'paid'.
-            $invoice->loadMissing('items.product.productType'); // Ensure productType is loaded for the check below
-
-            $hasAnyServiceToCreate = false;
-            foreach ($invoice->items as $item) {
-                if ($item->product && $item->product->productType && $item->product->productType->creates_service_instance) {
-                    $hasAnyServiceToCreate = true;
-                    break;
-                }
-            }
-
-            if ($hasAnyServiceToCreate) {
-                $invoice->status = 'pending_activation';
-            }
-            // If !$hasAnyServiceToCreate, invoice status remains 'paid' as set earlier.
-            $invoice->save();
+            // Provision services using the new service
+            // The ServiceProvisioningService is expected to handle loading necessary relationships,
+            // creating client services, and updating the invoice status (e.g., to 'pending_activation')
+            // and saving the invoice if its status changes.
+            $this->serviceProvisioningService->provisionServicesForInvoice($invoice);
+            // Note: $provisioningResult could be used if we need to check something from it,
+            // but for now, we assume the service handles its responsibilities including logging.
 
             DB::commit();
 
