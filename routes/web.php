@@ -165,6 +165,16 @@ Route::prefix('client')->name('client.')->middleware(['auth', 'verified'])->grou
   Route::get('/add-funds', [ClientFundAdditionController::class, 'showAddFundsForm'])->name('funds.create');
   Route::post('/add-funds', [ClientFundAdditionController::class, 'processFundAddition'])->name('funds.store');
 
+  // Client Fund Addition with PayPal
+  Route::post('/funds/paypal/initiate', [ClientFundAdditionController::class, 'initiatePayPalPayment'])
+      ->name('funds.paypal.initiate');
+
+  Route::get('/funds/paypal/success', [ClientFundAdditionController::class, 'handlePayPalSuccess'])
+      ->name('funds.paypal.success');
+
+  Route::get('/funds/paypal/cancel', [ClientFundAdditionController::class, 'handlePayPalCancel'])
+      ->name('funds.paypal.cancel');
+
   // Rutas para el listado de productos para clientes (handled by ClientDashboardController)
   Route::get('/products', [ClientDashboardController::class, 'listProducts'])->name('products.index');
 

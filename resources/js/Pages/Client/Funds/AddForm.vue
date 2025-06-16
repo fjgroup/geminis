@@ -1,6 +1,6 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head, Link, useForm } from '@inertiajs/vue3';
+import { Head, Link, useForm, router } from '@inertiajs/vue3'; // Added router
 import InputLabel from '@/Components/Forms/InputLabel.vue';
 import TextInput from '@/Components/Forms/TextInput.vue';
 import PrimaryButton from '@/Components/Forms/Buttons/PrimaryButton.vue';
@@ -50,6 +50,43 @@ const submitForm = () => {
             form.reset('amount', 'reference_number', 'payment_date', 'payment_method_id');
             // selectedMethodDetails.value = null; // This is a computed prop, will update when form.payment_method_id resets
         },
+    });
+};
+
+const processingPayPal = ref(false);
+const payPalErrorMessage = ref('');
+
+const submitPayPalFundAddition = () => {
+    if (!form.amount || parseFloat(form.amount) < 0.01) {
+        payPalErrorMessage.value = 'Por favor, ingrese un monto válido.';
+        return;
+    }
+    if (parseFloat(form.amount) < 30.00) { // Assuming $30 USD minimum for PayPal
+        payPalErrorMessage.value = `El monto mínimo para agregar fondos con PayPal es $30.00 ${props.currencyCode}.`;
+        return;
+    }
+
+    processingPayPal.value = true;
+    payPalErrorMessage.value = '';
+
+    router.post(route('client.funds.paypal.initiate'), {
+        amount: form.amount,
+    }, {
+        onFinish: () => {
+            processingPayPal.value = false;
+        },
+        onError: (pageErrors) => {
+            if (pageErrors.amount) {
+                payPalErrorMessage.value = pageErrors.amount;
+            } else if (pageErrors.error) {
+                payPalErrorMessage.value = pageErrors.error;
+            } else if (Object.keys(pageErrors).length > 0) {
+                payPalErrorMessage.value = 'Ocurrió un error. Por favor, revise los datos e intente de nuevo.';
+            }
+            // Errors from Inertia::location redirects (like general server errors before redirect)
+            // might not be caught here directly in pageErrors if the request itself to `initiate` was successful
+            // but the Inertia::location call failed. Those would typically be full page errors.
+        }
     });
 };
 
@@ -181,6 +218,30 @@ const submitForm = () => {
               </PrimaryButton>
             </div>
           </form>
+
+          <!-- Nueva sección para PayPal -->
+          <div class="p-6 pt-0 mt-4 border-t border-gray-200 dark:border-gray-700">
+              <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4 pt-6">
+                  Agregar Fondos con PayPal
+              </h3>
+              <p class="mb-1 text-sm text-gray-600 dark:text-gray-400">
+                  Monto mínimo para agregar con PayPal: $30.00 {{ currencyCode }}.
+              </p>
+              <p class="mb-4 text-xs text-gray-500 dark:text-gray-500">
+                  Serás redirigido a PayPal para completar el pago. El monto ingresado arriba será utilizado.
+              </p>
+
+              <form @submit.prevent="submitPayPalFundAddition">
+                  <PrimaryButton type="submit" :class="{ 'opacity-25': processingPayPal }" :disabled="processingPayPal || !form.amount || parseFloat(form.amount) < 0.01">
+                      <span v-if="!form.amount || parseFloat(form.amount) < 0.01">Ingrese un monto arriba</span>
+                      <span v-else-if="parseFloat(form.amount) < 30.00 && props.currencyCode === 'USD'">Monto mínimo $30.00 USD</span>
+                      <span v-else>Pagar {{ form.amount }} {{ currencyCode }} con PayPal</span>
+                  </PrimaryButton>
+                  <InputError class="mt-2" :message="payPalErrorMessage" />
+                  <!-- Display backend validation errors related to amount for PayPal if they come back specifically for this action -->
+                  <InputError class="mt-2" :message="errors.amount" />
+              </form>
+          </div>
         </div>
       </div>
     </div>
