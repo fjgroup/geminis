@@ -39,20 +39,21 @@ const paymentMethodOptions = computed(() => {
 // Renamed from selectedPaymentMethod to selectedMethodDetails as per plan
 const selectedMethodDetails = computed(() => {
     if (!form.payment_method_id) return null;
-    const method = props.paymentMethods.find(m => m.id === form.payment_method_id);
+    // Although not explicitly requested for this subtask, applying Number() here for consistency is good.
+    const method = props.paymentMethods.find(m => m.id === Number(form.payment_method_id));
     // formatted_details should be directly available on the method object due to $appends
     return method ? method.formatted_details : null; // This still provides general details
 });
 
 const isPayPalSelected = computed(() => {
     if (!form.payment_method_id) return false;
-    const method = props.paymentMethods.find(m => m.id === form.payment_method_id);
+    const method = props.paymentMethods.find(m => m.id === Number(form.payment_method_id));
     return method?.slug === 'paypal';
 });
 
 const isManualMethodSelected = computed(() => {
     if (!form.payment_method_id || isPayPalSelected.value) return false;
-    const method = props.paymentMethods.find(m => m.id === form.payment_method_id);
+    const method = props.paymentMethods.find(m => m.id === Number(form.payment_method_id));
     return method ? !method.is_automatic : false;
 });
 
