@@ -153,5 +153,90 @@ class PayPalService
             ];
         }
     }
+
+    /**
+     * Crea una orden de pago en PayPal para una adición de fondos.
+     *
+     * @param float $amount El monto a agregar.
+     * @param string $currencyCode El código de moneda (ej. 'USD').
+     * @param string $descriptionSuffix Sufijo para la descripción de la orden.
+     * @param string $customIdentifier Un identificador único para esta transacción de fondos (se usará como invoice_id en API de PayPal).
+     * @param string $returnUrl La URL a la que PayPal redirigirá tras la aprobación.
+     * @param string $cancelUrl La URL a la que PayPal redirigirá tras la cancelación.
+     * @return array|null Un array con el ID de la orden de PayPal y el enlace de aprobación, o null si falla.
+     */
+    public function createFundAdditionOrder(
+        float $amount,
+        string $currencyCode,
+        string $descriptionSuffix,
+        string $customIdentifier,
+        string $returnUrl,
+        string $cancelUrl
+    ): ?array {
+        try {
+            $this->payPalClient->getAccessToken(); // Asegurar token fresco
+
+            $orderData = [
+                "intent" => "CAPTURE",
+                "purchase_units" => [
+                    [
+                        "amount" => [
+                            "currency_code" => strtoupper($currencyCode),
+                            "value" => number_format($amount, 2, '.', '')
+                        ],
+                        "description" => "Adicion de Fondos: " . $descriptionSuffix,
+                        "invoice_id" => $customIdentifier, // Identificador unico para esta operacion de fondos
+                        // Podríamos usar 'custom_id' también o en lugar de 'invoice_id' si se prefiere para semántica,
+                        // pero 'invoice_id' es lo que el webhook lee actualmente para $paypalInternalRef.
+                        // "custom_id" => $customIdentifier,
+                    ]
+                ],
+                "application_context" => [
+                    "cancel_url" => $cancelUrl,
+                    "return_url" => $returnUrl,
+                    "brand_name" => config('app.name', 'FJGroupCA'),
+                    "shipping_preference" => "NO_SHIPPING", // Para adición de fondos, no hay envío
+                    "user_action" => "PAY_NOW",
+                ]
+            ];
+
+            Log::info("[PayPalService] Creating fund addition order with data: ", $orderData);
+            $order = $this->payPalClient->createOrder($orderData);
+
+            if (isset($order['id']) && $order['id'] != null && isset($order['links'])) {
+                $approvalLink = null;
+                foreach ($order['links'] as $link) {
+                    if ($link['rel'] === 'approve') {
+                        $approvalLink = $link['href'];
+                        break;
+                    }
+                }
+                if ($approvalLink) {
+                    Log::info("[PayPalService] Fund addition order created successfully. Order ID: " . $order['id']);
+                    return [
+                        'order_id' => $order['id'],
+                        'approval_link' => $approvalLink,
+                    ];
+                }
+            }
+
+            $errorMessage = '[PayPalService] Error creating fund addition order: Unexpected response or missing approval link.';
+            if (isset($order['message'])) {
+                $errorMessage .= ' PayPal Message: ' . $order['message'];
+            }
+            if (isset($order['error'])) {
+                 $errorMessage .= ' PayPal Error: ' . json_encode($order['error']);
+            }
+            Log::error($errorMessage, ['custom_identifier' => $customIdentifier, 'paypal_response' => $order]);
+            return null;
+
+        } catch (\Exception $e) {
+            Log::error('[PayPalService] Exception during fund addition order creation: ' . $e->getMessage(), [
+                'custom_identifier' => $customIdentifier,
+                'trace' => $e->getTraceAsString()
+            ]);
+            return null;
+        }
+    }
 }
 ```
