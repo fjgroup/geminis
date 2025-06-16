@@ -38,7 +38,7 @@ class ClientFundAdditionController extends Controller
     {
         $paymentMethods = PaymentMethod::where('is_active', true)
             ->orderBy('name')
-            ->get(['id', 'name', 'account_holder_name', 'account_number', 'bank_name', 'branch_name', 'swift_code', 'iban', 'instructions', 'logo_url']);
+            ->get(['id', 'name', 'slug', 'is_automatic', 'type', 'account_holder_name', 'account_number', 'bank_name', 'branch_name', 'swift_code', 'iban', 'instructions', 'logo_url']);
 
         $client = Auth::user();
         $currencyCode = $client->currency_code ?? 'USD'; // Default to USD if not set
@@ -105,14 +105,14 @@ class ClientFundAdditionController extends Controller
 
             $fundAdditionIdentifier = 'FUNDS-' . $user->id . '-' . strtoupper(Str::random(8));
 
-            $orderForPayPal = new \stdClass();
-            $orderForPayPal->id = $fundAdditionIdentifier;
-            $orderForPayPal->invoice_number = 'ADD-FUNDS-' . $user->id;
-            $orderForPayPal->total_amount = $amount;
-            $orderForPayPal->currency_code = $currencyCode;
+            // $orderForPayPal object creation is removed.
 
-            $paypalOrderDetails = $this->payPalService->createOrder(
-                $orderForPayPal,
+            $descriptionSuffix = 'Usuario ID: ' . $user->id; // Example description suffix
+            $paypalOrderDetails = $this->payPalService->createFundAdditionOrder(
+                $amount,
+                $currencyCode,
+                $descriptionSuffix,
+                $fundAdditionIdentifier, // This is the 'customIdentifier'
                 $successUrl,
                 $cancelUrl
             );

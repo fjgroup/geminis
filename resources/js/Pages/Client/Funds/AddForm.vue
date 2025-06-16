@@ -39,35 +39,40 @@ const paymentMethodOptions = computed(() => {
 // Renamed from selectedPaymentMethod to selectedMethodDetails as per plan
 const selectedMethodDetails = computed(() => {
     if (!form.payment_method_id) return null;
-    const method = props.paymentMethods.find(m => m.id === form.payment_method_id);
+    // Although not explicitly requested for this subtask, applying Number() here for consistency is good.
+    const method = props.paymentMethods.find(m => m.id === Number(form.payment_method_id));
     // formatted_details should be directly available on the method object due to $appends
-    return method ? method.formatted_details : null;
+    return method ? method.formatted_details : null; // This still provides general details
 });
 
-const submitForm = () => {
+const isPayPalSelected = computed(() => {
+    if (!form.payment_method_id) return false;
+    const method = props.paymentMethods.find(m => m.id === Number(form.payment_method_id));
+    return method?.slug === 'paypal';
+});
+
+const isManualMethodSelected = computed(() => {
+    if (!form.payment_method_id || isPayPalSelected.value) return false;
+    const method = props.paymentMethods.find(m => m.id === Number(form.payment_method_id));
+    return method ? !method.is_automatic : false;
+});
+
+const processManualFundAddition = () => { // Renamed from submitForm
     form.post(route('client.funds.store'), {
         onSuccess: () => {
             form.reset('amount', 'reference_number', 'payment_date', 'payment_method_id');
-            // selectedMethodDetails.value = null; // This is a computed prop, will update when form.payment_method_id resets
         },
     });
 };
 
-const processingPayPal = ref(false);
-const payPalErrorMessage = ref('');
+const processingPayPal = ref(false); // Kept for PayPal specific processing state via router.post
+const payPalErrorMessage = ref(''); // Kept for specific errors from submitPayPalFundAddition before redirect or if router.post onError is used
 
 const submitPayPalFundAddition = () => {
-    if (!form.amount || parseFloat(form.amount) < 0.01) {
-        payPalErrorMessage.value = 'Por favor, ingrese un monto válido.';
-        return;
-    }
-    if (parseFloat(form.amount) < 30.00) { // Assuming $30 USD minimum for PayPal
-        payPalErrorMessage.value = `El monto mínimo para agregar fondos con PayPal es $30.00 ${props.currencyCode}.`;
-        return;
-    }
-
+    // This function is called by handleFormSubmit if PayPal is selected and basic amount check passes
     processingPayPal.value = true;
-    payPalErrorMessage.value = '';
+    payPalErrorMessage.value = ''; // Clear previous specific PayPal errors
+    form.clearErrors(); // Clear general form errors too
 
     router.post(route('client.funds.paypal.initiate'), {
         amount: form.amount,
@@ -76,18 +81,48 @@ const submitPayPalFundAddition = () => {
             processingPayPal.value = false;
         },
         onError: (pageErrors) => {
+            // Handle errors from the backend if the POST request itself fails
+            // or if the backend returns validation errors before attempting Inertia::location
             if (pageErrors.amount) {
-                payPalErrorMessage.value = pageErrors.amount;
-            } else if (pageErrors.error) {
-                payPalErrorMessage.value = pageErrors.error;
+                form.setError('amount', pageErrors.amount);
+            } else if (pageErrors.error) { // General error from backend
+                 form.setError('payment_method_id', pageErrors.error); // Show general error near payment method
             } else if (Object.keys(pageErrors).length > 0) {
-                payPalErrorMessage.value = 'Ocurrió un error. Por favor, revise los datos e intente de nuevo.';
+                 form.setError('payment_method_id', 'Ocurrió un error al iniciar el pago con PayPal.');
             }
-            // Errors from Inertia::location redirects (like general server errors before redirect)
-            // might not be caught here directly in pageErrors if the request itself to `initiate` was successful
-            // but the Inertia::location call failed. Those would typically be full page errors.
+            // If Inertia::location is called successfully, Inertia handles the redirect.
+            // If Inertia::location itself fails (e.g. non-Inertia response from PayPal URL),
+            // it's a full page load, error won't be here.
         }
     });
+};
+
+const handleFormSubmit = () => {
+    form.clearErrors(); // Clear previous errors
+    payPalErrorMessage.value = '';
+
+    if (!form.amount || parseFloat(form.amount) < 0.01) {
+        form.setError('amount', 'Por favor, ingrese un monto válido.');
+        return;
+    }
+
+    if (isPayPalSelected.value) {
+        if (parseFloat(form.amount) < 30.00) { // Assuming $30 USD minimum for PayPal
+            form.setError('amount', `El monto mínimo para agregar fondos con PayPal es $30.00 ${props.currencyCode}.`);
+            return;
+        }
+        submitPayPalFundAddition();
+    } else if (isManualMethodSelected.value) {
+        // For manual methods, ensure required fields for manual are "touched" or validated if desired here
+        // Backend will do the main validation based on StoreFundAdditionRequest
+        if (!form.reference_number) form.setError('reference_number', 'El número de referencia es obligatorio para pagos manuales.');
+        if (!form.payment_date) form.setError('payment_date', 'La fecha de pago es obligatoria para pagos manuales.');
+        if (form.hasErrors) return; // Stop if frontend validation for manual fails
+
+        processManualFundAddition();
+    } else {
+        form.setError('payment_method_id', 'Por favor, seleccione un método de pago válido.');
+    }
 };
 
 </script>
@@ -110,7 +145,7 @@ const submitPayPalFundAddition = () => {
     <div class="py-12">
       <div class="max-w-2xl mx-auto sm:px-6 lg:px-8">
         <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
-          <form @submit.prevent="submitForm" class="p-6 space-y-6">
+          <form @submit.prevent="handleFormSubmit" class="p-6 space-y-6">
 
             <div>
               <InputLabel for="amount">Monto a Agregar ({{ currencyCode }}) *</InputLabel>
@@ -125,10 +160,12 @@ const submitPayPalFundAddition = () => {
                 autofocus
               />
               <InputError class="mt-2" :message="form.errors.amount" />
+              <!-- PayPal specific error message can also be shown here if preferred -->
+              <InputError class="mt-2" :message="payPalErrorMessage" />
             </div>
 
             <div>
-              <InputLabel for="payment_method_id" value="Método de Pago Utilizado *" />
+              <InputLabel for="payment_method_id" value="Método de Pago *" />
               <SelectInput
                 id="payment_method_id"
                 class="mt-1 block w-full"
@@ -139,8 +176,8 @@ const submitPayPalFundAddition = () => {
               <InputError class="mt-2" :message="form.errors.payment_method_id" />
             </div>
 
-            <!-- Display Formatted Payment Method Details -->
-            <div v-if="selectedMethodDetails" class="mt-4 p-4 border border-gray-200 dark:border-gray-700 rounded bg-gray-50 dark:bg-gray-700/50">
+            <!-- Display Formatted Payment Method Details (conditional on manual method) -->
+            <div v-if="selectedMethodDetails && isManualMethodSelected" class="mt-4 p-4 border border-gray-200 dark:border-gray-700 rounded bg-gray-50 dark:bg-gray-700/50">
                 <h4 class="font-semibold text-gray-700 dark:text-gray-200">Detalles para {{ selectedMethodDetails.name }}:</h4>
                 <div class="text-sm text-gray-600 dark:text-gray-300 mt-2 space-y-1">
                     <p v-if="selectedMethodDetails.type === 'bank'">
@@ -172,34 +209,44 @@ const submitPayPalFundAddition = () => {
                 </div>
             </div>
 
-            <div>
+            <div v-if="isPayPalSelected" class="mt-4 p-4 border border-gray-200 dark:border-gray-700 rounded bg-gray-50 dark:bg-gray-700/50">
+                 <h4 class="font-semibold text-gray-700 dark:text-gray-200">Pago con PayPal</h4>
+                 <p class="text-sm text-gray-600 dark:text-gray-300 mt-1">
+                    Monto mínimo para agregar con PayPal: $30.00 {{ currencyCode }}.
+                    Serás redirigido a PayPal para completar el pago de forma segura.
+                 </p>
+            </div>
+
+
+            <div v-if="isManualMethodSelected">
               <InputLabel for="reference_number" value="Número de Referencia / ID de Transacción *" />
               <TextInput
                 id="reference_number"
                 type="text"
                 class="mt-1 block w-full"
                 v-model="form.reference_number"
-                required
+                :required="isManualMethodSelected"
                 autocomplete="off"
               />
               <InputError class="mt-2" :message="form.errors.reference_number" />
             </div>
 
-            <div>
+            <div v-if="isManualMethodSelected">
               <InputLabel for="payment_date" value="Fecha de Pago *" />
               <TextInput
                 id="payment_date"
                 type="date"
                 class="mt-1 block w-full"
                 v-model="form.payment_date"
-                required
+                :required="isManualMethodSelected"
                 :max="today"
               />
               <InputError class="mt-2" :message="form.errors.payment_date" />
             </div>
 
-            <!-- Placeholder for future file upload
-            <div>
+            <!-- Placeholder for future file upload -->
+            <!--
+            <div v-if="isManualMethodSelected">
               <InputLabel for="payment_receipt" value="Comprobante de Pago (Opcional)" />
               <input type="file" @input="form.payment_receipt = $event.target.files[0]" class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"/>
               <progress v-if="form.progress" :value="form.progress.percentage" max="100">
@@ -213,35 +260,14 @@ const submitPayPalFundAddition = () => {
               <Link :href="route('client.dashboard')" class="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
                 Volver al Dashboard
               </Link>
-              <PrimaryButton :class="{ 'opacity-25': form.processing }" :disabled="form.processing">
-                Enviar Solicitud de Fondos
+              <PrimaryButton :class="{ 'opacity-25': form.processing || processingPayPal }" :disabled="form.processing || processingPayPal || !form.payment_method_id">
+                <span v-if="isPayPalSelected">Continuar con PayPal</span>
+                <span v-else-if="isManualMethodSelected">Enviar Solicitud de Fondos</span>
+                <span v-else>Seleccione un Método</span>
               </PrimaryButton>
             </div>
           </form>
-
-          <!-- Nueva sección para PayPal -->
-          <div class="p-6 pt-0 mt-4 border-t border-gray-200 dark:border-gray-700">
-              <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4 pt-6">
-                  Agregar Fondos con PayPal
-              </h3>
-              <p class="mb-1 text-sm text-gray-600 dark:text-gray-400">
-                  Monto mínimo para agregar con PayPal: $30.00 {{ currencyCode }}.
-              </p>
-              <p class="mb-4 text-xs text-gray-500 dark:text-gray-500">
-                  Serás redirigido a PayPal para completar el pago. El monto ingresado arriba será utilizado.
-              </p>
-
-              <form @submit.prevent="submitPayPalFundAddition">
-                  <PrimaryButton type="submit" :class="{ 'opacity-25': processingPayPal }" :disabled="processingPayPal || !form.amount || parseFloat(form.amount) < 0.01">
-                      <span v-if="!form.amount || parseFloat(form.amount) < 0.01">Ingrese un monto arriba</span>
-                      <span v-else-if="parseFloat(form.amount) < 30.00 && props.currencyCode === 'USD'">Monto mínimo $30.00 USD</span>
-                      <span v-else>Pagar {{ form.amount }} {{ currencyCode }} con PayPal</span>
-                  </PrimaryButton>
-                  <InputError class="mt-2" :message="payPalErrorMessage" />
-                  <!-- Display backend validation errors related to amount for PayPal if they come back specifically for this action -->
-                  <InputError class="mt-2" :message="errors.amount" />
-              </form>
-          </div>
+          <!-- Separate PayPal form section removed -->
         </div>
       </div>
     </div>
