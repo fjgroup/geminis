@@ -20,6 +20,7 @@ use Illuminate\Support\Facades\Gate; // Added
 use Illuminate\Support\Facades\Log; // Added, though likely already available via Controller
 use Illuminate\Support\Facades\Auth; // Added for auth()->user()
 use App\Models\PaymentMethod; // Import PaymentMethod
+use Illuminate\Support\Facades\Hash; // Import Hash facade for password hashing
 
 class AdminClientServiceController extends Controller
 {
@@ -197,18 +198,42 @@ class AdminClientServiceController extends Controller
 
         $validatedData = $request->validated();
 
-        // Si password_encrypted no está en los datos validados (porque era null o no se envió),
-        // no se intentará actualizar. El cast 'encrypted' en el modelo maneja la encriptación
-        // si el campo está presente y no es null.
-        if (array_key_exists('password_encrypted', $validatedData) && $validatedData['password_encrypted'] === null) {
-            // Si se envió explícitamente null (ej. para borrarla, si la lógica lo permite)
-            // o si el campo no se envió y queremos asegurar que se ponga a null en la BD.
-            $clientService->password_encrypted = null; // Esto activará el cast a 'encrypted' con null
-            unset($validatedData['password_encrypted']); // Quitarlo para que no se pase en el update masivo si ya lo manejamos
+        // Manejo de la contraseña
+        if (isset($validatedData['password_encrypted']) && $validatedData['password_encrypted'] !== null) {
+            // Si se proporcionó una nueva contraseña y no es null (después de prepareForValidation),
+            // hashearla y asignarla directamente al modelo.
+            $clientService->password_encrypted = Hash::make($validatedData['password_encrypted']);
+            // Quitarla de $validatedData para que no se intente guardar sin hashear por el update() masivo.
+            unset($validatedData['password_encrypted']);
+        } elseif (isset($validatedData['password_encrypted']) && $validatedData['password_encrypted'] === null) {
+            // Si explícitamente se envió null (campo vacío en el formulario que prepareForValidation convirtió a null),
+            // y la intención es borrar la contraseña o establecerla a null.
+            // Considerar si realmente se quiere permitir establecer la contraseña a null.
+            // Por ahora, replicamos la lógica anterior de setear a null si es explícitamente null.
+            $clientService->password_encrypted = null;
+            unset($validatedData['password_encrypted']);
         }
+        // Si 'password_encrypted' no está en $validatedData (porque no se envió en el form o se envió vacío
+        // y prepareForValidation no lo puso a null sino que lo eliminó, o si la validación falló para ese campo),
+        // entonces no se toca $clientService->password_encrypted aquí, y la contraseña existente no se modifica.
 
-        // Asumiendo que UpdateClientServiceRequest ya valida billing_cycle_id
+        // Actualizar el resto de los datos validados.
         $clientService->update($validatedData);
+
+        // Si se modificó password_encrypted explícitamente (hasheado o a null),
+        // es necesario guardar el modelo $clientService si update() no lo hace con los cambios directos.
+        // Sin embargo, update() actualiza y guarda. Si $clientService->password_encrypted se asignó antes,
+        // y luego $clientService->update($validatedData) se llama (sin password_encrypted en $validatedData),
+        // el cambio a password_encrypted podría no persistir si update() no considera atributos ya "sucios".
+        // Una forma más segura es guardar explícitamente después de modificar el atributo password_encrypted
+        // y antes de la redirección si es necesario, o asegurar que el update masivo no lo sobreescriba.
+
+        // Refinamiento:
+        // La lógica anterior con unset y luego update() es correcta.
+        // Si $clientService->password_encrypted fue modificado,
+        // $clientService->update($validatedData) actualizará los otros campos
+        // y los cambios en $clientService (como password_encrypted) también se persistirán
+        // porque el modelo ya está "sucio" con ese cambio.
 
         return redirect()->route('admin.client-services.index')
             ->with('success', 'Servicio de cliente actualizado exitosamente.');

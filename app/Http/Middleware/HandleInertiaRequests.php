@@ -29,11 +29,26 @@ class HandleInertiaRequests extends Middleware
      */
     public function share(Request $request): array
     {
-        return [
-            ...parent::share($request),
+        return array_merge(parent::share($request), [ // Usar array_merge es una forma común
             'auth' => [
-                'user' => $request->user(),
+                'user' => $request->user() ? [
+                    // Solo exponer los campos necesarios del usuario
+                    'id' => $request->user()->id,
+                    'name' => $request->user()->name,
+                    'email' => $request->user()->email,
+                    // añadir otros campos si son necesarios globalmente
+                ] : null,
             ],
-        ];
+            'flash' => [
+                'success' => fn () => $request->session()->get('success'),
+                'error' => fn () => $request->session()->get('error'),
+                // Puedes añadir otras claves de flash que uses, ej. 'warning', 'info'
+            ],
+            // Podrías añadir 'ziggy' aquí también si lo usas y no está ya en parent::share
+            // 'ziggy' => fn () => [
+            //     ...(new Ziggy)->toArray(),
+            //     'location' => $request->route()->uri(),
+            // ],
+        ]);
     }
 }

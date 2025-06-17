@@ -14,9 +14,9 @@
           <label class="block text-sm font-medium text-gray-700">Dominio:</label>
           <p class="mt-1 text-sm text-gray-900">{{ service.domain_name }}</p>
         </div>
-        <div class="mb-4" v-if="service.service_username || (service.config && service.config.username)">
-          <label class="block text-sm font-medium text-gray-700">Nombre de Usuario:</label>
-          <p class="mt-1 text-sm text-gray-900">{{ service.service_username || service.config?.username || 'N/A' }}</p>
+        <div class="mb-4" v-if="service.username || service.service_username || (service.config && service.config.username)">
+          <label class="block text-sm font-medium text-gray-700">Nombre de Usuario (Servicio):</label>
+          <p class="mt-1 text-sm text-gray-900">{{ service.username || service.service_username || service.config?.username || 'N/A' }}</p>
         </div>
         <div class="mb-4">
           <label class="block text-sm font-medium text-gray-700">Contraseña:</label>
@@ -38,13 +38,13 @@
             <h4 class="text-md font-semibold mb-3">Establecer Nueva Contraseña</h4>
             <div class="mb-3">
                 <label for="currentPassword" class="block text-sm font-medium text-gray-700">Contraseña Actual</label>
-                <input type="password" id="currentPassword" v-model="form.currentPassword" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" :class="{'border-red-500': form.errors.currentPassword}" />
-                <p v-if="form.errors.currentPassword" class="mt-1 text-xs text-red-500">{{ form.errors.currentPassword }}</p>
+                <input type="password" id="currentPassword" v-model="form.current_password" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" :class="{'border-red-500': form.errors.current_password}" />
+                <p v-if="form.errors.current_password" class="mt-1 text-xs text-red-500">{{ form.errors.current_password }}</p>
             </div>
             <div class="mb-3">
               <label for="new_password" class="block text-sm font-medium text-gray-700">Nueva Contraseña</label>
               <input type="password" id="new_password" v-model="form.new_password" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" :class="{'border-red-500': form.errors.new_password}" />
-               <p v-if="form.errors.new_password && form.errors.new_password !== passwordChangeMessage" class="mt-1 text-xs text-red-500">{{ form.errors.new_password }}</p>
+             <p v-if="form.errors.new_password" class="mt-1 text-xs text-red-500">{{ form.errors.new_password }}</p>
             </div>
             <div class="mb-3">
               <label for="new_password_confirmation" class="block text-sm font-medium text-gray-700">Confirmar Nueva Contraseña</label>
@@ -81,15 +81,11 @@
                 Guardar Contraseña
               </button>
             </div>
-            <!-- Display general (non-field) errors or success messages not handled by session flash -->
-             <p v-if="passwordChangeMessage && (!form.hasErrors || (form.errors.current_password === passwordChangeMessage || form.errors.new_password === passwordChangeMessage) )"
+            <!-- Display general (non-field) errors -->
+             <p v-if="passwordChangeMessage"
                 :class="passwordChangeError ? 'text-red-500' : 'text-green-500'"
                 class="mt-3 text-sm">
                 {{ passwordChangeMessage }}
-             </p>
-             <!-- Fallback for other errors if not caught by specific field messages -->
-             <p v-if="form.hasErrors && !form.errors.currentPassword && !form.errors.new_password && !form.errors.new_password_confirmation && !passwordChangeMessage" class="mt-3 text-sm text-red-500">
-                Se encontraron errores de validación. Por favor, revisa los campos.
              </p>
           </div>
         </div>
@@ -106,7 +102,7 @@
 
 <script setup>
 import { ref, watch, computed } from 'vue';
-import { router, useForm } from '@inertiajs/vue3'; // Import useForm
+import { router, useForm, usePage } from '@inertiajs/vue3'; // Import useForm and usePage
 
 const props = defineProps({
   show: {
@@ -120,13 +116,14 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['close']);
+const page = usePage(); // Get page instance for flash messages
 
 const isChangingPassword = ref(false);
 const passwordChangeMessage = ref(''); // For general messages not tied to form errors
 const passwordChangeError = ref(false); // For general messages not tied to form errors
 
 const form = useForm({
-    currentPassword: '',
+    current_password: '',
     new_password: '',
     new_password_confirmation: '', // Field name must match for 'confirmed' rule in Laravel
 });
@@ -141,7 +138,7 @@ const passwordRequirements = ref({
 });
 
 const isSaveDisabled = computed(() => { // Renamed from isPasswordFormValid for clarity with useForm
-    if (!form.currentPassword || !form.new_password || !form.new_password_confirmation) return true;
+    if (!form.current_password || !form.new_password || !form.new_password_confirmation) return true;
     if (form.new_password !== form.new_password_confirmation) return true;
     if (form.processing) return true;
     return !Object.values(passwordRequirements.value).every(req => req.met);
@@ -208,23 +205,44 @@ const submitNewPassword = async () => {
   form.post(route('client.services.updatePassword', { service: props.service.id }), {
       preserveScroll: true,
       onSuccess: () => {
-          // Success messages are typically handled by session flash & component displaying it (e.g. AuthenticatedLayout)
-          // passwordChangeMessage.value = 'Contraseña actualizada con éxito.'; // Can be removed if relying on session flash
-          // passwordChangeError.value = false;
-          isChangingPassword.value = false; // Hide form
-          resetPasswordForm(); // Reset form fields and errors
+          // Most success handling (reset, close) is now driven by flash message watcher.
+          // We might still want to hide the form immediately.
+          // However, if the watcher handles reset & close, this could be minimal.
+          // For now, let's keep it simple and let the watcher do the work.
+          // isChangingPassword.value = false;
+          // resetPasswordForm();
       },
-      onError: (pageErrors) => {
-          // Errors are automatically handled and available in form.errors.
-          // This block can be used for additional side effects or general non-field error messages.
-          if (pageErrors && Object.keys(pageErrors).length === 0) { // Check if pageErrors is empty but error occurred
-               passwordChangeMessage.value = 'Error al actualizar la contraseña. Inténtalo de nuevo.';
-               passwordChangeError.value = true;
-          } else if (pageErrors && pageErrors.message) { // Example if backend sends a general 'message' in error response that's not a validation error
-              passwordChangeMessage.value = pageErrors.message;
+      onError: (errors) => {
+          console.log("Errores de validación recibidos:", errors); // Log all errors
+          // form.errors will automatically populate.
+          // Set a general message if there are errors but they aren't specific to fields,
+          // or if a specific non-field error message is sent from backend.
+          if (errors && Object.keys(errors).length > 0) {
+            // Check if all errors are already displayed by form.errors
+            const displayedErrors = Object.keys(form.errors).length > 0;
+            if (!displayedErrors && !errors.current_password && !errors.new_password && !errors.new_password_confirmation) {
+                 passwordChangeMessage.value = 'Se encontraron errores de validación. Por favor, revisa los campos.';
+                 passwordChangeError.value = true;
+                 setTimeout(() => { // Clear general message after some time
+                    passwordChangeMessage.value = '';
+                    passwordChangeError.value = false;
+                 }, 7000);
+            } else if (errors.message) { // If backend sends a specific 'message' key for general error
+                 passwordChangeMessage.value = errors.message;
+                 passwordChangeError.value = true;
+                 setTimeout(() => {
+                    passwordChangeMessage.value = '';
+                    passwordChangeError.value = false;
+                 }, 7000);
+            }
+          } else if (!errors || Object.keys(errors).length === 0) { // Non-validation error, e.g. network or 500
+              passwordChangeMessage.value = 'Ocurrió un error inesperado. Por favor, inténtalo de nuevo.';
               passwordChangeError.value = true;
+              setTimeout(() => {
+                    passwordChangeMessage.value = '';
+                    passwordChangeError.value = false;
+                 }, 7000);
           }
-          // Field-specific errors are in form.errors and should be displayed near the fields.
       }
   });
 };
@@ -234,6 +252,34 @@ watch(() => props.show, (newValue) => {
   if (!newValue) {
     cancelChangePassword(); // Reset form when modal is closed
   }
+});
+
+watch(() => page.props.flash, (newFlash, oldFlash) => {
+    console.log('page.props.flash changed:', newFlash); // Log the entire flash object
+
+    if (newFlash && newFlash.success && newFlash.success === 'Contraseña actualizada con éxito.') {
+        console.log('Success message detected in flash:', newFlash.success);
+        isChangingPassword.value = false; // Hide the password change form
+        resetPasswordForm(); // Reset form fields and errors
+
+        // Close the modal after a brief delay
+        setTimeout(() => {
+            emit('close');
+        }, 1500); // 1.5 seconds delay
+    }
+    // Example for handling error flash messages, if desired in the future
+    // else if (newFlash && newFlash.error) {
+    //     console.log('Error message detected in flash:', newFlash.error);
+    //     passwordChangeMessage.value = newFlash.error; // Display error from flash
+    //     passwordChangeError.value = true;
+    //      setTimeout(() => { // Clear general message after some time
+    //         passwordChangeMessage.value = '';
+    //         passwordChangeError.value = false;
+    //      }, 7000);
+    // }
+}, {
+    deep: true,      // Watch for deep changes in the flash object
+    immediate: false // Only react to changes, not on initial load
 });
 
 </script>
