@@ -115,7 +115,7 @@ const confirmPlanChange = (event, newPricingId, optionBillingCycleName) => {
                                  }">
                                 <div>
                                     <h4 class="mb-1 text-md font-semibold text-gray-800 dark:text-gray-200">
-                                        {{ option.product?.name || service.product?.name }}
+                                        {{ option.product?.name || 'Producto N/A' }}
                                     </h4>
                                     <p class="mb-2 text-sm text-gray-600 dark:text-gray-400">
                                         Ciclo: {{ option.billing_cycle?.name || 'N/A' }}
@@ -142,7 +142,7 @@ const confirmPlanChange = (event, newPricingId, optionBillingCycleName) => {
                                 <PrimaryButton
                                     v-if="option.id !== service.product_pricing_id"
                                     as="button"
-                                    @click.prevent="confirmPlanChange($event, option.id, `${option.product?.name || service.product?.name} - ${option.billing_cycle?.name}`)"
+                                    @click.prevent="confirmPlanChange($event, option.id, `${option.product?.name || 'Producto N/A'} - ${option.billing_cycle?.name}`)"
                                     class="w-full justify-center mt-auto"
                                     :disabled="false"> <!-- Replace with form.processing if useForm is implemented -->
                                     Seleccionar este Plan

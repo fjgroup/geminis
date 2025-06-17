@@ -21,6 +21,7 @@ use Illuminate\Support\Str; // Added for generating invoice number
 use Illuminate\Support\Facades\Hash; // For hashing passwords
 use Illuminate\Validation\Rules\Password; // For password validation rules
 use Illuminate\Validation\ValidationException; // Added for throwing validation exceptions
+use App\Models\Product; // Added for querying Product model
 
 class ClientServiceController extends Controller
 {
@@ -134,20 +135,27 @@ class ClientServiceController extends Controller
     {
         $this->authorize('viewUpgradeDowngradeOptions', $service);
 
-        // Ensure product and current product pricing are loaded
-        $service->load(['product', 'productPricing.billingCycle']);
+        // Ensure product, its productType, and current product pricing are loaded
+        $service->loadMissing(['product.productType', 'productPricing.billingCycle']);
 
-        if (!$service->product) {
-            // This should ideally not happen if data integrity is maintained
-            abort(404, 'Product associated with this service not found.');
+        if (!$service->product || !$service->product->productType) {
+            Log::error("Servicio ID {$service->id} no tiene producto o tipo de producto asociado.");
+            return redirect()->route('client.services.index')->with('error', 'No se pudo determinar el tipo de producto del servicio actual.');
         }
 
-        // Fetch all ProductPricing tiers for the current service's product.
-        // Eager load billingCycle and product for each pricing option.
+        $currentProductTypeId = $service->product->product_type_id;
+
+        // Get IDs of all products belonging to this product_type_id
+        $productIdsWithSameType = Product::where('product_type_id', $currentProductTypeId)
+                                        // ->where('status', 'active') // Optional: consider only active products for upgrade/downgrade
+                                        ->pluck('id');
+
+        // Fetch all ProductPricing tiers for products of the same type.
         // The frontend will handle differentiating the current plan from others.
-        $availableOptions = ProductPricing::where('product_id', $service->product_id)
-            ->with(['billingCycle', 'product']) // Ensure product is loaded if needed by frontend for options list
-            ->orderBy('price') // Optionally order by price or some other attribute like sort_order on billing cycle
+        $availableOptions = ProductPricing::whereIn('product_id', $productIdsWithSameType)
+            ->with(['billingCycle', 'product:id,name']) // Eager load billingCycle and product name
+            ->orderBy('product_id') // Group by product first
+            ->orderBy('price')      // Then by price
             ->get();
 
         // Prepare discount information to be passed to the frontend
