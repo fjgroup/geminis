@@ -81,7 +81,7 @@ class ClientServiceController extends Controller
             $sourceInvoiceId = $request->input('source_invoice_id');
 
             $originalStatus = $service->status;
-            $service->status = 'cancelled'; // Usar un valor válido del ENUM
+            $service->status = 'pending_cancellation'; // Usar el nuevo estado ENUM
             $service->save();
 
             if ($sourceInvoiceId) {
@@ -110,7 +110,7 @@ class ClientServiceController extends Controller
 
             DB::commit();
 
-            return redirect()->route('client.services.index')->with('success', 'Service cancellation requested successfully. Any associated unpaid renewal invoice has also been cancelled.');
+            return redirect()->route('client.services.index')->with('success', 'Tu solicitud de cancelación ha sido recibida y está pendiente de revisión.');
 
         } catch (\Exception $e) {
             DB::rollBack();
