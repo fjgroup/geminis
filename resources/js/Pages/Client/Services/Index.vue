@@ -1,9 +1,14 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head, Link, usePage } from '@inertiajs/vue3'; // Added usePage
-import { computed } from 'vue'; // Added computed
-import { format as formatDate } from 'date-fns'; // Import date-fns
-import { router } from '@inertiajs/vue3'; // Ensure this is imported
+import { Head, Link, usePage } from '@inertiajs/vue3';
+import { computed, ref } from 'vue'; // Added ref
+import { format as formatDate } from 'date-fns';
+import { router } from '@inertiajs/vue3';
+import ServiceDetailsModal from '@/Components/ServiceDetailsModal.vue'; // Import the modal
+
+// Modal state
+const isServiceModalOpen = ref(false);
+const selectedService = ref(null);
 
 const props = defineProps({
     clientServices: {
@@ -84,6 +89,18 @@ const confirmRenewalRequest = (event, serviceId) => {
     }
 };
 
+// Function to open the modal and set the service
+const showServiceDetails = (service) => {
+    selectedService.value = service;
+    isServiceModalOpen.value = true;
+};
+
+// Function to close the modal
+const closeServiceModal = () => {
+    isServiceModalOpen.value = false;
+    selectedService.value = null;
+};
+
 </script>
 
 <template>
@@ -93,6 +110,13 @@ const confirmRenewalRequest = (event, serviceId) => {
         <template #header>
             <h2 class="font-semibold text-xl text-gray-800 leading-tight">Mis Servicios</h2>
         </template>
+
+        <!-- Service Details Modal -->
+        <ServiceDetailsModal
+            :show="isServiceModalOpen"
+            :service="selectedService"
+            @close="closeServiceModal"
+        />
 
         <div class="py-12">
             <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
@@ -159,12 +183,16 @@ const confirmRenewalRequest = (event, serviceId) => {
                                                     <!-- Link to view service details (optional, based on show route) -->
                                                     <!-- <Link :href="route('client.services.show', { service: service.id })" class="text-indigo-600 hover:text-indigo-900">View</Link> -->
 
+                                                    <button @click="showServiceDetails(service)" class="text-xs font-semibold text-blue-600 hover:text-blue-700">
+                                                        Ver
+                                                    </button>
+
                                                     <Link v-if="service.status === 'Active'" :href="route('client.services.showUpgradeDowngradeOptions', { service: service.id })" class="text-xs font-semibold text-indigo-600 hover:text-indigo-700">
-                                                        Change Plan
+                                                        Actualizar
                                                     </Link>
 
                                                     <Link v-if="service.status === 'Active'" :href="route('client.services.requestCancellation', { service: service.id })" method="post" as="button" class="text-xs font-semibold text-red-600 hover:text-red-700" @click.prevent="confirmRequestCancellation($event, service.id)">
-                                                        Request Cancellation
+                                                        Cancelar
                                                     </Link>
 
                                                     <Link v-if="service.status === 'Active' || service.status === 'Suspended'" :href="route('client.services.requestRenewal', { service: service.id })" method="post" as="button" class="text-xs font-semibold text-green-600 hover:text-green-700" @click.prevent="confirmRenewalRequest($event, service.id)">

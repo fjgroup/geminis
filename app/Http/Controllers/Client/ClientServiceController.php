@@ -18,6 +18,8 @@ use App\Models\Invoice; // Added for creating renewal invoice
 use App\Models\InvoiceItem; // Added for creating invoice items
 use Carbon\Carbon; // Added for dates
 use Illuminate\Support\Str; // Added for generating invoice number
+use Illuminate\Support\Facades\Hash; // For hashing passwords
+use Illuminate\Validation\Rules\Password; // For password validation rules
 
 class ClientServiceController extends Controller
 {
@@ -139,20 +141,25 @@ class ClientServiceController extends Controller
             abort(404, 'Product associated with this service not found.');
         }
 
-        // Fetch all other ProductPricing tiers for the current service's product
-        // Eager load billingCycle for display
+        // Fetch all ProductPricing tiers for the current service's product.
+        // Eager load billingCycle and product for each pricing option.
+        // The frontend will handle differentiating the current plan from others.
         $availableOptions = ProductPricing::where('product_id', $service->product_id)
-            ->where('id', '!=', $service->product_pricing_id) // Exclude current pricing
-            ->with('billingCycle')
-            ->orderBy('price') // Optionally order by price or some other attribute
+            ->with(['billingCycle', 'product']) // Ensure product is loaded if needed by frontend for options list
+            ->orderBy('price') // Optionally order by price or some other attribute like sort_order on billing cycle
             ->get();
 
-        // You might also want to filter these options based on status (e.g., only 'active' pricings)
-        // or if they are marked as "allow_upgrades_downgrades" etc. (future enhancement)
+        // Prepare discount information to be passed to the frontend
+        // This is based on the subtask's fixed discount percentages.
+        $discountInfo = [
+            12 => ['percentage' => 18, 'text' => 'Ahorra 18%'], // 12 months
+            24 => ['percentage' => 26, 'text' => 'Ahorra 26%'], // 24 months
+        ];
 
         return Inertia::render('Client/Services/UpgradeDowngradeOptions', [
-            'service' => $service,
-            'availableOptions' => $availableOptions,
+            'service' => $service, // Contains current product, productPricing, and billingCycle
+            'availableOptions' => $availableOptions, // All pricing options for this product
+            'discountInfo' => $discountInfo,
         ]);
     }
 
@@ -307,6 +314,88 @@ class ClientServiceController extends Controller
                 'exception' => $e,
             ]);
             return redirect()->back()->with('error', 'Could not generate renewal invoice. Please try again.');
+        }
+    }
+
+    /**
+     * Update the password for the specified service.
+     *
+     * @param  Request  $request
+     * @param  ClientService  $service
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function updatePassword(Request $request, ClientService $service): \Illuminate\Http\JsonResponse
+    {
+        // Authorization: Ensure the authenticated user owns this service
+        // This will throw a 403 error if the policy check fails.
+        $this->authorize('updatePassword', $service); // Assumes 'updatePassword' method exists in ClientServicePolicy
+
+        // Validate the request
+        $validated = $request->validate([
+            'new_password' => [
+                'required',
+                'confirmed', // Ensures new_password_confirmation matches
+                Password::min(12)
+                        ->mixedCase()
+                        ->numbers()
+                        ->symbols()
+                        ->uncompromised(), // Checks if password has been pwned
+            ],
+        ]);
+
+        DB::beginTransaction();
+        try {
+            // IMPORTANT: This is a simplified password update.
+            // In a real-world scenario with external provisioning (cPanel, Plesk, etc.),
+            // this would involve calling an external API via a ServiceProvisioningService.
+            // For now, we'll assume the password (or a hash) is stored directly on the ClientService model
+            // or its related configuration. This is generally NOT recommended for actual service credentials.
+
+            // Example: If storing a hash directly on ClientService model (ensure field exists and is fillable)
+            // $service->service_password = Hash::make($validated['new_password']);
+
+            // Example: If storing in a 'config' JSON column on ClientService model
+            $config = $service->config ?? [];
+            // If you store the actual password (less secure), encrypt it:
+            // $config['password'] = encrypt($validated['new_password']);
+            // If you store a hash (more secure for local storage, but might not be usable by external service):
+            $config['password_hash'] = Hash::make($validated['new_password']); // Or just 'password' if that's the key
+            $service->config = $config;
+
+            // If the service has a dedicated field for username that might need to be set if not already
+            // if (empty($service->service_username) && !empty($config['username'])) {
+            //     $service->service_username = $config['username'];
+            // }
+
+            $service->save();
+
+            // Optionally, log this activity
+            Log::info("Password updated for service ID {$service->id} by user ID {$request->user()->id}.");
+
+            DB::commit();
+
+            return response()->json(['message' => 'Contraseña actualizada con éxito.']);
+
+        } catch (\Illuminate\Auth\Access\AuthorizationException $e) {
+            DB::rollBack();
+            Log::warning('Password update authorization failed: ' . $e->getMessage(), [
+                'client_service_id' => $service->id,
+                'user_id' => $request->user()->id,
+            ]);
+            return response()->json(['message' => $e->getMessage()], 403);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            DB::rollBack();
+            // Error messages are already handled by Inertia's form helper from validation response
+            return response()->json(['message' => $e->validator->errors()->first(), 'errors' => $e->errors()], 422);
+        }
+        catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Password update failed: ' . $e->getMessage(), [
+                'client_service_id' => $service->id,
+                'user_id' => $request->user()->id,
+                'exception' => $e,
+            ]);
+            return response()->json(['message' => 'Error al actualizar la contraseña. Por favor, inténtalo de nuevo más tarde.'], 500);
         }
     }
 }

@@ -12,6 +12,10 @@ const props = defineProps({
         type: Array,
         default: () => [],
     },
+    discountInfo: { // Added discountInfo prop
+        type: Object,
+        default: () => ({}),
+    }
 });
 
 // Helper function for formatting currency
@@ -104,31 +108,51 @@ const confirmPlanChange = (event, newPricingId, optionBillingCycleName) => {
                         
                         <div v-if="availableOptions.length > 0" class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
                             <div v-for="option in availableOptions" :key="option.id"
-                                 class="flex flex-col justify-between p-6 border border-gray-200 rounded-lg dark:border-gray-700 hover:shadow-lg transition-shadow duration-200">
+                                 class="flex flex-col justify-between p-6 border rounded-lg dark:border-gray-700 hover:shadow-lg transition-shadow duration-200"
+                                 :class="{
+                                     'border-green-500 dark:border-green-600 ring-2 ring-green-500 dark:ring-green-600': option.id === service.product_pricing_id,
+                                     'border-gray-200': option.id !== service.product_pricing_id
+                                 }">
                                 <div>
-                                    <h4 class="mb-2 text-md font-semibold text-gray-800 dark:text-gray-200">
-                                        {{ service.product?.name }} - {{ option.billing_cycle?.name || 'N/A' }}
+                                    <h4 class="mb-1 text-md font-semibold text-gray-800 dark:text-gray-200">
+                                        {{ option.product?.name || service.product?.name }}
                                     </h4>
-                                    <!-- Placeholder for features - this would come from product or pricing details -->
-                                    <ul class="mb-4 text-xs text-gray-600 list-disc list-inside dark:text-gray-400">
-                                        <li>Feature A for {{ option.billing_cycle?.name }}</li>
-                                        <li>Feature B for {{ option.billing_cycle?.name }}</li>
-                                    </ul>
-                                    <p class="mb-4 text-xl font-bold text-gray-900 dark:text-gray-100">
-                                        {{ formatCurrency(option.price, option.currency_code) }}
-                                        <span class="text-sm font-normal text-gray-500 dark:text-gray-400">/ {{ option.billing_cycle?.name || 'N/A' }}</span>
+                                    <p class="mb-2 text-sm text-gray-600 dark:text-gray-400">
+                                        Ciclo: {{ option.billing_cycle?.name || 'N/A' }}
+                                        <span v-if="option.billing_cycle?.duration_in_months">
+                                            ({{ option.billing_cycle.duration_in_months }} mes<span v-if="option.billing_cycle.duration_in_months > 1">es</span>)
+                                        </span>
                                     </p>
+
+                                    <p class="mb-3 text-xl font-bold text-gray-900 dark:text-gray-100">
+                                        {{ formatCurrency(option.price, option.currency_code) }}
+                                    </p>
+
+                                    <div v-if="discountInfo[option.billing_cycle?.duration_in_months]"
+                                         class="mb-3 p-2 text-xs font-semibold text-green-700 bg-green-100 rounded-md dark:bg-green-700 dark:text-green-100">
+                                        {{ discountInfo[option.billing_cycle.duration_in_months].text }}
+                                    </div>
+
+                                    <!-- Placeholder for features - can be enhanced later -->
+                                    <!-- <ul class="mb-4 text-xs text-gray-600 list-disc list-inside dark:text-gray-400">
+                                        <li>Feature A</li>
+                                        <li>Feature B</li>
+                                    </ul> -->
                                 </div>
-                                <PrimaryButton 
-                                    as="button" 
-                                    @click.prevent="confirmPlanChange($event, option.id, option.billing_cycle?.name || 'N/A')" 
-                                    class="w-full justify-center"
-                                    :disabled="false">  <!-- Replace false with a 'form.processing' if using useForm -->
-                                    Select this plan
+                                <PrimaryButton
+                                    v-if="option.id !== service.product_pricing_id"
+                                    as="button"
+                                    @click.prevent="confirmPlanChange($event, option.id, `${option.product?.name || service.product?.name} - ${option.billing_cycle?.name}`)"
+                                    class="w-full justify-center mt-auto"
+                                    :disabled="false"> <!-- Replace with form.processing if useForm is implemented -->
+                                    Seleccionar este Plan
                                 </PrimaryButton>
+                                <div v-else class="mt-auto py-2 px-4 w-full text-center bg-green-100 text-green-700 rounded-md dark:bg-green-700 dark:text-green-100 font-semibold">
+                                    Plan Actual
+                                </div>
                             </div>
                         </div>
-                        <div v-else>
+                        <div v-if="availableOptions.filter(opt => opt.id !== service.product_pricing_id).length === 0">
                             <p class="text-center text-gray-500 dark:text-gray-400">
                                 No other billing options are currently available for this product.
                             </p>

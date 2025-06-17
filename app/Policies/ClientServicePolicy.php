@@ -22,6 +22,21 @@ class ClientServicePolicy
     }
 
     /**
+     * Determine whether the user can update the password for the client service.
+     *
+     * @param  \App\Models\User  $user
+     * @param  \App\Models\ClientService  $clientService
+     * @return bool
+     */
+    public function updatePassword(User $user, ClientService $clientService): bool
+    {
+        // Only allow updating password if the user owns the service
+        // And the service is in a state where password changes are logical (e.g., Active, Suspended)
+        // Add any other conditions specific to your application (e.g. product type allows password management)
+        return $user->id === $clientService->client_id && in_array($clientService->status, ['Active', 'Suspended', 'Pending', 'pending_configuration']);
+    }
+
+    /**
      * Determine whether the user can renew the client service.
      *
      * @param  \App\Models\User  $user

@@ -224,6 +224,9 @@ Route::prefix('client')->name('client.')->middleware(['auth', 'verified'])->grou
     // Ruta para solicitar renovación de servicio
     Route::post('/services/{service}/request-renewal', [ClientServiceController::class, 'requestRenewal'])->name('services.requestRenewal');
 
+  // Ruta para actualizar la contraseña de un servicio
+  Route::post('/services/{service}/update-password', [ClientServiceController::class, 'updatePassword'])->name('services.updatePassword');
+
     // Ruta para solicitar la cancelación de una nueva orden/factura
     Route::post('/invoices/{invoice}/cancel-new-order', [App\Http\Controllers\Client\ClientInvoiceController::class, 'requestInvoiceCancellation'])->name('invoices.cancelNewOrder');
 });
