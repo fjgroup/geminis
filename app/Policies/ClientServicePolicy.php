@@ -34,7 +34,8 @@ class ClientServicePolicy
         // Only allow updating password if the user owns the service
         // And the service is in a state where password changes are logical (e.g., Active, Suspended)
         // Add any other conditions specific to your application (e.g. product type allows password management)
-        return $user->id === $clientService->client_id && in_array($clientService->status, ['Active', 'active', 'Suspended', 'Pending', 'pending_configuration']);
+        return $user->id === $clientService->client_id &&
+               ($clientService->status && in_array(strtolower($clientService->status), ['active', 'suspended', 'pending', 'pending_configuration']));
     }
 
     /**
@@ -48,7 +49,8 @@ class ClientServicePolicy
     {
         // Allow renewal if the user owns the service and its status is Active or Suspended.
         // Further checks (like existing unpaid renewal invoice) are handled in the controller.
-        return $user->id === $clientService->client_id && in_array($clientService->status, ['Active', 'Suspended']);
+        return $user->id === $clientService->client_id &&
+               ($clientService->status && in_array(strtolower($clientService->status), ['active', 'suspended']));
     }
 
     /**
@@ -62,7 +64,8 @@ class ClientServicePolicy
     {
         // Only allow processing if the service is Active and the user owns the service.
         // Further validation (e.g., selected plan is valid) is done in the controller.
-        return $user->id === $clientService->client_id && $clientService->status === 'Active';
+        return $user->id === $clientService->client_id &&
+               ($clientService->status && strtolower($clientService->status) === 'active');
     }
 
     /**
@@ -76,7 +79,8 @@ class ClientServicePolicy
     {
         // Only allow viewing options if the service is Active
         // and the user owns the service.
-        return $user->id === $clientService->client_id && $clientService->status === 'Active';
+        return $user->id === $clientService->client_id &&
+               ($clientService->status && strtolower($clientService->status) === 'active');
     }
 
     /**
@@ -107,7 +111,8 @@ class ClientServicePolicy
      */
     public function requestCancellation(User $user, ClientService $clientService): bool
     {
-        return $user->id === $clientService->client_id && in_array($clientService->status, ['Active', 'Suspended']);
+        return $user->id === $clientService->client_id &&
+               ($clientService->status && in_array(strtolower($clientService->status), ['active', 'suspended']));
     }
 
     /**
