@@ -22,6 +22,7 @@ use Illuminate\Support\Facades\Hash; // For hashing passwords
 use Illuminate\Validation\Rules\Password; // For password validation rules
 use Illuminate\Validation\ValidationException; // Added for throwing validation exceptions
 use App\Models\Product; // Added for querying Product model
+use Illuminate\Http\JsonResponse; // Added for JSON response
 
 class ClientServiceController extends Controller
 {
@@ -230,13 +231,28 @@ class ClientServiceController extends Controller
         try {
             // 4. Proration Calculation
             $currentPricing = $service->productPricing;
-            $currentCycle = $currentPricing->billingCycle;
-            // Assuming BillingCycle has duration_in_days. Fallback to duration_in_months * 30 if not.
-            $daysInCurrentCycle = $currentCycle->duration_in_days ?? ($currentCycle->duration_in_months * 30);
-            if ($daysInCurrentCycle <= 0) { // Prevent division by zero
-                Log::error("Service ID {$service->id}: Current cycle duration is zero or negative.");
+            $currentCycle = $currentPricing->billingCycle; // This relies on $service->loadMissing having successfully loaded it.
+
+            // Logging added for diagnostics
+            Log::debug('Current Service ID: ' . $service->id);
+            Log::debug('Current ProductPricing ID: ' . $service->product_pricing_id);
+            Log::debug('Current ProductPricing Object: ', $currentPricing ? $currentPricing->toArray() : ['null']);
+            Log::debug('Current BillingCycle Object: ', $currentCycle ? $currentCycle->toArray() : ['null']);
+            Log::debug('Current BillingCycle duration_in_days: ' . ($currentCycle->duration_in_days ?? 'null'));
+            Log::debug('Current BillingCycle duration_in_months: ' . ($currentCycle->duration_in_months ?? 'null'));
+
+            if (!$currentCycle) {
+                Log::error("Error crítico: currentCycle no está cargado para el servicio ID {$service->id}.");
                 DB::rollBack();
                 return redirect()->route('client.services.index')->with('error', 'Error de configuración del ciclo de facturación actual.');
+            }
+            $daysInCurrentCycle = $currentCycle->duration_in_days;
+            if (empty($daysInCurrentCycle) || $daysInCurrentCycle <= 0) {
+                $daysInCurrentCycle = $currentCycle->duration_in_months * 30;
+            }
+            if (empty($daysInCurrentCycle) || $daysInCurrentCycle <= 0) {
+                Log::warning("Service ID {$service->id}: currentCycle ID {$currentCycle->id} tiene duration_in_days y duration_in_months inválidos. Usando 30 días por defecto.");
+                $daysInCurrentCycle = 30; // Fallback
             }
 
             $remainingDays = Carbon::now()->diffInDays($service->next_due_date, false);
@@ -244,12 +260,25 @@ class ClientServiceController extends Controller
             $creditAmount = ($remainingDays > 0) ? $pricePerDayCurrent * $remainingDays : 0;
 
             $newCycle = $newProductPricing->billingCycle;
-            // Assuming BillingCycle has duration_in_days. Fallback to duration_in_months * 30 if not.
-            $daysInNewCycle = $newCycle->duration_in_days ?? ($newCycle->duration_in_months * 30);
-            if ($daysInNewCycle <= 0) { // Prevent division by zero
-                Log::error("Service ID {$service->id}: New cycle duration is zero or negative for pricing ID {$newProductPricing->id}.");
+
+            // Logging added for diagnostics
+            Log::debug('New ProductPricing ID: ' . $newProductPricing->id);
+            Log::debug('New BillingCycle Object: ', $newCycle ? $newCycle->toArray() : ['null']);
+            Log::debug('New BillingCycle duration_in_days: ' . ($newCycle->duration_in_days ?? 'null'));
+            Log::debug('New BillingCycle duration_in_months: ' . ($newCycle->duration_in_months ?? 'null'));
+
+            if (!$newCycle) {
+                Log::error("Error crítico: newCycle no está cargado para el ProductPricing ID {$newProductPricing->id}.");
                 DB::rollBack();
                 return redirect()->route('client.services.index')->with('error', 'Error de configuración del nuevo ciclo de facturación.');
+            }
+            $daysInNewCycle = $newCycle->duration_in_days;
+            if (empty($daysInNewCycle) || $daysInNewCycle <= 0) {
+                $daysInNewCycle = $newCycle->duration_in_months * 30;
+            }
+            if (empty($daysInNewCycle) || $daysInNewCycle <= 0) {
+                Log::warning("ProductPricing ID {$newProductPricing->id}: newCycle ID {$newCycle->id} tiene duration_in_days y duration_in_months inválidos. Usando 30 días por defecto.");
+                $daysInNewCycle = 30; // Fallback
             }
 
             $pricePerDayNew = $newProductPricing->price / $daysInNewCycle;
@@ -349,6 +378,119 @@ class ClientServiceController extends Controller
             return redirect()->route('client.services.index')->with('error', 'No se pudo procesar tu solicitud de cambio de plan. Inténtalo de nuevo.');
         }
     }
+
+    /**
+     * Calculate proration for a plan change without applying it.
+     *
+     * @param Request $request
+     * @param ClientService $service
+     * @return JsonResponse
+     */
+    public function calculateProration(Request $request, ClientService $service): JsonResponse
+    {
+        $this->authorize('view', $service); // Or a more specific policy like 'changePlan'
+
+        $validated = $request->validate([
+            'new_product_pricing_id' => 'required|exists:product_pricings,id',
+        ]);
+        $newProductPricingId = $validated['new_product_pricing_id'];
+
+        try {
+            $service->loadMissing(['product.productType', 'productPricing.billingCycle', 'client']);
+            $newProductPricing = ProductPricing::with(['product.productType', 'billingCycle'])
+                ->findOrFail($newProductPricingId);
+
+            if (strtolower($service->status) !== 'active') {
+                return response()->json(['error' => 'El servicio debe estar activo para calcular el prorrateo.'], 422);
+            }
+            if ((int)$newProductPricingId === $service->product_pricing_id) {
+                return response()->json(['error' => 'Esta selección es tu plan actual.'], 422);
+            }
+            if ($newProductPricing->product->product_type_id !== $service->product->product_type_id) {
+                return response()->json(['error' => 'No puedes cambiar a un tipo de producto diferente.'], 422);
+            }
+
+            // --- Start of Proration Calculation Logic (copied and adapted from processUpgradeDowngrade) ---
+            $currentPricing = $service->productPricing;
+            $currentCycle = $currentPricing->billingCycle;
+
+            if (!$currentCycle) {
+                Log::error("Calculate Proration: Service ID {$service->id}: Current cycle (ID: {$currentPricing->billing_cycle_id}) no está completamente cargado o es nulo.");
+                return response()->json(['error' => 'Error de configuración del ciclo de facturación actual.'], 500);
+            }
+            $daysInCurrentCycle = $currentCycle->duration_in_days;
+            if (empty($daysInCurrentCycle) || $daysInCurrentCycle <= 0) {
+                $daysInCurrentCycle = $currentCycle->duration_in_months * 30;
+            }
+            if (empty($daysInCurrentCycle) || $daysInCurrentCycle <= 0) {
+                Log::warning("Calculate Proration: Service ID {$service->id}: currentCycle ID {$currentCycle->id} tiene duration_in_days y duration_in_months inválidos. Usando 30 días por defecto.");
+                $daysInCurrentCycle = 30; // Fallback
+            }
+             if ($daysInCurrentCycle <= 0) { // Final check before division
+                Log::error("Calculate Proration: Service ID {$service->id}: Current cycle duration results in zero or negative after fallbacks.");
+                return response()->json(['error' => 'Error crítico en la duración del ciclo de facturación actual.'], 500);
+            }
+
+
+            $remainingDays = Carbon::now()->diffInDays($service->next_due_date, false);
+            $pricePerDayCurrent = $currentPricing->price / $daysInCurrentCycle;
+            $creditAmount = ($remainingDays > 0) ? $pricePerDayCurrent * $remainingDays : 0;
+
+            $newCycle = $newProductPricing->billingCycle;
+
+            if (!$newCycle) {
+                Log::error("Calculate Proration: ProductPricing ID {$newProductPricing->id}: newCycle (ID: {$newProductPricing->billing_cycle_id}) no está completamente cargado o es nulo.");
+                return response()->json(['error' => 'Error de configuración del nuevo ciclo de facturación.'], 500);
+            }
+            $daysInNewCycle = $newCycle->duration_in_days;
+            if (empty($daysInNewCycle) || $daysInNewCycle <= 0) {
+                $daysInNewCycle = $newCycle->duration_in_months * 30;
+            }
+            if (empty($daysInNewCycle) || $daysInNewCycle <= 0) {
+                Log::warning("Calculate Proration: ProductPricing ID {$newProductPricing->id}: newCycle ID {$newCycle->id} tiene duration_in_days y duration_in_months inválidos. Usando 30 días por defecto.");
+                $daysInNewCycle = 30; // Fallback
+            }
+            if ($daysInNewCycle <= 0) { // Final check before division
+                Log::error("Calculate Proration: ProductPricing ID {$newProductPricing->id}: New cycle duration results in zero or negative after fallbacks.");
+                return response()->json(['error' => 'Error crítico en la duración del nuevo ciclo de facturación.'], 500);
+            }
+
+            $pricePerDayNew = $newProductPricing->price / $daysInNewCycle;
+            $costForRemainingPeriod = ($remainingDays > 0) ? $pricePerDayNew * $remainingDays : 0;
+
+            $creditAmount = round($creditAmount, 2);
+            $costForRemainingPeriod = round($costForRemainingPeriod, 2);
+            $proratedDifference = round($costForRemainingPeriod - $creditAmount, 2);
+            // --- End of Proration Calculation Logic ---
+
+            $message = 'Monto de prorrateo calculado.';
+            if ($proratedDifference > 0) {
+                $message = 'Monto a pagar por el cambio de plan.';
+            } elseif ($proratedDifference < 0) {
+                $message = 'Crédito a aplicar a tu balance por el cambio de plan.';
+            } else {
+                $message = 'El cambio de plan no tiene costo adicional por el período actual.';
+            }
+
+            return response()->json([
+                'prorated_amount' => $proratedDifference,
+                'currency_code' => $newProductPricing->currency_code ?? $service->productPricing->currency_code,
+                'message' => $message,
+                // For debugging or more detailed front-end display, you could add:
+                // 'credit_amount' => $creditAmount,
+                // 'cost_for_remaining_period' => $costForRemainingPeriod,
+                // 'remaining_days' => $remainingDays,
+            ]);
+
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            Log::error('Calculate Proration: Model not found for new_product_pricing_id: ' . $newProductPricingId . ' - ' . $e->getMessage());
+            return response()->json(['error' => 'El plan seleccionado no es válido.'], 404);
+        } catch (\Exception $e) {
+            Log::error('Error en calculateProration para el servicio ID ' . $service->id . ': ' . $e->getMessage() . ' Trace: ' . $e->getTraceAsString());
+            return response()->json(['error' => 'No se pudo calcular el monto de prorrateo.'], 500);
+        }
+    }
+
 
     /**
      * Request renewal for the specified service and generate an invoice.

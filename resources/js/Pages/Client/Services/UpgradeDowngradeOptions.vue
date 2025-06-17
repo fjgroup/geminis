@@ -2,8 +2,9 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
 import PrimaryButton from '@/Components/Forms/Buttons/PrimaryButton.vue';
-import InputLabel from '@/Components/Forms/InputLabel.vue'; // Assuming this component exists
+import InputLabel from '@/Components/Forms/InputLabel.vue';
 import { ref, computed, watch } from 'vue';
+import axios from 'axios'; // Added axios
 
 const props = defineProps({
     service: {
@@ -20,6 +21,10 @@ const props = defineProps({
 // Reactive state
 const selectedProductId = ref(null);
 const selectedProductPricingId = ref(null);
+
+const proratedResult = ref(null);
+const isCalculatingProration = ref(false);
+const prorationError = ref(null);
 
 // Helper function for formatting currency
 const formatCurrency = (amount, currencyCode = 'USD') => {
@@ -73,15 +78,68 @@ const selectedPlanDetails = computed(() => {
 // Watch for product selection changes to reset cycle selection
 watch(selectedProductId, (newVal, oldVal) => {
     if (newVal !== oldVal) {
-        selectedProductPricingId.value = null; // Reset cycle selection
+        selectedProductPricingId.value = null;
+        proratedResult.value = null; // Clear proration when product changes
+        prorationError.value = null;
     }
 });
 
-const handlePlanChange = () => {
-    if (!selectedPlanDetails.value) {
-        alert('Por favor, selecciona un plan válido.'); // Should not happen if button is disabled
+// Watch for pricing selection changes to fetch proration
+watch(selectedProductPricingId, (newValue) => {
+    if (newValue) {
+        fetchProrationDetails();
+    } else {
+        proratedResult.value = null;
+        prorationError.value = null;
+    }
+});
+
+async function fetchProrationDetails() {
+    if (!selectedProductPricingId.value || !props.service || !props.service.id) {
+        proratedResult.value = null;
+        prorationError.value = null;
         return;
     }
+
+    isCalculatingProration.value = true;
+    prorationError.value = null;
+    proratedResult.value = null;
+
+    try {
+        const response = await axios.post(
+            route('client.services.calculateProration', { service: props.service.id }),
+            { new_product_pricing_id: selectedProductPricingId.value }
+        );
+        proratedResult.value = response.data;
+    } catch (error) {
+        console.error('Error calculating proration:', error.response?.data || error.message);
+        if (error.response?.status === 422 && error.response?.data?.message) {
+            prorationError.value = error.response.data.message; // Use validation message from backend
+        } else if (error.response?.data?.error) {
+            prorationError.value = error.response.data.error;
+        } else {
+            prorationError.value = 'No se pudo calcular el monto de prorrateo.';
+        }
+    } finally {
+        isCalculatingProration.value = false;
+    }
+}
+
+const handlePlanChange = () => {
+    if (!selectedPlanDetails.value) {
+        // This alert should ideally not be needed if button is correctly disabled
+        alert('Por favor, selecciona un plan y ciclo válidos.');
+        return;
+    }
+    if (prorationError.value && selectedPlanDetails.value?.id === props.service.product_pricing_id) {
+        // If there was an error trying to calculate proration for the *current plan* (which is an invalid selection for change),
+        // still allow "confirming" it, which will just be caught by backend validation or do nothing.
+        // Or, more strictly, the button should be disabled. Let's assume button is disabled for invalid states.
+    } else if (prorationError.value) {
+         alert(`Error de prorrateo: ${prorationError.value} No se puede continuar.`);
+        return;
+    }
+
 
     const { product, billing_cycle, price, currency_code } = selectedPlanDetails.value;
     const newPlanName = `${product.name} - ${billing_cycle.name}`;
@@ -178,8 +236,44 @@ const handlePlanChange = () => {
                                 </p>
                             </div>
 
+                            <!-- Proration Calculation Display -->
+                            <div v-if="selectedProductPricingId">
+                                <div v-if="isCalculatingProration" class="mt-4 text-sm text-gray-600 dark:text-gray-400 animate-pulse">
+                                    Calculando monto de prorrateo...
+                                </div>
+
+                                <div v-if="prorationError && !isCalculatingProration" class="mt-4 p-3 bg-red-100 dark:bg-red-800 text-red-700 dark:text-red-200 rounded-md text-sm">
+                                    <p class="font-semibold">Error de Prorrateo:</p>
+                                    <p>{{ prorationError }}</p>
+                                </div>
+
+                                <div v-if="proratedResult && !isCalculatingProration && !prorationError" class="mt-4 p-3 rounded-md text-sm"
+                                     :class="{
+                                        'bg-green-100 dark:bg-green-800 text-green-700 dark:text-green-100': proratedResult.prorated_amount < 0,
+                                        'bg-yellow-100 dark:bg-yellow-700 text-yellow-700 dark:text-yellow-100': proratedResult.prorated_amount > 0,
+                                        'bg-blue-100 dark:bg-blue-800 text-blue-700 dark:text-blue-100': proratedResult.prorated_amount === 0
+                                     }">
+                                    <h4 class="font-semibold">Resultado del Prorrateo:</h4>
+                                    <p v-if="proratedResult.prorated_amount > 0">
+                                        Monto adicional a pagar: {{ formatCurrency(proratedResult.prorated_amount, proratedResult.currency_code) }}
+                                    </p>
+                                    <p v-else-if="proratedResult.prorated_amount < 0">
+                                        Crédito a tu balance: {{ formatCurrency(Math.abs(proratedResult.prorated_amount), proratedResult.currency_code) }}
+                                    </p>
+                                    <p v-else>
+                                        No hay cargos adicionales ni créditos por el período actual.
+                                    </p>
+                                    <p class="text-xs mt-1 italic">{{ proratedResult.message }}</p>
+                                </div>
+                            </div>
+                            <!-- End Proration Display -->
+
                             <div class="mt-6">
-                                <PrimaryButton @click="handlePlanChange" :disabled="!selectedProductPricingId" class="w-full justify-center">
+                                <PrimaryButton
+                                    @click="handlePlanChange"
+                                    :disabled="!selectedProductPricingId || isCalculatingProration || !!prorationError"
+                                    class="w-full justify-center"
+                                    :class="{'opacity-50 cursor-not-allowed': !selectedProductPricingId || isCalculatingProration || !!prorationError }">
                                     Actualizar Plan
                                 </PrimaryButton>
                             </div>

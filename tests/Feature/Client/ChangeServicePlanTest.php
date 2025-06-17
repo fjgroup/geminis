@@ -469,5 +469,192 @@ class ChangeServicePlanTest extends TestCase
         $this->assertStringContainsString("El servicio requiere configuración adicional por un administrador.", session('success'));
     }
 
+    // --- Tests for calculateProration Endpoint ---
+
+    /** @test */
+    public function test_calculate_proration_results_in_charge()
+    {
+        $data = $this->setup_test_environment(); // service uses pricingA_monthly ($10/30d)
+        $user = $data['user'];
+        $service = $data['service'];
+        $newPricing = $data['pricingB_monthly']; // $20/30d
+
+        // Expected: Credit $5, New Cost $10. Difference = $5 charge
+        $expectedProratedAmount = 5.00;
+
+        $response = $this->actingAs($user)
+            ->postJson(route('client.services.calculateProration', ['service' => $service->id]), [
+                'new_product_pricing_id' => $newPricing->id,
+            ]);
+
+        $response->assertStatus(200)
+            ->assertJson([
+                'prorated_amount' => $expectedProratedAmount,
+                'currency_code' => $newPricing->currency_code,
+                'message' => 'Monto a pagar por el cambio de plan.',
+            ]);
+
+        // Ensure no actual change happened
+        $service->refresh();
+        $this->assertEquals($data['pricingA_monthly']->id, $service->product_pricing_id);
+    }
+
+    /** @test */
+    public function test_calculate_proration_results_in_credit()
+    {
+        $data = $this->setup_test_environment(); // service uses pricingA_monthly ($10/30d)
+        $user = $data['user'];
+        $service = $data['service'];
+        $newPricing = $data['pricingA_yearly']; // $100/365d
+
+        // Expected: Credit ($10/30)*15 = $5.00. New Cost ($100/365)*15 = $4.11. Difference = -$0.89 credit
+        $expectedProratedAmount = -0.89;
+
+        $response = $this->actingAs($user)
+            ->postJson(route('client.services.calculateProration', ['service' => $service->id]), [
+                'new_product_pricing_id' => $newPricing->id,
+            ]);
+
+        $response->assertStatus(200)
+            ->assertJson([
+                'prorated_amount' => $expectedProratedAmount,
+                'currency_code' => $newPricing->currency_code,
+                'message' => 'Crédito a aplicar a tu balance por el cambio de plan.',
+            ]);
+    }
+
+    /** @test */
+    public function test_calculate_proration_results_in_no_difference()
+    {
+        $data = $this->setup_test_environment([
+            'next_due_date' => Carbon::now(), // No remaining days
+        ]);
+        $user = $data['user'];
+        $service = $data['service'];
+        $newPricing = $data['pricingB_monthly'];
+
+        $response = $this->actingAs($user)
+            ->postJson(route('client.services.calculateProration', ['service' => $service->id]), [
+                'new_product_pricing_id' => $newPricing->id,
+            ]);
+
+        $response->assertStatus(200)
+            ->assertJson([
+                'prorated_amount' => 0.00,
+                'message' => 'El cambio de plan no tiene costo adicional por el período actual.',
+            ]);
+    }
+
+    /** @test */
+    public function test_calculate_proration_error_service_not_active()
+    {
+        $data = $this->setup_test_environment(['status' => 'Terminated']);
+        $user = $data['user'];
+        $service = $data['service'];
+        $newPricing = $data['pricingB_monthly'];
+
+        $response = $this->actingAs($user)
+            ->postJson(route('client.services.calculateProration', ['service' => $service->id]), [
+                'new_product_pricing_id' => $newPricing->id,
+            ]);
+
+        $response->assertStatus(422)
+            ->assertJson(['error' => 'El servicio debe estar activo para calcular el prorrateo.']);
+    }
+
+    /** @test */
+    public function test_calculate_proration_error_selecting_current_plan()
+    {
+        $data = $this->setup_test_environment();
+        $user = $data['user'];
+        $service = $data['service']; // Uses pricingA_monthly
+
+        $response = $this->actingAs($user)
+            ->postJson(route('client.services.calculateProration', ['service' => $service->id]), [
+                'new_product_pricing_id' => $service->product_pricing_id, // Current plan
+            ]);
+
+        $response->assertStatus(422)
+            ->assertJson(['error' => 'Esta selección es tu plan actual.']);
+    }
+
+    /** @test */
+    public function test_calculate_proration_error_different_product_type()
+    {
+        $data = $this->setup_test_environment();
+        $user = $data['user'];
+        $service = $data['service']; // Product A (Web Hosting)
+        $newPricingDifferentType = $data['pricingC_monthly']; // Product C (VPS)
+
+        $response = $this->actingAs($user)
+            ->postJson(route('client.services.calculateProration', ['service' => $service->id]), [
+                'new_product_pricing_id' => $newPricingDifferentType->id,
+            ]);
+
+        $response->assertStatus(422)
+            ->assertJson(['error' => 'No puedes cambiar a un tipo de producto diferente.']);
+    }
+
+    /** @test */
+    public function test_calculate_proration_error_invalid_pricing_id()
+    {
+        $data = $this->setup_test_environment();
+        $user = $data['user'];
+        $service = $data['service'];
+
+        $response = $this->actingAs($user)
+            ->postJson(route('client.services.calculateProration', ['service' => $service->id]), [
+                'new_product_pricing_id' => 99999, // Non-existent ID
+            ]);
+
+        $response->assertStatus(404) // ModelNotFoundException
+            ->assertJson(['error' => 'El plan seleccionado no es válido.']);
+    }
+
+    /** @test */
+    public function test_calculate_proration_error_if_current_cycle_is_null()
+    {
+        $data = $this->setup_test_environment();
+        $user = $data['user'];
+        $service = $data['service'];
+        $newPricing = $data['pricingB_monthly'];
+
+        // Simulate a missing billingCycle relationship for the current service's pricing
+        // This is tricky to do without direct DB manipulation or more complex factory states.
+        // Instead, we can test the controller's handling if $currentCycle object is null,
+        // which should be caught by the `if (!$currentCycle)` check.
+        // For this test, we'll manually break the relation after setup.
+        $service->productPricing->setRelation('billingCycle', null); // Detach for test
+        // Note: This modification is in-memory for this test instance of $service->productPricing.
+        // The controller loads it fresh, so this test might not trigger the intended path as easily.
+        // A more robust way would be to have a ProductPricing without a valid billing_cycle_id,
+        // or a BillingCycle that is null/zero for durations.
+
+        // Let's try to save a product pricing with an invalid billing_cycle_id to simulate this.
+        $invalidPricing = ProductPricing::factory()->create([
+            'product_id' => $data['productA_web']->id,
+            'billing_cycle_id' => 9999, // Non-existent billing cycle
+            'price' => 10.00,
+            'currency_code' => 'USD',
+        ]);
+        $service->product_pricing_id = $invalidPricing->id;
+        $service->billing_cycle_id = $invalidPricing->billing_cycle_id; // ensure service has it too
+        $service->save();
+        $service->load('productPricing'); // Re-load with potentially broken relation if billing_cycle_id is invalid
+
+        // Now $service->productPricing->billingCycle might be null if eager loading fails due to invalid ID
+
+        $response = $this->actingAs($user)
+            ->postJson(route('client.services.calculateProration', ['service' => $service->id]), [
+                'new_product_pricing_id' => $newPricing->id,
+            ]);
+
+        // Depending on how findOrFail vs find handles it, or if the check for $currentCycle is hit.
+        // The controller has `if (!$currentCycle)` which should return 500
+         $response->assertStatus(500)
+             ->assertJson(['error' => 'Error de configuración del ciclo de facturación actual.']);
+    }
+
+
 }
 ?>
