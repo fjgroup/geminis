@@ -81,7 +81,7 @@ class ClientServiceController extends Controller
             $sourceInvoiceId = $request->input('source_invoice_id');
 
             $originalStatus = $service->status;
-            $service->status = 'Cancellation Requested'; // Consistent status value
+            $service->status = 'cancelled'; // Usar un valor válido del ENUM
             $service->save();
 
             if ($sourceInvoiceId) {
