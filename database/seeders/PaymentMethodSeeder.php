@@ -63,4 +63,3 @@ class PaymentMethodSeeder extends Seeder
         // Puedes añadir más métodos de pago aquí
     }
 }
-```
