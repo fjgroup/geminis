@@ -138,6 +138,23 @@ class ClientServiceController extends Controller
         // Ensure product, its productType, and current product pricing are loaded
         $service->loadMissing(['product.productType', 'productPricing.billingCycle']);
 
+        Log::debug("Debugging showUpgradeDowngradeOptions for Service ID: {$service->id}");
+        Log::debug("Service product_id: " . ($service->product_id ?? 'null'));
+
+        if ($service->product) {
+            Log::debug('Product data loaded: ', $service->product->toArray());
+            Log::debug('Product product_type_id: ' . ($service->product->product_type_id ?? 'null'));
+            if ($service->product->productType) {
+                Log::debug('ProductType data loaded: ', $service->product->productType->toArray());
+            } else {
+                Log::debug('ProductType relation is null on product.');
+            }
+        } else {
+            Log::debug('Product relation is null on service.');
+        }
+
+        // La condición original del if que causa el problema:
+        // if (!$service->product || !$service->product->productType) { ... }
         if (!$service->product || !$service->product->productType) {
             Log::error("Servicio ID {$service->id} no tiene producto o tipo de producto asociado.");
             return redirect()->route('client.services.index')->with('error', 'No se pudo determinar el tipo de producto del servicio actual.');
