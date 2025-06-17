@@ -71,7 +71,7 @@ class ClientServiceController extends Controller
 
         // Allow cancellation for 'Active' or 'Suspended' services.
         // Note: ClientServicePolicy@requestCancellation might also need adjustment.
-        if (!in_array($service->status, ['Active', 'Suspended'])) {
+        if (!($service->status && in_array(strtolower($service->status), ['active', 'suspended']))) {
             return redirect()->back()->with('error', 'This service cannot be cancelled at its current stage.');
         }
 
@@ -208,7 +208,7 @@ class ClientServiceController extends Controller
         $newProductPricing = ProductPricing::findOrFail($validated['new_product_pricing_id']);
 
         // Further validation
-        if ($service->status !== 'Active') {
+        if (!($service->status && strtolower($service->status) === 'active')) {
             return redirect()->back()->with('error', 'This service is not active and cannot be changed.');
         }
         if ($newProductPricing->product_id !== $service->product_id) {
@@ -266,7 +266,7 @@ class ClientServiceController extends Controller
         $this->authorize('renewService', $service);
 
         // Validation: Check if service is in a renewable state
-        if (!in_array($service->status, ['Active', 'Suspended'])) {
+        if (!($service->status && in_array(strtolower($service->status), ['active', 'suspended']))) {
             return redirect()->back()->with('error', 'This service cannot be renewed at its current stage.');
         }
 
