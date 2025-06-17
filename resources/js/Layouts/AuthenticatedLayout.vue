@@ -52,7 +52,7 @@ const isActiveDashboard = computed(() => {
                                     Dashboard
                                 </NavLink>
 
-                                <template v-if="$page.props.auth.user.role === 'client'">
+                                <template v-if="$page.props.auth.user?.role === 'client'">
                                     <NavLink :href="route('client.services.index')"
                                         :active="route().current('client.services.index')">
                                         Mis Servicios
@@ -75,14 +75,14 @@ const isActiveDashboard = computed(() => {
                                     </NavLink>
                                 </template>
 
-                                <template v-if="$page.props.auth.user.role === 'reseller'">
+                                <template v-if="$page.props.auth.user?.role === 'reseller'">
                                     <NavLink :href="route('reseller.clients.index')"
                                         :active="route().current('reseller.clients.index') || route().current('reseller.clients.create') || route().current('reseller.clients.edit') || route().current('reseller.clients.show')">
                                         My Clients
                                     </NavLink>
                                 </template>
 
-                                <template v-if="$page.props.auth.user.role === 'admin'">
+                                <template v-if="$page.props.auth.user?.role === 'admin'">
                                     <NavLink :href="route('admin.users.index')"
                                         :active="route().current('admin.users.index') || route().current('admin.users.show') || route().current('admin.users.edit')">
                                         Manage Users
@@ -119,11 +119,11 @@ const isActiveDashboard = computed(() => {
                                         <span class="inline-flex rounded-md">
                                             <button type="button"
                                                 class="inline-flex items-center px-3 py-2 text-sm font-medium leading-4 text-gray-500 transition duration-150 ease-in-out bg-white border border-transparent rounded-md hover:text-gray-700 focus:outline-none">
-                                                <span class="mr-2">{{ $page.props.auth.user.name }}</span>
+                                                <span class="mr-2">{{ $page.props.auth.user?.name }}</span>
                                                 <span
-                                                    v-if="$page.props.auth.user.role === 'client' && $page.props.auth.user.formatted_balance"
+                                                    v-if="$page.props.auth.user?.role === 'client' && $page.props.auth.user?.formatted_balance"
                                                     class="text-xs text-green-600">
-                                                    ({{ $page.props.auth.user.formatted_balance }})
+                                                    ({{ $page.props.auth.user?.formatted_balance }})
                                                 </span>
                                                 <svg class="-me-0.5 ms-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg"
                                                     viewBox="0 0 20 20" fill="currentColor">
@@ -172,7 +172,7 @@ const isActiveDashboard = computed(() => {
                         <ResponsiveNavLink :href="dashboardRoute" :active="isActiveDashboard">
                             Dashboard
                         </ResponsiveNavLink>
-                        <template v-if="$page.props.auth.user.role === 'client'">
+                        <template v-if="$page.props.auth.user?.role === 'client'">
                             <ResponsiveNavLink :href="route('client.services.index')"
                                 :active="route().current('client.services.index')">
                                 Mis Servicios
@@ -194,13 +194,13 @@ const isActiveDashboard = computed(() => {
                                 Agregar Fondos
                             </ResponsiveNavLink>
                         </template>
-                        <template v-if="$page.props.auth.user.role === 'reseller'">
+                        <template v-if="$page.props.auth.user?.role === 'reseller'">
                             <ResponsiveNavLink :href="route('reseller.clients.index')"
                                 :active="route().current('reseller.clients.index') || route().current('reseller.clients.create') || route().current('reseller.clients.edit') || route().current('reseller.clients.show')">
                                 My Clients
                             </ResponsiveNavLink>
                         </template>
-                        <template v-if="$page.props.auth.user.role === 'admin'">
+                        <template v-if="$page.props.auth.user?.role === 'admin'">
                             <ResponsiveNavLink :href="route('admin.users.index')"
                                 :active="route().current('admin.users.index') || route().current('admin.users.show') || route().current('admin.users.edit')">
                                 Manage Users
@@ -231,14 +231,14 @@ const isActiveDashboard = computed(() => {
                     <div class="pt-4 pb-1 border-t border-gray-200">
                         <div class="px-4">
                             <div class="text-base font-medium text-gray-800">
-                                {{ $page.props.auth.user.name }}
+                                {{ $page.props.auth.user?.name }}
                             </div>
                             <div class="text-sm font-medium text-gray-500">
-                                {{ $page.props.auth.user.email }}
+                                {{ $page.props.auth.user?.email }}
                             </div>
-                            <div v-if="$page.props.auth.user.role === 'client' && $page.props.auth.user.formatted_balance"
+                            <div v-if="$page.props.auth.user?.role === 'client' && $page.props.auth.user?.formatted_balance"
                                 class="mt-1 text-sm font-medium text-green-600">
-                                Saldo: {{ $page.props.auth.user.formatted_balance }}
+                                Saldo: {{ $page.props.auth.user?.formatted_balance }}
                             </div>
                         </div>
 
