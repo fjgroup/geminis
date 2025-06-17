@@ -55,20 +55,22 @@ const formatCurrency = (amount, currencyCode = 'USD') => {
 // Helper for status display
 const getFriendlyServiceStatusText = (status) => {
     if (!status) return 'N/A';
+    const lowerStatus = status.toLowerCase(); // Convertir a minúsculas para la comparación
     const mappings = {
-        'Active': 'Activo',
-        'Pending': 'Pendiente', // Original 'pending'
+        'active': 'Activo', // Clave en minúsculas
+        'pending': 'Pendiente',
         'pending_configuration': 'Pendiente de Configuración',
-        'Suspended': 'Suspendido',
-        'Terminated': 'Terminado',
-        'Cancelled': 'Cancelado',
-        // Add other specific statuses here if they come directly from backend
+        'suspended': 'Suspendido', // Clave en minúsculas
+        'terminated': 'Terminado',
+        'cancelled': 'Cancelado',
+        // Add other specific statuses here if they come directly from backend (use lowercase keys)
     };
-    if (mappings[status]) {
-        return mappings[status];
+    if (mappings[lowerStatus]) {
+        return mappings[lowerStatus];
     }
-    // Fallback for any other status (e.g., if backend sends 'Fraud' or other unmapped ones)
-    return status.replace(/_/g, ' ').replace(/\b\w/g, char => char.toUpperCase());
+    // Fallback para cualquier otro estado
+    // Capitaliza la primera letra de cada palabra después de reemplazar guiones bajos.
+    return status.replace(/_/g, ' ').toLowerCase().split(' ').map(word => word.charAt(0).toUpperCase() + word.substring(1)).join(' ');
 };
 
 
@@ -166,12 +168,12 @@ const closeServiceModal = () => {
                                             <td class="px-6 py-4 whitespace-nowrap">
                                                 <span :class="{
                                                     'px-2 inline-flex text-xs leading-5 font-semibold rounded-full': true,
-                                                    'bg-green-100 text-green-800': service.status === 'Active',
-                                                    'bg-yellow-100 text-yellow-800': service.status === 'Pending',
-                                                    'bg-blue-100 text-blue-800': service.status === 'pending_configuration',
-                                                    'bg-orange-100 text-orange-800': service.status === 'Suspended',
-                                                    'bg-red-100 text-red-800': service.status === 'Terminated' || service.status === 'Cancelled',
-                                                    'bg-gray-100 text-gray-800': !['Active', 'Pending', 'pending_configuration', 'Suspended', 'Terminated', 'Cancelled'].includes(service.status)
+                                                    'bg-green-100 text-green-800': service.status && service.status.toLowerCase() === 'active',
+                                                    'bg-yellow-100 text-yellow-800': service.status && service.status.toLowerCase() === 'pending',
+                                                    'bg-blue-100 text-blue-800': service.status && service.status.toLowerCase() === 'pending_configuration',
+                                                    'bg-orange-100 text-orange-800': service.status && service.status.toLowerCase() === 'suspended',
+                                                    'bg-red-100 text-red-800': service.status && (service.status.toLowerCase() === 'terminated' || service.status.toLowerCase() === 'cancelled'),
+                                                    'bg-gray-100 text-gray-800': service.status && !['active', 'pending', 'pending_configuration', 'suspended', 'terminated', 'cancelled'].includes(service.status.toLowerCase())
                                                 }">
                                                     {{ getFriendlyServiceStatusText(service.status) }}
                                                 </span>
@@ -188,7 +190,7 @@ const closeServiceModal = () => {
                                                         <EyeIcon class="h-5 w-5" />
                                                     </button>
 
-                                                    <Link v-if="service.status === 'Active'"
+                                                    <Link v-if="service.status && service.status.toLowerCase() === 'active'"
                                                           :href="route('client.services.showUpgradeDowngradeOptions', { service: service.id })"
                                                           class="text-gray-500 hover:text-indigo-700 p-1"
                                                           aria-label="Actualizar plan"
@@ -196,7 +198,7 @@ const closeServiceModal = () => {
                                                         <PencilSquareIcon class="h-5 w-5" />
                                                     </Link>
 
-                                                    <Link v-if="service.status === 'Active'"
+                                                    <Link v-if="service.status && service.status.toLowerCase() === 'active'"
                                                           :href="route('client.services.requestCancellation', { service: service.id })"
                                                           method="post"
                                                           as="button"
@@ -207,12 +209,14 @@ const closeServiceModal = () => {
                                                         <TrashIcon class="h-5 w-5" />
                                                     </Link>
 
-                                                    <!-- Renew Service button remains text based or can be an icon too if desired -->
-                                                    <Link v-if="service.status === 'Active' || service.status === 'Suspended'" :href="route('client.services.requestRenewal', { service: service.id })" method="post" as="button" class="text-xs font-semibold text-green-600 hover:text-green-700">
+                                                    <Link v-if="service.status && (service.status.toLowerCase() === 'active' || service.status.toLowerCase() === 'suspended')"
+                                                          :href="route('client.services.requestRenewal', { service: service.id })"
+                                                          method="post" as="button"
+                                                          class="text-xs font-semibold text-green-600 hover:text-green-700">
                                                         Renew Service
                                                     </Link>
 
-                                                     <span v-else-if="service.status === 'Cancellation Requested'" class="text-xs text-yellow-600">
+                                                     <span v-else-if="service.status && service.status.toLowerCase() === 'cancellation_requested'" class="text-xs text-yellow-600">
                                                         Pending Review
                                                     </span>
                                                     <span v-else class="text-xs text-gray-400">
