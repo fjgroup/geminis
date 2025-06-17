@@ -79,6 +79,8 @@ class ClientInvoiceController extends Controller
      */
     public function payWithBalance(Request $request, Invoice $invoice): RedirectResponse
     {
+        Log::info("[ClientInvoiceController@payWithBalance] Attempting to pay Invoice ID: {$invoice->id} using account balance for User ID: " . Auth::id()); // <-- AÑADIR ESTA LÍNEA
+
         $this->authorize('payWithBalance', $invoice);
 
         if ($invoice->status !== 'unpaid') {

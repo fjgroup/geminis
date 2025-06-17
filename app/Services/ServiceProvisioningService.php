@@ -124,28 +124,89 @@ class ServiceProvisioningService
                 // }
 
             } elseif ($invoiceItem->client_service_id) {
-                Log::info("[ServiceProvisioningService] InvoiceItem ID: {$invoiceItem->id} already has ClientService ID: {$invoiceItem->client_service_id}. Skipping creation.");
-                // Marcar que hay un servicio que podría necesitar activación si está 'pending'
-                $invoiceItem->loadMissing('clientService'); // Asegurar que clientService esté cargado
-                if ($invoiceItem->clientService && ($invoiceItem->clientService->status === 'pending_configuration' || $invoiceItem->clientService->status === 'pending')) {
-                     $hasAnyServiceToCreateOrProvision = true;
-                }
+                Log::info("[SPS] InvoiceItem ID: {$invoiceItem->id} is linked to existing ClientService ID: {$invoiceItem->client_service_id}. Processing as potential renewal/reactivation.");
+                // Ensure all necessary relations for the item and the service are loaded.
+                // productPricing.billingCycle for the invoice item (what was paid for).
+                // clientService.billingCycle for the service's current cycle (though less critical here than the item's).
+                $invoiceItem->loadMissing(['clientService.billingCycle', 'productPricing.billingCycle']);
 
+                $service = $invoiceItem->clientService;
+                if ($service) {
+                    Log::info("[SPS] Processing existing service ID: {$service->id}. Current status: {$service->status}, Next Due Date: {$service->next_due_date}");
+
+                    $billingCycleForItem = $invoiceItem->productPricing->billingCycle;
+
+                    if (!$billingCycleForItem) {
+                        Log::error("[SPS] BillingCycle for InvoiceItem ID: {$invoiceItem->id} (ProductPricing ID: {$invoiceItem->product_pricing_id}) not found. Cannot extend due date.");
+                    } else {
+                        Log::info("[SPS] BillingCycle for item: Name: {$billingCycleForItem->name}, Months: " . ($billingCycleForItem->period_amount ?? 'N/A') . " " . ($billingCycleForItem->period_unit ?? 'N/A') . " (or days: " . ($billingCycleForItem->days ?? 'N/A') . ")");
+
+                        // Use current date if next_due_date is in the past (e.g., for reactivating an expired service)
+                        $baseDate = Carbon::parse($service->next_due_date);
+                        if ($baseDate->isPast()) {
+                            Log::info("[SPS] Service ID: {$service->id} next_due_date is in the past. Using current date as base for renewal calculation.");
+                            $baseDate = Carbon::now();
+                        }
+                        $newDueDate = $baseDate->copy();
+
+                        $periodUnit = isset($billingCycleForItem->period_unit) ? strtolower($billingCycleForItem->period_unit) : null;
+                        $periodAmount = isset($billingCycleForItem->period_amount) && is_numeric($billingCycleForItem->period_amount) ? (int)$billingCycleForItem->period_amount : 0;
+                        $days = isset($billingCycleForItem->days) && is_numeric($billingCycleForItem->days) ? (int)$billingCycleForItem->days : 0;
+
+                        if ($periodAmount > 0 && $periodUnit) {
+                            switch ($periodUnit) {
+                                case 'day': case 'days': $newDueDate->addDays($periodAmount); break;
+                                case 'month': case 'months': $newDueDate->addMonthsNoOverflow($periodAmount); break;
+                                case 'year': case 'years': $newDueDate->addYearsNoOverflow($periodAmount); break;
+                                default: Log::warning("[SPS] Unknown billing cycle unit '{$billingCycleForItem->period_unit}'.");
+                            }
+                        } elseif ($days > 0) {
+                            $newDueDate->addDays($days);
+                        } else {
+                             Log::error("[SPS] BillingCycle period info for item not found or invalid for BillingCycle ID: {$billingCycleForItem->id}. Cannot extend due date.");
+                        }
+
+                        Log::info("[SPS] Calculated new Next Due Date: {$newDueDate->toDateString()} from base: {$baseDate->toDateString()} for service ID: {$service->id}");
+                        $service->next_due_date = $newDueDate->toDateString();
+
+                        if (in_array(strtolower($service->status), ['suspended', 'pending', 'cancelled', 'terminated'])) { // Consider 'cancelled' or 'terminated' if payment implies reactivation
+                            $service->status = 'active';
+                            Log::info("[SPS] Service ID: {$service->id} status updated to 'active'.");
+                        }
+                        $service->save();
+                        Log::info("[SPS] Service ID: {$service->id} next_due_date updated to {$service->next_due_date}. Status: {$service->status}");
+                    }
+
+                    // This service existed and was processed (renewal/reactivation)
+                    // If its status is now active, pending, or pending_configuration, it might influence invoice status.
+                    if (in_array(strtolower($service->status), ['pending_configuration', 'pending', 'active'])) {
+                         $hasAnyServiceToCreateOrProvision = true;
+                    }
+                } else {
+                    Log::warning("[SPS] ClientService ID: {$invoiceItem->client_service_id} linked in InvoiceItem ID: {$invoiceItem->id} not found in database.");
+                }
             } else {
                 Log::info("[ServiceProvisioningService] Conditions not met or not applicable to create ClientService for InvoiceItem ID: {$invoiceItem->id}. Product ID: " . ($invoiceItem->product_id ?? 'N/A') . ", Creates Instance: " . (isset($invoiceItem->product->productType) ? ($invoiceItem->product->productType->creates_service_instance ? 'true' : 'false') : 'N/A'));
             }
         }
 
-        // Actualizar el estado de la factura si se crearon/procesaron servicios que requieren activación
+        // Update invoice status based on whether any services require provisioning/activation
+        // This logic might need refinement based on overall desired invoice workflow.
+        // For instance, if an invoice contains both new services and renewals,
+        // 'pending_activation' might be set if new services are created, even if renewals are just date extensions.
         if ($hasAnyServiceToCreateOrProvision && $invoice->status === 'paid') {
-            $invoice->status = 'pending_activation';
+            $invoice->status = 'pending_activation'; // Or 'processing' if that's more appropriate
             $invoice->save();
-            Log::info("[ServiceProvisioningService] Invoice ID: {$invoice->id} status updated to 'pending_activation'.");
+            Log::info("[SPS] Invoice ID: {$invoice->id} status updated to 'pending_activation' due to services requiring provisioning/activation.");
+        } elseif (!$hasAnyServiceToCreateOrProvision && $invoice->status === 'paid') {
+            // If invoice is paid and no items required creation or were in a pre-active state,
+            // it implies all items were renewals of already active services or non-instance items.
+            // The invoice might be considered fully processed or 'completed' in terms of service delivery.
+            // However, changing status here might conflict with other workflows.
+            // For now, we only change to 'pending_activation' if needed.
+            Log::info("[SPS] Invoice ID: {$invoice->id} is 'paid' and no new services created or pending services found to activate.");
         } elseif (!$hasAnyServiceToCreateOrProvision && $invoice->status === 'pending_activation') {
-            // Si estaba en pending_activation pero ya no hay nada que activar (quizás se activaron manualmente)
-            // se podría considerar volver a 'paid' o a 'active_service' si todos los servicios vinculados están activos.
-            // Esto es una lógica más compleja, por ahora lo dejamos así.
-            Log::info("[ServiceProvisioningService] Invoice ID: {$invoice->id} was 'pending_activation' but no services found to create/provision further.");
+            Log::info("[SPS] Invoice ID: {$invoice->id} was 'pending_activation' but no services found to create/provision further in this run.");
         }
 
 
