@@ -98,7 +98,7 @@ const getInvoiceStatusClass = (status) => {
                                         Estado
                                     </th>
                                     <th scope="col" class="relative px-6 py-3">
-                                        <span class="sr-only">Ver</span>
+                                        <span class="sr-only">Acciones</span>
                                     </th>
                                 </tr>
                             </thead>

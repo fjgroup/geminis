@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Client;
 use App\Http\Controllers\Controller;
 use App\Models\Invoice;
 use App\Models\User;
+use App\Models\ClientService;
+use App\Models\BillingCycle;
 
 // Removed App\Models\OrderActivity; as it's no longer used here
 use App\Models\Transaction;
@@ -128,6 +130,45 @@ class ClientInvoiceController extends Controller
             // but for now, we assume the service handles its responsibilities including logging.
 
             DB::commit();
+
+            // Start of new logic for extending due dates
+            // It's crucial to load the invoice items with their related clientService and its billingCycle
+            // This should be done outside the loop for efficiency if possible, or ensure relations are loaded.
+            $invoice->loadMissing(['items.clientService.billingCycle']);
+
+            foreach ($invoice->items as $item) {
+                // Check if the item is a renewal and has an associated client service
+                if ($item->item_type === 'renewal' && $item->clientService) {
+                    $clientService = $item->clientService;
+
+                    // The billing cycle for the renewal should ideally be determined by the invoice item
+                    // or the product_pricing_id on the invoice item.
+                    // For simplicity, we are currently assuming the clientService's current billingCycle
+                    // is the one that was renewed. This might need refinement if a service can be renewed
+                    // with a *different* billing cycle than its current one through an invoice.
+                    // However, ClientService->billingCycle relationship was loaded.
+
+                    if ($clientService->billingCycle) {
+                        try {
+                            // Attempt to extend the renewal
+                            $extended = $clientService->extendRenewal($clientService->billingCycle);
+                            if ($extended) {
+                                Log::info("Successfully extended due date for ClientService ID: {$clientService->id} from Invoice ID: {$invoice->id}.");
+                            } else {
+                                Log::error("Failed to save ClientService ID: {$clientService->id} after attempting to extend due date from Invoice ID: {$invoice->id}.");
+                                // Consider what to do here. The payment is committed.
+                                // Maybe queue a job for retry or send a notification.
+                            }
+                        } catch (\Exception $e) {
+                            Log::error("Exception when trying to extend due date for ClientService ID: {$clientService->id} from Invoice ID: {$invoice->id}: " . $e->getMessage());
+                            // Handle exception, e.g., notify admin
+                        }
+                    } else {
+                        Log::warning("ClientService ID: {$clientService->id} associated with InvoiceItem ID: {$item->id} (Invoice ID: {$invoice->id}) is missing billingCycle relationship. Cannot extend due date.");
+                    }
+                }
+            }
+            // End of new logic
 
             return redirect()->route('client.invoices.show', $invoice->id)
                              ->with('success', 'Invoice paid successfully using your account balance. Services are being provisioned.');

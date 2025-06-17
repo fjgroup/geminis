@@ -17,7 +17,7 @@ const formatCurrency = (amount, currencyCode = 'USD') => {
 
 const formatDate = (dateString) => {
     if (!dateString) return '';
-    return new Date(dateString).toLocaleDateString('en-US', {
+    return new Date(dateString).toLocaleDateString('es-ES', { // Changed to Spanish locale
         year: 'numeric', month: 'long', day: 'numeric',
         hour: '2-digit', minute: '2-digit'
     });
@@ -25,10 +25,10 @@ const formatDate = (dateString) => {
 
 const transactionTypeLabel = (type) => {
     const map = {
-        'payment': 'Payment',
-        'refund': 'Refund',
-        'credit_added': 'Credit Added',
-        'balance_payment': 'Payment from Balance', // Assuming 'balance' gateway maps to this
+        'payment': 'Pago',
+        'refund': 'Reembolso',
+        'credit_added': 'Crédito Agregado',
+        'balance_payment': 'Pago desde Saldo', // Assuming 'balance' gateway maps to this
         // Add other types as needed
     };
     return map[type] || type.charAt(0).toUpperCase() + type.slice(1);
@@ -36,9 +36,9 @@ const transactionTypeLabel = (type) => {
 
 const transactionStatusLabel = (status) => {
     const map = {
-        'completed': 'Completed',
-        'pending': 'Pending',
-        'failed': 'Failed',
+        'completed': 'Completado',
+        'pending': 'Pendiente',
+        'failed': 'Fallido',
         // Add other statuses as needed
     };
     return map[status] || status.charAt(0).toUpperCase() + status.slice(1);
@@ -99,7 +99,7 @@ const transactionStatusLabel = (status) => {
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap text-sm text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300">
                                                 <Link v-if="transaction.invoice" :href="route('client.invoices.show', transaction.invoice.id)">
-                                                    Invoice #{{ transaction.invoice.invoice_number }}
+                                                    Factura #{{ transaction.invoice.invoice_number }}
                                                 </Link>
                                                 <span v-else>-</span>
                                             </td>

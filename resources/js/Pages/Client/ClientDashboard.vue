@@ -54,7 +54,7 @@ import { router } from '@inertiajs/vue3'; // Ensure this is imported
 
 const confirmRequestCancellation = (event, serviceId) => {
     event.preventDefault();
-    if (confirm('Are you sure you want to request cancellation for this service?')) {
+    if (confirm('¿Estás seguro de que deseas solicitar la cancelación de este servicio?')) {
         router.post(route('client.services.requestCancellation', { service: serviceId }), {}, {
             preserveScroll: true,
         });
@@ -63,7 +63,7 @@ const confirmRequestCancellation = (event, serviceId) => {
 
 const confirmRenewalRequest = (event, serviceId) => {
     event.preventDefault();
-    if (confirm('Are you sure you want to generate a renewal invoice for this service?')) {
+    if (confirm('¿Estás seguro de que deseas generar una factura de renovación para este servicio?')) {
         router.post(route('client.services.requestRenewal', { service: serviceId }), {}, {
             preserveScroll: true,
         });
@@ -154,7 +154,7 @@ const confirmRenewalRequest = (event, serviceId) => {
                                 </Link>
                                 <Link :href="route('client.products.index')"
                                     class="inline-flex items-center px-4 py-2 text-xs font-semibold tracking-widest text-white uppercase transition duration-150 ease-in-out bg-blue-600 border border-transparent rounded-md dark:bg-blue-500 hover:bg-blue-500 dark:hover:bg-blue-400 focus:bg-blue-700 active:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800">
-                                Comprar Productos
+                                Tienda
                                 </Link>
                             </div>
                         </div>
@@ -231,14 +231,14 @@ const confirmRenewalRequest = (event, serviceId) => {
                                                     <Link v-if="service.status === 'Active'"
                                                         :href="route('client.services.showUpgradeDowngradeOptions', { service: service.id })"
                                                         class="text-xs font-semibold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300">
-                                                    Change Plan
+                                                    Actualizar plan
                                                     </Link>
                                                     <Link v-if="service.status === 'Active'"
                                                         :href="route('client.services.requestCancellation', { service: service.id })"
                                                         method="post" as="button"
                                                         class="text-xs font-semibold text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
                                                         @click.prevent="confirmRequestCancellation($event, service.id)">
-                                                    Request Cancellation
+                                                    Solicitar cancelación
                                                     </Link>
                                                     <Link
                                                         v-if="service.status === 'Active' || service.status === 'Suspended'"
@@ -246,11 +246,11 @@ const confirmRenewalRequest = (event, serviceId) => {
                                                         method="post" as="button"
                                                         class="text-xs font-semibold text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300"
                                                         @click.prevent="confirmRenewalRequest($event, service.id)">
-                                                    Renew Service
+                                                    Renovar Servicio
                                                     </Link>
                                                     <span v-else-if="service.status === 'Cancellation Requested'"
                                                         class="text-xs text-yellow-600 dark:text-yellow-400">
-                                                        Pending Review
+                                                        Revisión Pendiente
                                                     </span>
                                                     <span v-else class="text-xs text-gray-400 dark:text-gray-500">
                                                         ---

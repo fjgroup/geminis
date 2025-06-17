@@ -9,6 +9,8 @@ use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Support\Facades\Log; // ¡Añadir esta línea!
 use Illuminate\Support\Facades\DB; // ¡Añadir esta línea!
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Models\BillingCycle;
+use Carbon\Carbon;
 // use App\Models\OrderItem; // Removed
 
 class ClientService extends Model
@@ -152,5 +154,24 @@ class ClientService extends Model
             'id',                 // Local key on ClientService table
             'invoice_id'          // Local key on InvoiceItem table
         )->where('invoice_items.item_type', 'renewal'); // Filter items to be of type 'renewal'
+    }
+
+    /**
+     * Extends the service's next due date based on the provided billing cycle.
+     *
+     * @param BillingCycle $billingCycle The billing cycle used for renewal.
+     * @return bool True on success, false on failure.
+     */
+    public function extendRenewal(BillingCycle $billingCycle): bool
+    {
+        // Ensure next_due_date is a Carbon instance
+        $currentDueDate = Carbon::parse($this->next_due_date);
+
+        // Add the number of days from the billing cycle
+        // The 'days' attribute in BillingCycle stores the duration of the cycle in days.
+        $newDueDate = $currentDueDate->addDays($billingCycle->days);
+
+        $this->next_due_date = $newDueDate;
+        return $this->save();
     }
 }

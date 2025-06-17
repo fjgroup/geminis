@@ -49,7 +49,7 @@ const isActiveDashboard = computed(() => {
                             <!-- Navigation Links -->
                             <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
                                 <NavLink :href="dashboardRoute" :active="isActiveDashboard">
-                                    Dashboard
+                                    Panel Principal
                                 </NavLink>
 
                                 <template v-if="$page.props.auth.user?.role === 'client'">
@@ -67,7 +67,7 @@ const isActiveDashboard = computed(() => {
                                     </NavLink>
                                     <NavLink :href="route('client.products.index')"
                                         :active="route().current('client.products.index')">
-                                        Comprar Productos
+                                        Tienda
                                     </NavLink>
                                     <NavLink :href="route('client.funds.create')"
                                         :active="route().current('client.funds.create')">
@@ -121,9 +121,9 @@ const isActiveDashboard = computed(() => {
                                                 class="inline-flex items-center px-3 py-2 text-sm font-medium leading-4 text-gray-500 transition duration-150 ease-in-out bg-white border border-transparent rounded-md hover:text-gray-700 focus:outline-none">
                                                 <span class="mr-2">{{ $page.props.auth.user?.name }}</span>
                                                 <span
-                                                    v-if="$page.props.auth.user?.role === 'client' && $page.props.auth.user?.formatted_balance"
+                                                    v-if="$page.props.auth.user?.role === 'client' && typeof $page.props.auth.user?.balance !== 'undefined' && $page.props.auth.user?.formatted_balance"
                                                     class="text-xs text-green-600">
-                                                    ({{ $page.props.auth.user?.formatted_balance }})
+                                                    ({{ $page.props.auth.user.formatted_balance }})
                                                 </span>
                                                 <svg class="-me-0.5 ms-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg"
                                                     viewBox="0 0 20 20" fill="currentColor">
@@ -135,9 +135,9 @@ const isActiveDashboard = computed(() => {
                                         </span>
                                     </template>
                                     <template #content>
-                                        <DropdownLink :href="route('profile.edit')"> Profile </DropdownLink>
+                                        <DropdownLink :href="route('profile.edit')"> Perfil </DropdownLink>
                                         <DropdownLink :href="route('logout')" method="post" as="button">
-                                            Log Out
+                                            Cerrar Sesión
                                         </DropdownLink>
                                     </template>
                                 </Dropdown>
@@ -170,7 +170,7 @@ const isActiveDashboard = computed(() => {
                 }" class="sm:hidden">
                     <div class="pt-2 pb-3 space-y-1">
                         <ResponsiveNavLink :href="dashboardRoute" :active="isActiveDashboard">
-                            Dashboard
+                            Panel Principal
                         </ResponsiveNavLink>
                         <template v-if="$page.props.auth.user?.role === 'client'">
                             <ResponsiveNavLink :href="route('client.services.index')"
@@ -187,7 +187,7 @@ const isActiveDashboard = computed(() => {
                             </ResponsiveNavLink>
                             <ResponsiveNavLink :href="route('client.products.index')"
                                 :active="route().current('client.products.index')">
-                                Comprar Productos
+                                Tienda
                             </ResponsiveNavLink>
                             <ResponsiveNavLink :href="route('client.funds.create')"
                                 :active="route().current('client.funds.create')">
@@ -236,18 +236,18 @@ const isActiveDashboard = computed(() => {
                             <div class="text-sm font-medium text-gray-500">
                                 {{ $page.props.auth.user?.email }}
                             </div>
-                            <div v-if="$page.props.auth.user?.role === 'client' && $page.props.auth.user?.formatted_balance"
+                            <div v-if="$page.props.auth.user?.role === 'client' && typeof $page.props.auth.user?.balance !== 'undefined' && $page.props.auth.user?.formatted_balance"
                                 class="mt-1 text-sm font-medium text-green-600">
-                                Saldo: {{ $page.props.auth.user?.formatted_balance }}
+                                Saldo: {{ $page.props.auth.user.formatted_balance }}
                             </div>
                         </div>
 
                         <div class="mt-3 space-y-1">
                             <ResponsiveNavLink :href="route('profile.edit')">
-                                Profile
+                                Perfil
                             </ResponsiveNavLink>
                             <ResponsiveNavLink :href="route('logout')" method="post" as="button">
-                                Log Out
+                                Cerrar Sesión
                             </ResponsiveNavLink>
                         </div>
                     </div>

@@ -88,7 +88,7 @@ const confirmRequestCancellation = (serviceId) => { // Removed event parameter
 
 const confirmRenewalRequest = (event, serviceId) => {
     event.preventDefault();
-    if (confirm('Are you sure you want to generate a renewal invoice for this service?')) {
+    if (confirm('¿Estás seguro de que deseas generar una factura de renovación para este servicio?')) {
         router.post(route('client.services.requestRenewal', { service: serviceId }), {}, {
             preserveScroll: true,
         });
@@ -213,7 +213,7 @@ const closeServiceModal = () => {
                                                           :href="route('client.services.requestRenewal', { service: service.id })"
                                                           method="post" as="button"
                                                           class="text-xs font-semibold text-green-600 hover:text-green-700">
-                                                        Renew Service
+                                                        Renovar Servicio
                                                     </Link>
 
                                                     <span v-if="service.status && service.status.toLowerCase() === 'pending_cancellation'" class="text-xs text-yellow-700 font-semibold">
