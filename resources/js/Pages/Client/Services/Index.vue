@@ -75,11 +75,13 @@ const getFriendlyServiceStatusText = (status) => {
 };
 
 
-const confirmRequestCancellation = (event, serviceId) => {
-    event.preventDefault();
-    if (confirm('Are you sure you want to request cancellation for this service?')) {
+const confirmRequestCancellation = (serviceId) => { // Removed event parameter
+    // Consider translating this confirmation message
+    if (confirm('¿Estás seguro de que deseas solicitar la cancelación de este servicio?')) {
         router.post(route('client.services.requestCancellation', { service: serviceId }), {}, {
             preserveScroll: true,
+            // onSuccess: () => { /* Flash message will handle feedback */ },
+            // onError: () => { /* Flash error message or specific error handling */ }
         });
     }
 };
@@ -198,15 +200,13 @@ const closeServiceModal = () => {
                                                               title="Actualizar plan">
                                                             <PencilSquareIcon class="h-5 w-5" />
                                                         </Link>
-                                                        <Link :href="route('client.services.requestCancellation', { service: service.id })"
-                                                              method="post"
-                                                              as="button"
-                                                              class="text-gray-500 hover:text-red-700 p-1"
-                                                              @click.prevent="confirmRequestCancellation($event, service.id)"
-                                                              aria-label="Solicitar cancelación"
-                                                              title="Solicitar cancelación">
+                                                        <button type="button"
+                                                                @click="confirmRequestCancellation(service.id)"
+                                                                class="text-gray-500 hover:text-red-700 p-1"
+                                                                aria-label="Solicitar cancelación"
+                                                                title="Solicitar cancelación">
                                                             <TrashIcon class="h-5 w-5" />
-                                                        </Link>
+                                                        </button>
                                                     </template>
 
                                                     <Link v-if="service.status && (service.status.toLowerCase() === 'active' || service.status.toLowerCase() === 'suspended')"
