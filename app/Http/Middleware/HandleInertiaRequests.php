@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use Illuminate\Http\Request;
 use Inertia\Middleware;
+use Illuminate\Support\Facades\Log; // Added Log facade
 
 class HandleInertiaRequests extends Middleware
 {
@@ -29,6 +30,13 @@ class HandleInertiaRequests extends Middleware
      */
     public function share(Request $request): array
     {
+        Log::debug('Data being shared by HandleInertiaRequests for URI: ' . $request->getRequestUri(), [
+            'user_id' => $request->user() ? $request->user()->id : null,
+            'user_role' => $request->user() ? $request->user()->role : null,
+            'user_data_full' => $request->user() ? $request->user()->toArray() : null, // Log completo del usuario temporalmente
+            'session_all' => $request->session()->all() // Para ver qué hay en la sesión, incluyendo flash
+        ]);
+
         return array_merge(parent::share($request), [ // Usar array_merge es una forma común
             'auth' => [
                 'user' => $request->user() ? [
