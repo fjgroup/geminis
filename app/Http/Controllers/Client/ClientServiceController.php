@@ -20,6 +20,7 @@ use Carbon\Carbon; // Added for dates
 use Illuminate\Support\Str; // Added for generating invoice number
 use Illuminate\Support\Facades\Hash; // For hashing passwords
 use Illuminate\Validation\Rules\Password; // For password validation rules
+use Illuminate\Validation\ValidationException; // Added for throwing validation exceptions
 
 class ClientServiceController extends Controller
 {
@@ -322,9 +323,9 @@ class ClientServiceController extends Controller
      *
      * @param  Request  $request
      * @param  ClientService  $service
-     * @return \Illuminate\Http\JsonResponse
+     * @return \Illuminate\Http\RedirectResponse
      */
-    public function updatePassword(Request $request, ClientService $service): \Illuminate\Http\JsonResponse
+    public function updatePassword(Request $request, ClientService $service): \Illuminate\Http\RedirectResponse
     {
         // Authorization: Ensure the authenticated user owns this service
         // This will throw a 403 error if the policy check fails.
@@ -332,19 +333,19 @@ class ClientServiceController extends Controller
 
         // Validate the request
         $validated = $request->validate([
-            'new_password' => [
-                'required',
-                'confirmed', // Ensures new_password_confirmation matches
-                Password::min(12)
-                        ->mixedCase()
-                        ->numbers()
-                        ->symbols()
-                        ->uncompromised(), // Checks if password has been pwned
-            ],
+            'current_password' => ['required', 'string'],
+            'new_password' => ['required', 'string', Password::min(12)->mixedCase()->numbers()->symbols()->uncompromised(), 'confirmed'],
         ]);
 
         DB::beginTransaction();
         try {
+            // Verify the current password
+            if (!Hash::check($validated['current_password'], $service->password_encrypted)) {
+                throw ValidationException::withMessages([
+                    'current_password' => __('La contraseña actual proporcionada es incorrecta.'),
+                ]);
+            }
+
             // IMPORTANT: This is a simplified password update.
             // In a real-world scenario with external provisioning (cPanel, Plesk, etc.),
             // this would involve calling an external API via a ServiceProvisioningService.
@@ -354,27 +355,18 @@ class ClientServiceController extends Controller
             // Example: If storing a hash directly on ClientService model (ensure field exists and is fillable)
             // $service->service_password = Hash::make($validated['new_password']);
 
-            // Example: If storing in a 'config' JSON column on ClientService model
-            $config = $service->config ?? [];
-            // If you store the actual password (less secure), encrypt it:
-            // $config['password'] = encrypt($validated['new_password']);
-            // If you store a hash (more secure for local storage, but might not be usable by external service):
-            $config['password_hash'] = Hash::make($validated['new_password']); // Or just 'password' if that's the key
-            $service->config = $config;
-
-            // If the service has a dedicated field for username that might need to be set if not already
-            // if (empty($service->service_username) && !empty($config['username'])) {
-            //     $service->service_username = $config['username'];
-            // }
-
+            // Update the 'password_encrypted' field directly
+            $service->password_encrypted = Hash::make($validated['new_password']);
+            // Log::debug("Attempting to save new password_encrypted for service ID: {$service->id}"); // Optional temporary log
             $service->save();
+            // Log::debug("Save operation complete for service ID: {$service->id}"); // Optional temporary log
 
             // Optionally, log this activity
             Log::info("Password updated for service ID {$service->id} by user ID {$request->user()->id}.");
 
             DB::commit();
 
-            return response()->json(['message' => 'Contraseña actualizada con éxito.']);
+            return redirect()->back()->with('success', 'Contraseña actualizada con éxito.');
 
         } catch (\Illuminate\Auth\Access\AuthorizationException $e) {
             DB::rollBack();
@@ -382,11 +374,15 @@ class ClientServiceController extends Controller
                 'client_service_id' => $service->id,
                 'user_id' => $request->user()->id,
             ]);
-            return response()->json(['message' => $e->getMessage()], 403);
+            // Re-throw is an option, or redirect back with error for user feedback on the form page.
+            // throw $e;
+            return redirect()->back()->with('error', 'No tienes permiso para realizar esta acción.');
         } catch (\Illuminate\Validation\ValidationException $e) {
             DB::rollBack();
-            // Error messages are already handled by Inertia's form helper from validation response
-            return response()->json(['message' => $e->validator->errors()->first(), 'errors' => $e->errors()], 422);
+            // This block might be redundant if $request->validate() is used as it throws
+            // an exception that Laravel's handler converts to an Inertia-compatible response.
+            // However, if reached, redirect back with errors.
+            return redirect()->back()->withErrors($e->errors())->withInput();
         }
         catch (\Exception $e) {
             DB::rollBack();
@@ -395,7 +391,7 @@ class ClientServiceController extends Controller
                 'user_id' => $request->user()->id,
                 'exception' => $e,
             ]);
-            return response()->json(['message' => 'Error al actualizar la contraseña. Por favor, inténtalo de nuevo más tarde.'], 500);
+            return redirect()->back()->with('error', 'Error al actualizar la contraseña. Por favor, inténtalo de nuevo más tarde.');
         }
     }
 }

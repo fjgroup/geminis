@@ -6,6 +6,7 @@ use App\Models\ClientService;
 use App\Models\User;
 use Illuminate\Auth\Access\HandlesAuthorization; // Added
 use Illuminate\Auth\Access\Response; // Keep if Response objects are used
+use Illuminate\Support\Facades\Log; // Added Log facade
 
 class ClientServicePolicy
 {
@@ -33,7 +34,7 @@ class ClientServicePolicy
         // Only allow updating password if the user owns the service
         // And the service is in a state where password changes are logical (e.g., Active, Suspended)
         // Add any other conditions specific to your application (e.g. product type allows password management)
-        return $user->id === $clientService->client_id && in_array($clientService->status, ['Active', 'Suspended', 'Pending', 'pending_configuration']);
+        return $user->id === $clientService->client_id && in_array($clientService->status, ['Active', 'active', 'Suspended', 'Pending', 'pending_configuration']);
     }
 
     /**

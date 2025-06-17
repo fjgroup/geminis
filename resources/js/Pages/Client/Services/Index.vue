@@ -1,10 +1,11 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link, usePage } from '@inertiajs/vue3';
-import { computed, ref } from 'vue'; // Added ref
+import { computed, ref } from 'vue';
 import { format as formatDate } from 'date-fns';
 import { router } from '@inertiajs/vue3';
-import ServiceDetailsModal from '@/Components/ServiceDetailsModal.vue'; // Import the modal
+import ServiceDetailsModal from '@/Components/UI/ServiceDetailsModal.vue';
+import { EyeIcon, PencilSquareIcon, TrashIcon } from '@heroicons/vue/24/outline';
 
 // Modal state
 const isServiceModalOpen = ref(false);
@@ -179,23 +180,35 @@ const closeServiceModal = () => {
                                                  {{ formatCurrency(service.billing_amount, service.productPricing?.currency_code || 'USD') }}
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                                 <div class="flex flex-col items-start space-y-1">
-                                                    <!-- Link to view service details (optional, based on show route) -->
-                                                    <!-- <Link :href="route('client.services.show', { service: service.id })" class="text-indigo-600 hover:text-indigo-900">View</Link> -->
-
-                                                    <button @click="showServiceDetails(service)" class="text-xs font-semibold text-blue-600 hover:text-blue-700">
-                                                        Ver
+                                                <div class="flex items-center space-x-2">
+                                                    <button @click="showServiceDetails(service)"
+                                                            class="text-gray-500 hover:text-blue-700 p-1"
+                                                            aria-label="Ver detalles del servicio"
+                                                            title="Ver detalles">
+                                                        <EyeIcon class="h-5 w-5" />
                                                     </button>
 
-                                                    <Link v-if="service.status === 'Active'" :href="route('client.services.showUpgradeDowngradeOptions', { service: service.id })" class="text-xs font-semibold text-indigo-600 hover:text-indigo-700">
-                                                        Actualizar
+                                                    <Link v-if="service.status === 'Active'"
+                                                          :href="route('client.services.showUpgradeDowngradeOptions', { service: service.id })"
+                                                          class="text-gray-500 hover:text-indigo-700 p-1"
+                                                          aria-label="Actualizar plan"
+                                                          title="Actualizar plan">
+                                                        <PencilSquareIcon class="h-5 w-5" />
                                                     </Link>
 
-                                                    <Link v-if="service.status === 'Active'" :href="route('client.services.requestCancellation', { service: service.id })" method="post" as="button" class="text-xs font-semibold text-red-600 hover:text-red-700" @click.prevent="confirmRequestCancellation($event, service.id)">
-                                                        Cancelar
+                                                    <Link v-if="service.status === 'Active'"
+                                                          :href="route('client.services.requestCancellation', { service: service.id })"
+                                                          method="post"
+                                                          as="button"
+                                                          class="text-gray-500 hover:text-red-700 p-1"
+                                                          @click.prevent="confirmRequestCancellation($event, service.id)"
+                                                          aria-label="Solicitar cancelación"
+                                                          title="Solicitar cancelación">
+                                                        <TrashIcon class="h-5 w-5" />
                                                     </Link>
 
-                                                    <Link v-if="service.status === 'Active' || service.status === 'Suspended'" :href="route('client.services.requestRenewal', { service: service.id })" method="post" as="button" class="text-xs font-semibold text-green-600 hover:text-green-700" @click.prevent="confirmRenewalRequest($event, service.id)">
+                                                    <!-- Renew Service button remains text based or can be an icon too if desired -->
+                                                    <Link v-if="service.status === 'Active' || service.status === 'Suspended'" :href="route('client.services.requestRenewal', { service: service.id })" method="post" as="button" class="text-xs font-semibold text-green-600 hover:text-green-700">
                                                         Renew Service
                                                     </Link>
 

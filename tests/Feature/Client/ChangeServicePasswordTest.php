@@ -33,14 +33,16 @@ class ChangeServicePasswordTest extends TestCase
             'currency_code' => 'USD',
         ]);
 
+        $initialPassword = 'InitialPassword123!';
         return ClientService::factory()->create([
-            'client_id' => $user->client->id, // Use client_id from the associated Client model
+            'client_id' => $user->client->id,
             'product_id' => $product->id,
             'product_pricing_id' => $productPricing->id,
             'billing_cycle_id' => $billingCycle->id,
             'status' => 'Active',
             'billing_amount' => $productPricing->price,
-            'config' => ['username' => 'testuser'] // Initial config
+            'password_encrypted' => Hash::make($initialPassword), // Set initial password
+            'config' => ['username' => 'testuser']
         ]);
     }
 
@@ -48,22 +50,76 @@ class ChangeServicePasswordTest extends TestCase
     public function client_can_change_service_password_with_valid_data()
     {
         $user = User::factory()->create(['role' => 'client']);
+        // It's important that create_basic_service_for_user sets an initial password we can use.
+        // Or we set it explicitly here. For simplicity, let's assume the factory/helper does.
+        // If not, we'd do:
+        $initialPassword = 'OldSecurePassword123!';
         $service = $this->create_basic_service_for_user($user);
+        $service->password_encrypted = Hash::make($initialPassword);
+        $service->save();
 
-        $newPassword = 'NewSecurePassword123!';
+
+        $newPassword = 'NewSecurePassword456!';
 
         $response = $this->actingAs($user)
                          ->post(route('client.services.updatePassword', $service), [
+                             'current_password' => $initialPassword,
                              'new_password' => $newPassword,
                              'new_password_confirmation' => $newPassword,
                          ]);
 
-        $response->assertStatus(200); // Expecting JSON success
-        $response->assertJson(['message' => 'Contraseña actualizada con éxito.']);
+        $response->assertRedirect();
+        $response->assertSessionHas('success', 'Contraseña actualizada con éxito.');
+        $response->assertSessionHasNoErrors();
 
         $service->refresh();
-        $this->assertTrue(Hash::check($newPassword, $service->config['password_hash']));
+        $this->assertTrue(Hash::check($newPassword, $service->password_encrypted));
     }
+
+    /** @test */
+    public function client_cannot_change_password_with_incorrect_current_password()
+    {
+        $user = User::factory()->create(['role' => 'client']);
+        $initialPassword = 'CorrectOldPassword123!';
+        $service = $this->create_basic_service_for_user($user);
+        $service->password_encrypted = Hash::make($initialPassword);
+        $service->save();
+
+        $newPassword = 'NewSecurePassword456!';
+
+        $response = $this->actingAs($user)
+            ->post(route('client.services.updatePassword', $service), [
+                'current_password' => 'WrongOldPassword123!', // Incorrect current password
+                'new_password' => $newPassword,
+                'new_password_confirmation' => $newPassword,
+            ]);
+
+        $response->assertRedirect();
+        $response->assertSessionHasErrors(['current_password']);
+
+        $service->refresh();
+        $this->assertTrue(Hash::check($initialPassword, $service->password_encrypted)); // Password should not have changed
+    }
+
+    /** @test */
+    public function client_cannot_change_password_if_current_password_is_missing()
+    {
+        $user = User::factory()->create(['role' => 'client']);
+        $service = $this->create_basic_service_for_user($user); // Initial password set by helper
+
+        $newPassword = 'NewSecurePassword456!';
+
+        $response = $this->actingAs($user)
+            ->post(route('client.services.updatePassword', $service), [
+                // 'current_password' => MISSING
+                'new_password' => $newPassword,
+                'new_password_confirmation' => $newPassword,
+            ]);
+
+        $response->assertRedirect();
+        $response->assertSessionHasErrors(['current_password']);
+    }
+
 
     /** @test */
     public function client_cannot_change_password_for_others_service()
@@ -72,103 +128,70 @@ class ChangeServicePasswordTest extends TestCase
         Client::factory()->create(['user_id' => $userA->id, 'company_id' => $userA->company_id]);
 
         $userB = User::factory()->create(['role' => 'client']);
-        $serviceB = $this->create_basic_service_for_user($userB);
+        $serviceB = $this->create_basic_service_for_user($userB); // Initial password set by helper
 
         $newPassword = 'NewSecurePassword123!';
 
         $response = $this->actingAs($userA)
                          ->post(route('client.services.updatePassword', $serviceB), [
+                             'current_password' => 'irrelevant_for_this_test_but_required_for_validation',
                              'new_password' => $newPassword,
                              'new_password_confirmation' => $newPassword,
                          ]);
 
-        $response->assertStatus(403);
+        $response->assertStatus(403); // Policy should deny access
     }
 
     /** @test */
     public function password_change_fails_with_invalid_password_format()
     {
         $user = User::factory()->create(['role' => 'client']);
+        $initialPassword = 'CorrectOldPassword123!';
         $service = $this->create_basic_service_for_user($user);
-        $originalPasswordHash = $service->config['password_hash'] ?? null;
+        $service->password_encrypted = Hash::make($initialPassword);
+        $service->save();
 
         $this->actingAs($user);
 
-        // Test cases for invalid passwords
-        $invalidPasswords = [
-            'short' => 'short', // Too short
-            'nocase' => 'nouppercase123!', // No uppercase
-            'nonumber' => 'NoNumberSymbol!', // No number
-            'nosymbol' => 'NoSymbol123', // No symbol
-            'mismatch1' => 'ValidPassword123!',
-            'mismatch2' => 'DifferentPassword123!',
+        $testCases = [
+            'short' => ['val' => 'short', 'field' => 'new_password'],
+            'nocase' => ['val' => 'nouppercase123!', 'field' => 'new_password'],
+            'nonumber' => ['val' => 'NoNumberSymbol!', 'field' => 'new_password'],
+            'nosymbol' => ['val' => 'NoSymbol123', 'field' => 'new_password'],
+            'mismatch' => ['val' => 'ValidPassword123!', 'confirm' => 'DifferentPassword123!', 'field' => 'new_password'],
         ];
 
-        // Test too short
-        $response = $this->postJson(route('client.services.updatePassword', $service), [
-            'new_password' => $invalidPasswords['short'],
-            'new_password_confirmation' => $invalidPasswords['short'],
-        ]);
-        $response->assertStatus(422);
-        $response->assertJsonValidationErrors('new_password');
-        $service->refresh();
-        if ($originalPasswordHash) {
-            $this->assertEquals($originalPasswordHash, $service->config['password_hash']);
-        } else {
-            $this->assertArrayNotHasKey('password_hash', $service->config);
+        foreach ($testCases as $case => $data) {
+            $payload = [
+                'current_password' => $initialPassword,
+                'new_password' => $data['val'],
+                'new_password_confirmation' => $data['confirm'] ?? $data['val'],
+            ];
+
+            $response = $this->post(route('client.services.updatePassword', $service), $payload);
+
+            $response->assertRedirect();
+            $response->assertSessionHasErrors($data['field']);
+
+            $service->refresh();
+            $this->assertTrue(Hash::check($initialPassword, $service->password_encrypted), "Password changed on case: $case");
         }
-
-
-        // Test no uppercase
-        $response = $this->postJson(route('client.services.updatePassword', $service), [
-            'new_password' => $invalidPasswords['nocase'],
-            'new_password_confirmation' => $invalidPasswords['nocase'],
-        ]);
-        $response->assertStatus(422);
-        $response->assertJsonValidationErrors('new_password');
-
-        // Test no number
-        $response = $this->postJson(route('client.services.updatePassword', $service), [
-            'new_password' => $invalidPasswords['nonumber'],
-            'new_password_confirmation' => $invalidPasswords['nonumber'],
-        ]);
-        $response->assertStatus(422);
-        $response->assertJsonValidationErrors('new_password');
-
-        // Test no symbol
-        $response = $this->postJson(route('client.services.updatePassword', $service), [
-            'new_password' => $invalidPasswords['nosymbol'],
-            'new_password_confirmation' => $invalidPasswords['nosymbol'],
-        ]);
-        $response->assertStatus(422);
-        $response->assertJsonValidationErrors('new_password');
-
-        // Test mismatch
-        $response = $this->postJson(route('client.services.updatePassword', $service), [
-            'new_password' => $invalidPasswords['mismatch1'],
-            'new_password_confirmation' => $invalidPasswords['mismatch2'],
-        ]);
-        $response->assertStatus(422);
-        $response->assertJsonValidationErrors('new_password'); // Laravel's 'confirmed' rule
     }
 
     /** @test */
     public function guest_cannot_change_service_password()
     {
-        // User and service are created, but we don't act as the user
         $user = User::factory()->create(['role' => 'client']);
-        $service = $this->create_basic_service_for_user($user);
+        $service = $this->create_basic_service_for_user($user); // Initial password set by helper
         $newPassword = 'NewSecurePassword123!';
 
-        $response = $this->postJson(route('client.services.updatePassword', $service), [
+        $response = $this->post(route('client.services.updatePassword', $service), [
+            'current_password' => 'irrelevant_initial_pw',
             'new_password' => $newPassword,
             'new_password_confirmation' => $newPassword,
         ]);
 
-        // Expecting redirection to login or 401/403 if it's an API-like route
-        // Given it's a JSON response from controller, 401 or 403 is more likely for unauthenticated.
-        // Laravel's default for unauthenticated JSON requests is 401.
-        $response->assertStatus(401);
+        $response->assertRedirect(route('login')); // Expect redirect to login for web routes
     }
 }
 ?>
