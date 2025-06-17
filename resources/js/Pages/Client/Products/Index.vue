@@ -29,18 +29,18 @@ const getLowestPrice = (productPricings) => {
   return {
     amount: firstPricing.price,
     currency: firstPricing.currency_code,
-    cycle: firstPricing.billing_cycle ? firstPricing.billing_cycle.name : "One Time",
+    cycle: firstPricing.billing_cycle ? firstPricing.billing_cycle.name : "Pago Único", // Translated "One Time"
   };
 };
 </script>
 
 <template>
-  <Head title="Browse Products" />
+  <Head title="Explorar Productos" />
 
   <AuthenticatedLayout>
     <template #header>
       <h2 class="text-xl font-semibold leading-tight text-gray-800 dark:text-gray-200">
-        Our Products & Services
+        Nuestros Productos y Servicios
       </h2>
     </template>
 
@@ -51,7 +51,7 @@ const getLowestPrice = (productPricings) => {
           class="p-6 overflow-hidden bg-white shadow-sm dark:bg-gray-800 sm:rounded-lg"
         >
           <p class="text-center text-gray-500 dark:text-gray-400">
-            There are no products available at the moment. Please check back later.
+            No hay productos disponibles en este momento. Por favor, inténtalo de nuevo más tarde.
           </p>
         </div>
 
@@ -66,7 +66,7 @@ const getLowestPrice = (productPricings) => {
                 {{ product.name }}
               </h3>
               <p class="mb-4 text-sm text-gray-600 dark:text-gray-400 min-h-[60px]">
-                {{ product.description || "No description available." }}
+                {{ product.description || "No hay descripción disponible." }}
               </p>
 
               <div v-if="product.pricings && product.pricings.length > 0">

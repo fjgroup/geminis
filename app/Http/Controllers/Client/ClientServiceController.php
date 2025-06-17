@@ -200,57 +200,153 @@ class ClientServiceController extends Controller
     {
         $this->authorize('processUpgradeDowngrade', $service);
 
-        // Validation
         $validated = $request->validate([
             'new_product_pricing_id' => 'required|exists:product_pricings,id',
         ]);
 
-        $newProductPricing = ProductPricing::findOrFail($validated['new_product_pricing_id']);
+        // 1. Load relations
+        $service->loadMissing(['product.productType', 'productPricing.billingCycle', 'client']);
+        $newProductPricing = ProductPricing::with(['product.productType', 'billingCycle'])
+            ->findOrFail($validated['new_product_pricing_id']);
 
-        // Further validation
+        // 2. Initial Validation
         if (!($service->status && strtolower($service->status) === 'active')) {
-            return redirect()->back()->with('error', 'This service is not active and cannot be changed.');
-        }
-        if ($newProductPricing->product_id !== $service->product_id) {
-            return redirect()->back()->with('error', 'Invalid plan selected. It does not belong to the same product.');
+            return redirect()->route('client.services.index')->with('error', 'El servicio debe estar activo para cambiar de plan.');
         }
         if ($newProductPricing->id === $service->product_pricing_id) {
-            return redirect()->back()->with('error', 'This is already your current plan.');
+            return redirect()->back()->with('error', 'Ya estás en este plan.');
+        }
+
+        // 3. Product Type Validation
+        $currentProductTypeId = $service->product->product_type_id;
+        $newProductTypeId = $newProductPricing->product->product_type_id;
+
+        if ($newProductTypeId !== $currentProductTypeId) {
+            Log::warning("User ID {$request->user()->id} attempt to change service ID {$service->id} from product type {$currentProductTypeId} to {$newProductTypeId}. Operation blocked.");
+            return redirect()->route('client.services.index')->with('error', 'No puedes cambiar a un tipo de producto diferente.');
         }
 
         DB::beginTransaction();
         try {
-            $old_product_pricing_id = $service->product_pricing_id;
-            $old_billing_amount = $service->billing_amount;
-            // Load old pricing details for logging if not already available on $service model
-            $service->loadMissing('productPricing.billingCycle');
-            $old_billing_cycle_name = $service->productPricing?->billingCycle?->name ?? 'N/A';
+            // 4. Proration Calculation
+            $currentPricing = $service->productPricing;
+            $currentCycle = $currentPricing->billingCycle;
+            // Assuming BillingCycle has duration_in_days. Fallback to duration_in_months * 30 if not.
+            $daysInCurrentCycle = $currentCycle->duration_in_days ?? ($currentCycle->duration_in_months * 30);
+            if ($daysInCurrentCycle <= 0) { // Prevent division by zero
+                Log::error("Service ID {$service->id}: Current cycle duration is zero or negative.");
+                DB::rollBack();
+                return redirect()->route('client.services.index')->with('error', 'Error de configuración del ciclo de facturación actual.');
+            }
 
+            $remainingDays = Carbon::now()->diffInDays($service->next_due_date, false);
+            $pricePerDayCurrent = $currentPricing->price / $daysInCurrentCycle;
+            $creditAmount = ($remainingDays > 0) ? $pricePerDayCurrent * $remainingDays : 0;
 
+            $newCycle = $newProductPricing->billingCycle;
+            // Assuming BillingCycle has duration_in_days. Fallback to duration_in_months * 30 if not.
+            $daysInNewCycle = $newCycle->duration_in_days ?? ($newCycle->duration_in_months * 30);
+            if ($daysInNewCycle <= 0) { // Prevent division by zero
+                Log::error("Service ID {$service->id}: New cycle duration is zero or negative for pricing ID {$newProductPricing->id}.");
+                DB::rollBack();
+                return redirect()->route('client.services.index')->with('error', 'Error de configuración del nuevo ciclo de facturación.');
+            }
+
+            $pricePerDayNew = $newProductPricing->price / $daysInNewCycle;
+            $costForRemainingPeriod = ($remainingDays > 0) ? $pricePerDayNew * $remainingDays : 0;
+
+            // Ensure precision for currency calculations
+            $creditAmount = round($creditAmount, 2);
+            $costForRemainingPeriod = round($costForRemainingPeriod, 2);
+            $proratedDifference = round($costForRemainingPeriod - $creditAmount, 2);
+
+            // 5. Handle Difference and Update Service
+            $invoiceToPay = null;
+            $notesForService = "Cambio de plan procesado el " . Carbon::now()->toDateTimeString() . ".";
+            $originalProductId = $service->product_id; // For checking if product itself changed
+
+            if ($proratedDifference > 0) {
+                $invoiceNumber = 'INV-UPGRADE-' . strtoupper(Str::random(8));
+                $newInvoice = Invoice::create([
+                    'client_id' => $service->client_id,
+                    'reseller_id' => $service->client->reseller_id,
+                    'invoice_number' => $invoiceNumber,
+                    'issue_date' => Carbon::now(),
+                    'due_date' => Carbon::now(),
+                    'status' => 'unpaid',
+                    'subtotal' => $proratedDifference,
+                    'total_amount' => $proratedDifference,
+                    'currency_code' => $newProductPricing->currency_code,
+                    'notes_to_client' => "Cargo por cambio de plan de '{$service->product->name}' a '{$newProductPricing->product->name}'.",
+                ]);
+
+                InvoiceItem::create([
+                    'invoice_id' => $newInvoice->id,
+                    'client_service_id' => $service->id,
+                    'description' => "Prorrateo por cambio a {$newProductPricing->product->name} ({$newProductPricing->billingCycle->name})",
+                    'quantity' => 1,
+                    'unit_price' => $proratedDifference,
+                    'total_price' => $proratedDifference,
+                    'taxable' => $newProductPricing->product->taxable ?? false,
+                ]);
+                $invoiceToPay = $newInvoice;
+                $notesForService .= " Se generó la factura {$invoiceNumber} por {$proratedDifference} {$newProductPricing->currency_code}.";
+            } elseif ($proratedDifference < 0) {
+                $creditToBalance = abs($proratedDifference);
+                $client = $service->client;
+                $client->balance += $creditToBalance;
+                $client->save();
+                $notesForService .= " Se acreditó {$creditToBalance} {$currentPricing->currency_code} al balance del cliente.";
+            } else {
+                $notesForService .= " El cambio no generó costos adicionales ni créditos por el período restante.";
+            }
+
+            // Update ClientService
+            $old_product_name = $service->product->name;
+            $old_cycle_name = $service->productPricing->billingCycle->name; // Access through productPricing for current cycle
+
+            $service->product_id = $newProductPricing->product_id;
             $service->product_pricing_id = $newProductPricing->id;
-            $service->billing_cycle_id = $newProductPricing->billing_cycle_id; // Ensure this is updated
+            $service->billing_cycle_id = $newProductPricing->billing_cycle_id;
             $service->billing_amount = $newProductPricing->price;
-            // Add a note about the change, this is optional
-            $service->notes = ($service->notes ? $service->notes . "\n" : '') .
-                              "User requested plan change to pricing ID {$newProductPricing->id} on " . now()->toDateTimeString() .
-                              ". Changes apply on next renewal.";
+            $service->notes = ($service->notes ? $service->notes . "\n" : '') . $notesForService;
+
+            if ($service->product_id !== $originalProductId && $service->status !== 'pending_configuration') {
+                $service->status = 'pending_configuration';
+            }
             $service->save();
 
-            // OrderActivity::create([...]) // ELIMINADO
             DB::commit();
 
-            return redirect()->route('client.services.index')
-                             ->with('success', 'Your plan has been updated. Changes will apply on your next renewal date: ' . ($service->next_due_date ? $service->next_due_date->format('Y-m-d') : 'N/A') . '.');
+            // 6. Redirection and Message
+            $successMessage = "Plan cambiado de '{$old_product_name} ({$old_cycle_name})' a '{$newProductPricing->product->name} ({$newProductPricing->billingCycle->name})'.";
+            if ($invoiceToPay) {
+                // Message updated to reflect immediate change and pending payment for proration.
+                $successMessage .= " El plan ha sido actualizado. Se generó la factura {$invoiceToPay->invoice_number} por {$invoiceToPay->total_amount_formatted} correspondiente al prorrateo.";
+                 // Consider redirecting to invoice if payment is mandatory before change is effective
+                 // For now, redirecting to services index as per current plan.
+                return redirect()->route('client.services.index')->with('success', $successMessage);
+            } elseif ($proratedDifference < 0) {
+                $successMessage .= " Se ha acreditado " . abs($proratedDifference) . " {$currentPricing->currency_code} a tu balance.";
+            } else {
+                $successMessage .= " El plan se ha actualizado sin costo adicional por el período actual.";
+            }
+
+            if ($service->status === 'pending_configuration') {
+                $successMessage .= " El servicio requiere configuración adicional por un administrador.";
+            }
+
+            return redirect()->route('client.services.index')->with('success', $successMessage);
 
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Service plan change failed: ' . $e->getMessage(), [
                 'client_service_id' => $service->id,
                 'new_product_pricing_id' => $validated['new_product_pricing_id'],
-                'user_id' => Auth::id(),
-                'exception' => $e,
+                'user_id' => $request->user()->id, // Changed from Auth::id()
+                'exception_trace' => $e->getTraceAsString(),
             ]);
-            return redirect()->back()->with('error', 'Could not process your plan change request. Please try again.');
+            return redirect()->route('client.services.index')->with('error', 'No se pudo procesar tu solicitud de cambio de plan. Inténtalo de nuevo.');
         }
     }
 

@@ -29,9 +29,12 @@
           <button
             v-if="!isChangingPassword"
             @click="toggleChangePassword"
-            class="w-full px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+            class="w-full flex items-center justify-center px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+            aria-label="Cambiar Contraseña"
+            title="Cambiar Contraseña"
           >
-            Cambiar Contraseña
+            <KeyIcon class="h-5 w-5 mr-2" /> <!-- Icon added -->
+            <span>Cambiar Contraseña</span> <!-- Text retained for clarity next to icon, or can be screen-reader only -->
           </button>
 
           <div v-if="isChangingPassword" class="mt-4 p-4 border border-gray-200 rounded-md">
@@ -102,7 +105,8 @@
 
 <script setup>
 import { ref, watch, computed } from 'vue';
-import { router, useForm, usePage } from '@inertiajs/vue3'; // Import useForm and usePage
+import { router, useForm, usePage } from '@inertiajs/vue3';
+import { KeyIcon } from '@heroicons/vue/24/outline'; // Import KeyIcon
 
 const props = defineProps({
   show: {

@@ -1,12 +1,12 @@
 <template>
     <AuthenticatedLayout>
-        <Head :title="'Order ' + product.name" />
+        <Head :title="'Ordenar ' + product.name" />
 
         <div class="py-12">
             <div class="mx-auto max-w-7xl sm:px-6 lg:px-8">
                 <div class="overflow-hidden bg-white shadow-sm sm:rounded-lg">
                     <div class="p-6 bg-white border-b border-gray-200">
-                        <h1 class="mb-6 text-2xl font-semibold">Order: {{ product.name }}</h1>
+                        <h1 class="mb-6 text-2xl font-semibold">Ordenar: {{ product.name }}</h1>
 
                         <div v-if="product.description" class="mb-4">
                             <p class="text-gray-700">{{ product.description }}</p>
@@ -15,7 +15,7 @@
                         <form @submit.prevent="submitOrder">
                             <!-- Billing Cycle Selection -->
                             <div class="mb-4">
-                                <InputLabel for="billing_cycle_id" value="Billing Cycle" />
+                                <InputLabel for="billing_cycle_id" value="Ciclo de Facturación" />
                                 <SelectInput
                                     id="billing_cycle_id"
                                     class="block w-full mt-1"
@@ -30,7 +30,7 @@
 
                             <!-- Quantity Input -->
                             <div class="mb-4">
-                                <InputLabel for="quantity" value="Quantity" />
+                                <InputLabel for="quantity" value="Cantidad" />
                                 <TextInput
                                     id="quantity"
                                     type="number"
@@ -62,7 +62,7 @@
 
                             <!-- Notes to Client (Optional) -->
                             <div class="mb-4">
-                                <InputLabel for="notes_to_client" value="Notes (Optional)" />
+                                <InputLabel for="notes_to_client" value="Notas (Opcional)" />
                                 <textarea
                                     id="notes_to_client"
                                     class="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
@@ -217,7 +217,7 @@ function submitOrder() {
       // This callback is for when the form submission itself fails at the network level
       // or if Laravel returns a general error response (e.g., 500).
       // Validation errors (422) are automatically handled and populated in form.errors.
-      console.error('Order submission error:', pageErrors);
+      console.error('Error en el envío del pedido:', pageErrors);
     },
     onFinish: () => {
       // This callback executes after the request is finished, regardless of success or failure.
