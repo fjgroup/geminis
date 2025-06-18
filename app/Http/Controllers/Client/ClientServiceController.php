@@ -129,6 +129,7 @@ class ClientServiceController extends Controller
 
             $newProductPricing = ProductPricing::with(['product.productType', 'billingCycle'])
                 ->findOrFail($newProductPricingId);
+        dd('processUpgradeDowngrade START', $service->toArray(), $newProductPricing->toArray());
 
             if (strtolower($service->status) !== 'active') {
                  DB::rollBack();
@@ -172,6 +173,14 @@ class ClientServiceController extends Controller
             $hoy = Carbon::now()->startOfDay();
             $inicioCicloParaDiff = $fechaInicioCicloActual->copy()->startOfDay();
             Log::debug("PUD Log - Fecha de 'Hoy' (para diff): {$hoy->toDateString()}");
+            dd('processUpgradeDowngrade - Antes de diasUtilizados', [
+                'hoy' => $hoy->toDateString(),
+                'inicioCicloParaDiff' => $inicioCicloParaDiff->toDateString(),
+                'originalNextDueDate' => $originalNextDueDate->toDateString(),
+                'daysInCurrentCycleForCreditCalc' => $daysInCurrentCycleForCreditCalc,
+                'billingAmountForCredit' => $billingAmountForCredit,
+                'service_original_next_due_date' => $service->getOriginal('next_due_date')
+            ]);
 
             if ($hoy->lt($inicioCicloParaDiff)) {
                 $diasUtilizadosPlanActual = 0;
@@ -207,6 +216,13 @@ class ClientServiceController extends Controller
             $creditoNoUtilizado = $billingAmountForCredit - $costoUtilizadoPlanActual;
             $creditoNoUtilizado = max(0, round($creditoNoUtilizado, 2));
             Log::debug("PUD Log - Crédito No Utilizado: {$creditoNoUtilizado}");
+            dd('processUpgradeDowngrade - Despues de creditoNoUtilizado', [
+                'diasUtilizadosPlanActual' => $diasUtilizadosPlanActual,
+                'tarifaDiariaPlanActual' => $tarifaDiariaPlanActual,
+                'costoUtilizadoPlanActual' => $costoUtilizadoPlanActual,
+                'creditoNoUtilizado' => $creditoNoUtilizado,
+                'billingAmountForCredit' => $billingAmountForCredit
+            ]);
 
             $newCycle = $newProductPricing->billingCycle;
             if (!$newCycle) {
@@ -312,6 +328,7 @@ class ClientServiceController extends Controller
             $service->loadMissing(['product.productType', 'productPricing.billingCycle', 'client']);
             $newProductPricingLoaded = ProductPricing::with(['product.productType', 'billingCycle'])
                 ->findOrFail($newProductPricingId);
+        dd('calculateProration START', $service->toArray(), $newProductPricingLoaded->toArray());
 
             if (strtolower($service->status) !== 'active') {
                 return response()->json(['error' => 'El servicio debe estar activo para calcular el prorrateo.'], 422);
@@ -353,6 +370,13 @@ class ClientServiceController extends Controller
             $hoy = Carbon::now()->startOfDay();
             $inicioCicloParaDiff = $fechaInicioCicloActual->copy()->startOfDay();
             Log::debug("PRORATE_CALC_DEBUG: Fecha de 'Hoy' (para diff): {$hoy->toDateString()}"); // Log de $hoy que faltaba
+            dd('calculateProration - Antes de diasUtilizados', [
+                'hoy' => $hoy->toDateString(),
+                'inicioCicloParaDiff' => $inicioCicloParaDiff->toDateString(),
+                'originalNextDueDateForPreview' => $originalNextDueDateForPreview->toDateString(),
+                'daysInCurrentCycle' => $daysInCurrentCycle,
+                'billing_amount' => $service->billing_amount
+            ]);
 
             if ($hoy->lt($inicioCicloParaDiff)) {
                 $diasUtilizadosPlanActual = 0;
@@ -383,6 +407,13 @@ class ClientServiceController extends Controller
             $creditoNoUtilizado = $service->billing_amount - $costoUtilizadoPlanActual;
             $creditoNoUtilizado = max(0, round($creditoNoUtilizado, 2));
             Log::debug("PRORATE_CALC_DEBUG: Crédito No Utilizado (calculado): {$creditoNoUtilizado}");
+            dd('calculateProration - Despues de creditoNoUtilizado', [
+                'diasUtilizadosPlanActual' => $diasUtilizadosPlanActual,
+                'tarifaDiariaPlanActual' => $tarifaDiariaPlanActual,
+                'costoUtilizadoPlanActual' => $costoUtilizadoPlanActual,
+                'creditoNoUtilizado' => $creditoNoUtilizado,
+                'service_billing_amount' => $service->billing_amount
+            ]);
 
             $newCycle = $newProductPricingLoaded->billingCycle;
             Log::debug("PRORATE_CALC_DEBUG: New ProductPricing ID: {$newProductPricingLoaded->id}");
