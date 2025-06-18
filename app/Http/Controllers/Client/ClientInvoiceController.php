@@ -38,7 +38,11 @@ class ClientInvoiceController extends Controller
     {
         $this->authorize('viewAny', Invoice::class);
 
-        $invoices = $request->user()->invoices()->with('items')->paginate(10); // Asumiendo una relación 'invoices' en el modelo User
+        $invoices = $request->user()->invoices()
+                        ->with('items')
+                        ->orderByDesc('issue_date')
+                        ->orderByDesc('id')
+                        ->paginate(10);
 
         return Inertia::render('Client/Invoices/Index', [
             'invoices' => $invoices,

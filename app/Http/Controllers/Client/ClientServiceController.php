@@ -7,6 +7,7 @@ use App\Models\ClientService;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
+use App\Models\Transaction;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use App\Models\ProductPricing;
@@ -273,9 +274,14 @@ class ClientServiceController extends Controller
                     'notes_to_client' => "Cargo por actualización de plan de '{$old_product_name}' a '{$newProductPricing->product->name}'.",
                 ]);
                 InvoiceItem::create([
-                    'invoice_id' => $newInvoice->id, 'client_service_id' => $service->id,
+                    'invoice_id' => $newInvoice->id,
+                    'client_service_id' => $service->id,
+                    'product_id' => $newProductPricing->product_id, // Added
+                    'product_pricing_id' => $newProductPricing->id, // Added
                     'description' => "Cargo por actualización a {$newProductPricing->product->name} ({$newCycle->name})",
-                    'quantity' => 1, 'unit_price' => $montoFinal, 'total_price' => $montoFinal,
+                    'quantity' => 1,
+                    'unit_price' => $montoFinal,
+                    'total_price' => $montoFinal,
                     'taxable' => $newProductPricing->product->taxable ?? false,
                 ]);
                 $invoiceToPay = $newInvoice;
@@ -285,7 +291,23 @@ class ClientServiceController extends Controller
                 $client = $service->client;
                 $client->balance += $creditToBalance;
                 $client->save();
-                $notesForService .= " Se acreditó " . abs($montoFinal) . " {$currentPricingForCredit->currency_code} al balance del cliente.";
+
+                Transaction::create([
+                    'client_id' => $service->client_id,
+                    'reseller_id' => $service->client->reseller_id,
+                    'invoice_id' => null,
+                    'payment_method_id' => null,
+                    'gateway_slug' => 'system_credit',
+                    'gateway_transaction_id' => 'CREDIT-' . strtoupper(Str::random(10)),
+                    'type' => 'credit_added',
+                    'amount' => $creditToBalance,
+                    'currency_code' => $currentPricingForCredit->currency_code,
+                    'status' => 'completed',
+                    'description' => "Crédito por actualización de plan de '{$old_product_name} ({$old_cycle_name})' a '{$newProductPricing->product->name} ({$newCycle->name})'.",
+                    'transaction_date' => Carbon::now()
+                ]);
+
+                $notesForService .= " Se acreditó " . abs($montoFinal) . " {$currentPricingForCredit->currency_code} al balance del cliente. (Transacción de crédito registrada).";
             } else {
                 $notesForService .= " La actualización no generó costos adicionales ni créditos inmediatos.";
             }
@@ -311,17 +333,31 @@ class ClientServiceController extends Controller
 
             $successMessage = "Plan actualizado de '{$old_product_name} ({$old_cycle_name})' a '{$newProductPricing->product->name} ({$newCycle->name})'.";
             $successMessage .= " Tu nueva fecha de vencimiento es el " . $newEffectiveNextDueDate->format('d/m/Y') . ".";
+
+            // Determinar la ruta de redirección y el mensaje específico
             if ($invoiceToPay) {
+                // Si se generó una factura
                 $successMessage .= " Se generó la factura {$invoiceToPay->invoice_number} por {$invoiceToPay->total_amount_formatted} para la actualización.";
+                if ($service->status === 'pending_configuration') {
+                    $successMessage .= " El servicio requiere configuración adicional por un administrador.";
+                }
+                return redirect()->route('client.invoices.show', $invoiceToPay->id)->with('success', $successMessage);
             } elseif ($montoFinal < 0) {
+                // Si se acreditó saldo
+                // $creditToBalance is already defined if $montoFinal < 0
                 $successMessage .= " Se acreditó " . abs($montoFinal) . " {$currentPricingForCredit->currency_code} a tu balance.";
+                if ($service->status === 'pending_configuration') {
+                    $successMessage .= " El servicio requiere configuración adicional por un administrador.";
+                }
+                return redirect()->route('client.transactions.index')->with('success', $successMessage);
             } else {
+                // Si no hubo costo ni crédito
                 $successMessage .= " La actualización no tuvo costo adicional inmediato.";
+                if ($service->status === 'pending_configuration') {
+                    $successMessage .= " El servicio requiere configuración adicional por un administrador.";
+                }
+                return redirect()->route('client.services.index')->with('success', $successMessage);
             }
-            if ($service->status === 'pending_configuration') {
-                $successMessage .= " El servicio requiere configuración adicional por un administrador.";
-            }
-            return redirect()->route('client.services.index')->with('success', $successMessage);
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('PUD Log - Error en processUpgradeDowngrade para servicio ID ' . ($service->id ?? 'desconocido') . ': ' . $e->getMessage() . ' Trace: ' . $e->getTraceAsString());
@@ -487,60 +523,6 @@ class ClientServiceController extends Controller
         } catch (\Exception $e) {
             Log::error('PRORATE_CALC_DEBUG: Error en calculateProration para el servicio ID ' . ($service->id ?? 'desconocido') . ': ' . $e->getMessage() . ' Trace: ' . $e->getTraceAsString());
             return response()->json(['error' => 'No se pudo calcular el monto de prorrateo.'], 500);
-        }
-    }
-
-    public function requestRenewal(Request $request, ClientService $service): RedirectResponse
-    {
-        $this->authorize('renewService', $service);
-        if (!($service->status && in_array(strtolower($service->status), ['active', 'suspended']))) {
-            return redirect()->back()->with('error', 'This service cannot be renewed at its current stage.');
-        }
-        $existingUnpaidRenewalInvoice = Invoice::where('client_id', $service->client_id)
-            ->where('status', 'unpaid')
-            ->whereHas('items', function ($query) use ($service) {
-                $query->where('client_service_id', $service->id)
-                      ->where('description', 'like', 'Renewal:%');
-            })
-            ->first();
-        if ($existingUnpaidRenewalInvoice) {
-            return redirect()->route('client.invoices.show', $existingUnpaidRenewalInvoice->id)
-                             ->with('info', 'An unpaid renewal invoice already exists for this service. Please complete payment.');
-        }
-        DB::beginTransaction();
-        try {
-            $service->loadMissing(['product', 'productPricing.billingCycle', 'client']);
-            if (!$service->productPricing || !$service->productPricing->billingCycle || !$service->product) {
-                 Log::error("Service {$service->id} is missing pricing, cycle, or product details for renewal.");
-                 DB::rollBack();
-                 return redirect()->back()->with('error', 'Service configuration error. Cannot generate renewal invoice.');
-            }
-            $invoiceNumber = 'INV-RENEW-' . strtoupper(Str::random(8));
-            $renewalAmount = $service->billing_amount;
-            $currencyCode = $service->productPricing->currency_code;
-            $description = "Renewal: {$service->product->name} - {$service->domain_name} ({$service->productPricing->billingCycle->name})";
-            $notesToClient = "Renewal for service: {$service->product->name} - {$service->domain_name} for billing cycle {$service->productPricing->billingCycle->name}";
-            $newInvoice = Invoice::create([
-                'client_id' => $service->client_id, 'reseller_id' => $service->client->reseller_id,
-                'invoice_number' => $invoiceNumber, 'issue_date' => Carbon::now(), 'due_date' => Carbon::now(),
-                'status' => 'unpaid', 'subtotal' => $renewalAmount, 'total_amount' => $renewalAmount,
-                'currency_code' => $currencyCode, 'notes_to_client' => $notesToClient,
-            ]);
-            InvoiceItem::create([
-                'invoice_id' => $newInvoice->id, 'client_service_id' => $service->id,
-                'description' => $description, 'quantity' => 1, 'unit_price' => $renewalAmount,
-                'total_price' => $renewalAmount, 'taxable' => $service->product->taxable ?? false,
-            ]);
-            DB::commit();
-            return redirect()->route('client.invoices.show', $newInvoice->id)
-                             ->with('success', 'Renewal invoice generated successfully. Please proceed with payment.');
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Service renewal request failed: ' . $e->getMessage(), [
-                'client_service_id' => $service->id,
-                'user_id' => $request->user()->id,
-                'exception_trace' => $e->getTraceAsString()]);
-            return redirect()->back()->with('error', 'Could not generate renewal invoice. Please try again.');
         }
     }
 

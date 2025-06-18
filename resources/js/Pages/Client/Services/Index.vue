@@ -86,15 +86,6 @@ const confirmRequestCancellation = (serviceId) => { // Removed event parameter
     }
 };
 
-const confirmRenewalRequest = (event, serviceId) => {
-    event.preventDefault();
-    if (confirm('¿Estás seguro de que deseas generar una factura de renovación para este servicio?')) {
-        router.post(route('client.services.requestRenewal', { service: serviceId }), {}, {
-            preserveScroll: true,
-        });
-    }
-};
-
 // Function to open the modal and set the service
 const showServiceDetails = (service) => {
     selectedService.value = service;
@@ -208,13 +199,6 @@ const closeServiceModal = () => {
                                                             <TrashIcon class="h-5 w-5" />
                                                         </button>
                                                     </template>
-
-                                                    <Link v-if="service.status && (service.status.toLowerCase() === 'active' || service.status.toLowerCase() === 'suspended')"
-                                                          :href="route('client.services.requestRenewal', { service: service.id })"
-                                                          method="post" as="button"
-                                                          class="text-xs font-semibold text-green-600 hover:text-green-700">
-                                                        Renovar Servicio
-                                                    </Link>
 
                                                     <span v-if="service.status && service.status.toLowerCase() === 'pending_cancellation'" class="text-xs text-yellow-700 font-semibold">
                                                         Cancelación Pendiente

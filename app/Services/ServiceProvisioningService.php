@@ -136,7 +136,18 @@ class ServiceProvisioningService
                     Log::info("[SPS] Processing existing service ID: {$service->id}. Current status: {$service->status}, Next Due Date: {$service->next_due_date->toDateString()}");
                     $service->loadMissing(['productPricing.billingCycle', 'product']); // Ensure current service relations are loaded
 
-                    $billingCycleForItem = $invoiceItem->productPricing->billingCycle; // Cycle being paid for
+                    // $billingCycleForItem = $invoiceItem->productPricing->billingCycle; // Cycle being paid for
+                    $billingCycleForItem = null; // Initialize
+                    if ($invoiceItem->productPricing) {
+                        $billingCycleForItem = $invoiceItem->productPricing->billingCycle;
+                    } else {
+                        Log::error("[SPS] InvoiceItem ID: {$invoiceItem->id} (para ClientService ID: " . ($service->id ?? 'N/A') . ") no tiene una relación productPricing válida (product_pricing_id podría faltar en el InvoiceItem). No se puede determinar el ciclo de facturación para este item de la factura. El servicio asociado ya debería haber sido actualizado por el proceso de cambio de plan si este item es de una actualización.");
+                        // Para items de actualización, el servicio ya fue modificado. Si no hay pricing, no se puede hacer más aquí.
+                        // Para items de renovación, esto sería un error más grave que impediría la extensión.
+                        // Como el contexto problemático es una actualización, es seguro continuar y procesar otros items.
+                        // Si el item fuera de renovación y esto ocurriera, se omitiría la extensión de la fecha.
+                        continue; // Saltar al siguiente invoice item.
+                    }
 
                     if (!$billingCycleForItem || !property_exists($billingCycleForItem, 'days') || !is_numeric($billingCycleForItem->days) || $billingCycleForItem->days <= 0) {
                         $daysValue = 'N/A';
@@ -145,9 +156,9 @@ class ServiceProvisioningService
                         } elseif ($billingCycleForItem) {
                             $daysValue = 'propiedad days NO EXISTE';
                         } else {
-                            $daysValue = 'billingCycleForItem ES NULL';
+                            $daysValue = 'billingCycleForItem ES NULL'; // Should be caught by !$billingCycleForItem
                         }
-                        Log::error("[SPS] Configuración de ciclo inválida para InvoiceItem ID: {$invoiceItem->id} (BillingCycle ID: " . ($billingCycleForItem->id ?? 'desconocido') . ") - 'days' es inválido: " . $daysValue . ". No se puede procesar la extensión de fecha.");
+                        Log::error("[SPS] Configuración de ciclo inválida para InvoiceItem ID: {$invoiceItem->id} (BillingCycle ID: " . ($billingCycleForItem->id ?? 'desconocido') . ", asociado a ProductPricing ID: " . ($invoiceItem->product_pricing_id ?? 'desconocido') . ") - 'days' es inválido o el ciclo es nulo: " . $daysValue . ". No se puede procesar la extensión de fecha o determinar el período del nuevo servicio basado en este item.");
                     } else {
                         // Determine if this is a renewal or an upgrade invoice item
                         $itemDescription = strtolower($invoiceItem->description);

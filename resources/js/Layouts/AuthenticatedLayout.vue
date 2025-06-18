@@ -261,14 +261,24 @@ const isActiveDashboard = computed(() => {
             </header>
 
             <main>
+
                 <div v-if="$page.props.flash && $page.props.flash.success"
-                    class="p-4 mb-4 text-green-800 bg-green-200 rounded">
+                    class="p-4 mb-4 text-green-700 bg-green-100 rounded dark:bg-green-800 dark:text-green-200">
                     {{ $page.props.flash.success }}
                 </div>
                 <div v-if="$page.props.flash && $page.props.flash.error"
-                    class="p-4 mb-4 text-red-800 bg-red-200 rounded">
+                    class="p-4 mb-4 text-red-700 bg-red-100 rounded dark:bg-red-800 dark:text-red-200">
                     {{ $page.props.flash.error }}
                 </div>
+                <div v-if="$page.props.flash && $page.props.flash.info"
+                    class="p-4 mb-4 text-blue-700 bg-blue-100 rounded dark:bg-blue-800 dark:text-blue-200">
+                    {{ $page.props.flash.info }}
+                </div>
+                <div v-if="$page.props.flash && $page.props.flash.warning"
+                    class="p-4 mb-4 text-yellow-700 bg-yellow-100 rounded dark:bg-yellow-800 dark:text-yellow-200">
+                    {{ $page.props.flash.warning }}
+                </div>
+
                 <slot />
             </main>
         </div>
