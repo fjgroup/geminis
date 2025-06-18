@@ -182,31 +182,38 @@ class ClientServiceController extends Controller
                 'service_original_next_due_date' => $service->getOriginal('next_due_date')
             ]);
 
+            // Copia la misma lógica de cálculo de $diasUtilizadosPlanActual de calculateProration
             if ($hoy->lt($inicioCicloParaDiff)) {
                 $diasUtilizadosPlanActual = 0;
                 Log::debug("PUD Log - Hoy ({$hoy->toDateString()}) es anterior al inicio del ciclo ({$inicioCicloParaDiff->toDateString()}). Días Utilizados inicial = 0.");
             } else {
                 $diasTranscurridos = $hoy->diffInDays($inicioCicloParaDiff);
                 Log::debug("PUD Log - Días Transcurridos Brutos (diffInDays hoy e inicioCiclo): {$diasTranscurridos}");
+
+                if ($hoy->gte($inicioCicloParaDiff) && $diasTranscurridos < 0) {
+                    Log::warning("PUD Log - diffInDays retornó un valor negativo anómalo. Forzando a positivo.", ['raw_diff' => $diasTranscurridos]);
+                    $diasTranscurridos = abs($diasTranscurridos);
+                }
+
                 $diasUtilizadosPlanActual = $diasTranscurridos + 1;
                 Log::debug("PUD Log - Días Utilizados después de sumar 1: {$diasUtilizadosPlanActual}");
             }
-            $diasUtilizadosPlanActual = min($diasUtilizadosPlanActual, $daysInCurrentCycleForCreditCalc);
+
+            $diasUtilizadosPlanActual = min($diasUtilizadosPlanActual, $daysInCurrentCycleForCreditCalc); // Usa $daysInCurrentCycleForCreditCalc aquí
             Log::debug("PUD Log - Días Utilizados después de min(diasDelCiclo): {$diasUtilizadosPlanActual}");
-            if ($hoy->gte($inicioCicloParaDiff) && $diasUtilizadosPlanActual < 1) { // Should be caught by max(1,..) if that was intended
-                $diasUtilizadosPlanActual = 1;
-                Log::debug("PUD Log - Días Utilizados ajustado a 1 porque hoy >= inicioCiclo y < 1.");
-            }
-             // This max(1,..) should be applied if we always consider at least one day used if cycle is current/past
-            // However, if today < start of cycle, used days can be 0. The min() above handles not exceeding cycle days.
-            // The refined logic from calculateProration handles the 0 case if $hoy->lt($inicioCicloParaDiff)
-            // and then max(1,..) is only applied if the cycle is current.
-            // Let's ensure it's $diasUtilizadosPlanActual = max(1, $diasUtilizadosPlanActual) if $hoy->gte($inicioCicloParaDiff)
-            if ($hoy->gte($inicioCicloParaDiff)) {
-                $diasUtilizadosPlanActual = max(1, $diasUtilizadosPlanActual);
-            }
 
-
+            // Esta condición 'max(1, ...)' ya estaba presente y es ligeramente diferente, la mantenemos así por ahora
+            // y vemos el resultado. La lógica original era:
+            // if ($hoy->gte($inicioCicloParaDiff) && $diasUtilizadosPlanActual < 1) {
+            //     $diasUtilizadosPlanActual = 1; ...}
+            // if ($hoy->gte($inicioCicloParaDiff)) { $diasUtilizadosPlanActual = max(1, $diasUtilizadosPlanActual); }
+            // La nueva lógica unificada de arriba ya cubre el ajuste a 1 si es necesario y el ciclo está activo.
+            // Así que la siguiente línea que ajustaba a max(1,..) podría ser redundante o necesitar revisión si el resultado no es el esperado.
+            // Por ahora, confiamos en la lógica copiada.
+            if ($hoy->gte($inicioCicloParaDiff) && $diasUtilizadosPlanActual < 1) { // Re-aplicar la condición de ajuste a 1.
+                 $diasUtilizadosPlanActual = 1;
+                 Log::debug("PUD Log - Días Utilizados ajustado a 1 porque hoy >= inicioCiclo y cálculo < 1 (después de min).");
+            }
             Log::debug("PUD Log - Días Utilizados Plan Actual (final refinado): {$diasUtilizadosPlanActual}");
 
             $tarifaDiariaPlanActual = ($daysInCurrentCycleForCreditCalc > 0 && $billingAmountForCredit > 0) ? ($billingAmountForCredit / $daysInCurrentCycleForCreditCalc) : 0;
@@ -368,7 +375,7 @@ class ClientServiceController extends Controller
 
             $hoy = Carbon::now()->startOfDay();
             $inicioCicloParaDiff = $fechaInicioCicloActual->copy()->startOfDay();
-            Log::debug("PRORATE_CALC_DEBUG: Fecha de 'Hoy' (para diff): {$hoy->toDateString()}"); // Log de $hoy que faltaba
+            Log::debug("PRORATE_CALC_DEBUG: Fecha de 'Hoy' (para diff): {$hoy->toDateString()}");
             Log::debug('calculateProration - Antes de diasUtilizados', [
                 'service_id' => $service->id,
                 'new_product_pricing_id' => $newProductPricingId,
@@ -383,21 +390,37 @@ class ClientServiceController extends Controller
                 $diasUtilizadosPlanActual = 0;
                 Log::debug("PRORATE_CALC_DEBUG: Hoy ({$hoy->toDateString()}) es anterior al inicio del ciclo ({$inicioCicloParaDiff->toDateString()}). Días Utilizados inicial = 0.");
             } else {
+                // Calcular días transcurridos. diffInDays debería devolver un valor positivo
+                // ya que $abs = true por defecto.
                 $diasTranscurridos = $hoy->diffInDays($inicioCicloParaDiff);
+
+                // Log para verificar el valor crudo de diffInDays
                 Log::debug("PRORATE_CALC_DEBUG: Días Transcurridos Brutos (diffInDays entre hoy e inicioCiclo): {$diasTranscurridos}");
+
+                // Salvaguarda: Si $hoy es posterior o igual a inicioCicloParaDiff,
+                // diasTranscurridos no debería ser negativo. Si lo es, es anómalo, pero lo corregimos.
+                if ($hoy->gte($inicioCicloParaDiff) && $diasTranscurridos < 0) {
+                    Log::warning("PRORATE_CALC_DEBUG: diffInDays retornó un valor negativo anómalo. Forzando a positivo.", ['raw_diff' => $diasTranscurridos]);
+                    $diasTranscurridos = abs($diasTranscurridos);
+                }
+
+                // Se considera que el día actual es un día completo de uso.
+                // Por ejemplo, si el ciclo empezó hoy, hoy es 1 día de uso.
+                // Si el ciclo empezó ayer, y hoy es el cambio, son 2 días de uso.
+                // diffInDays entre hoy y ayer es 1. 1+1 = 2.
                 $diasUtilizadosPlanActual = $diasTranscurridos + 1;
-                Log::debug("PRORATE_CALC_DEBUG: Días Utilizados después de sumar 1 (por día actual): {$diasUtilizadosPlanActual}");
+                Log::debug("PRORATE_CALC_DEBUG: Días Utilizados después de sumar 1 (considerando día actual): {$diasUtilizadosPlanActual}");
             }
 
+            // Esta lógica de min y ajuste a 1 si es < 1 (y el ciclo está vigente) se mantiene:
             $diasUtilizadosPlanActual = min($diasUtilizadosPlanActual, $daysInCurrentCycle);
             Log::debug("PRORATE_CALC_DEBUG: Días Utilizados después de min(diasDelCiclo): {$diasUtilizadosPlanActual}");
 
-            if ($hoy->gte($inicioCicloParaDiff) && $diasUtilizadosPlanActual < 1) { // Si el ciclo está vigente, min 1 día
+            if ($hoy->gte($inicioCicloParaDiff) && $diasUtilizadosPlanActual < 1) {
                 $diasUtilizadosPlanActual = 1;
                 Log::debug("PRORATE_CALC_DEBUG: Días Utilizados ajustado a 1 porque hoy >= inicioCiclo y cálculo < 1.");
             }
-            // Si $hoy < $inicioCicloParaDiff, $diasUtilizadosPlanActual es 0 y se mantiene así.
-
+            // Fin de la lógica de $diasUtilizadosPlanActual
             Log::debug("PRORATE_CALC_DEBUG: Días Utilizados Plan Actual (final refinado): {$diasUtilizadosPlanActual}");
 
 
