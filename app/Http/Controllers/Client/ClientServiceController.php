@@ -242,7 +242,7 @@ class ClientServiceController extends Controller
                  Log::error("PUD Log - Error: Configuración inválida para BillingCycle ID: {$newCycle->id} (nuevo) - 'days' es inválido. Raw: " . print_r($daysRawValueNew, true));
                  DB::rollBack(); return redirect()->route('client.services.index')->with('error', 'Error de configuración interna del ciclo de facturación (nuevo). Contacte a soporte.');
             }
-            // $daysInNewCycle = (int) $daysRawValueNew; // Not strictly needed for NDD if it's always original
+            $daysInNewCycle = (int) $daysRawValueNew;
 
             $precioTotalNuevoPlan = $newProductPricing->price;
             Log::debug("PUD Log - Precio Total Nuevo Plan: {$precioTotalNuevoPlan}");
@@ -255,8 +255,11 @@ class ClientServiceController extends Controller
             $old_product_name = $service->product->name;
             $old_cycle_name = $currentCycleForCredit->name;
 
+            // Define original NDD string for notes
+            $note_original_next_due_date_str = $originalNextDueDate->format('Y-m-d');
+
             $notesForService = "Actualización completa de plan de '{$old_product_name} ({$old_cycle_name})' a '{$newProductPricing->product->name} ({$newCycle->name})' el " . Carbon::now()->toDateTimeString() . ".";
-            $notesForService .= " Fecha de vencimiento original del servicio: " . $originalNextDueDate->format('Y-m-d') . ".";
+            $notesForService .= " Fecha de vencimiento original del servicio: " . $note_original_next_due_date_str . ".";
             $notesForService .= " Crédito por tiempo no utilizado del plan anterior: {$creditoNoUtilizado} {$currentPricingForCredit->currency_code}.";
             $notesForService .= " Costo del nuevo plan (primer ciclo): {$precioTotalNuevoPlan} {$newProductPricing->currency_code}.";
 
@@ -287,13 +290,15 @@ class ClientServiceController extends Controller
                 $notesForService .= " La actualización no generó costos adicionales ni créditos inmediatos.";
             }
 
+            $newEffectiveNextDueDate = Carbon::now()->startOfDay()->addDays($daysInNewCycle);
+            $notesForService .= " Nueva fecha de vencimiento del servicio: " . $newEffectiveNextDueDate->format('Y-m-d') . ".";
+
             $service->product_id = $newProductPricing->product_id;
             $service->product_pricing_id = $newProductPricing->id;
             $service->billing_cycle_id = $newProductPricing->billing_cycle_id;
             $service->billing_amount = $newProductPricing->price;
 
-            $service->next_due_date = $originalNextDueDate;
-            $notesForService .= " La fecha de vencimiento del servicio (" . $originalNextDueDate->format('Y-m-d') . ") se mantiene.";
+            $service->next_due_date = $newEffectiveNextDueDate;
 
             $service->notes = ($service->getOriginal('notes') ? trim($service->getOriginal('notes')) . "\n" : '') . trim($notesForService);
 
@@ -305,7 +310,7 @@ class ClientServiceController extends Controller
             DB::commit();
 
             $successMessage = "Plan actualizado de '{$old_product_name} ({$old_cycle_name})' a '{$newProductPricing->product->name} ({$newCycle->name})'.";
-            $successMessage .= " Tu próxima fecha de vencimiento sigue siendo el " . $originalNextDueDate->format('d/m/Y') . ".";
+            $successMessage .= " Tu nueva fecha de vencimiento es el " . $newEffectiveNextDueDate->format('d/m/Y') . ".";
             if ($invoiceToPay) {
                 $successMessage .= " Se generó la factura {$invoiceToPay->invoice_number} por {$invoiceToPay->total_amount_formatted} para la actualización.";
             } elseif ($montoFinal < 0) {
@@ -454,18 +459,19 @@ class ClientServiceController extends Controller
                 Log::error("PRORATE_CALC_DEBUG: Error - Configuración inválida para BillingCycle ID: {$newCycle->id} (nuevo) - 'days' es inválido. Raw: " . print_r($daysInNewCycleRaw, true));
                 return response()->json(['error' => 'Error de configuración interna del ciclo de facturación (nuevo). Contacte a soporte.'], 500);
             }
-            // $daysInNewCycle = (int) $daysInNewCycleRaw; // Variable no usada directamente después para montoFinal o NDD preview
+            $daysInNewCycle = (int) $daysInNewCycleRaw;
 
             $precioTotalNuevoPlan = $newProductPricingLoaded->price;
             $montoFinal = $precioTotalNuevoPlan - $creditoNoUtilizado;
             $montoFinal = round($montoFinal, 2);
             Log::debug("PRORATE_CALC_DEBUG: Monto Final (calculado) [PrecioNuevo - CreditoNoUtilizado]: {$montoFinal}");
 
-            $newNextDueDatePreviewString = $originalNextDueDateForPreview->toDateString();
-            Log::debug("PRORATE_CALC_DEBUG: New Next Due Date Preview (string, siempre original): {$newNextDueDatePreviewString}");
+            $newNextDueDatePreview = Carbon::now()->startOfDay()->addDays($daysInNewCycle);
+            $newNextDueDatePreviewString = $newNextDueDatePreview->toDateString();
+            Log::debug("PRORATE_CALC_DEBUG: New Next Due Date Preview (calculada: hoy + {$daysInNewCycle} days): {$newNextDueDatePreviewString}");
 
             $message = $montoFinal > 0 ? 'Monto a pagar para la actualización completa.' : ($montoFinal < 0 ? 'Crédito a tu balance por la actualización.' : 'Actualización completa sin costo adicional inmediato.');
-            $message .= " Tu próxima fecha de vencimiento seguirá siendo el " . $originalNextDueDateForPreview->format('d/m/Y') . ".";
+            $message .= " Tu nueva fecha de vencimiento será el " . $newNextDueDatePreview->format('d/m/Y') . "."; // Updated message
             Log::debug("PRORATE_CALC_DEBUG: --- Fin Cálculo de Prorrateo ---");
 
             return response()->json([
