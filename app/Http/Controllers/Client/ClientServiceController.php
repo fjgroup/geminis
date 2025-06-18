@@ -118,7 +118,7 @@ class ClientServiceController extends Controller
     {
         $this->authorize('processUpgradeDowngrade', $service);
         $validated = $request->validate(['new_product_pricing_id' => 'required|exists:product_pricings,id']);
-        $newProductPricingId = $validated['new_product_pricing_id']; // Keep it for consistency with calculateProration
+        $newProductPricingId = $validated['new_product_pricing_id'];
 
         DB::beginTransaction();
         try {
@@ -130,7 +130,7 @@ class ClientServiceController extends Controller
                 ->findOrFail($newProductPricingId);
 
             if (strtolower($service->status) !== 'active') {
-                 DB::rollBack(); // Rollback early on validation fail
+                 DB::rollBack();
                 return redirect()->route('client.services.index')->with('error', 'El servicio debe estar activo para cambiar de plan.');
             }
             if ($newProductPricing->id === $service->product_pricing_id) {
@@ -143,7 +143,6 @@ class ClientServiceController extends Controller
                 return redirect()->route('client.services.index')->with('error', 'No puedes cambiar a un tipo de producto diferente.');
             }
 
-            // Details for credit calculation, based on the state *before* any changes
             $currentPricingForCredit = $service->productPricing;
             $currentCycleForCredit = $currentPricingForCredit->billingCycle;
             $billingAmountForCredit = $service->billing_amount;
@@ -274,79 +273,92 @@ class ClientServiceController extends Controller
 
         try {
             $service->loadMissing(['product.productType', 'productPricing.billingCycle', 'client']);
-            $newProductPricing = ProductPricing::with(['product.productType', 'billingCycle'])
-                ->findOrFail($newProductPricingId);
+            // $newProductPricing is loaded below, after initial checks for current plan
+            // This was changed in the prompt to use $newProductPricingLoaded later
 
-            if (strtolower($service->status) !== 'active') {
-                return response()->json(['error' => 'El servicio debe estar activo para calcular el prorrateo.'], 422);
-            }
-            if ((int)$newProductPricingId === $service->product_pricing_id) {
-                return response()->json(['error' => 'Esta selección es tu plan actual.'], 422);
-            }
-            if ($newProductPricing->product->product_type_id !== $service->product->product_type_id) {
-                return response()->json(['error' => 'No puedes cambiar a un tipo de producto diferente.'], 422);
-            }
-
-            Log::debug("CP Log Start - Service ID: {$service->id}");
+            Log::debug("CP Log - --- Iniciando Cálculo de Prorrateo ---");
+            Log::debug("CP Log - Service ID: {$service->id}");
             Log::debug("CP Log - Current ProductPricing ID: {$service->product_pricing_id}");
-            Log::debug("CP Log - Current Billing Amount: {$service->billing_amount}");
-            Log::debug("CP Log - Current Next Due Date (raw from service object): {$service->next_due_date}");
+            Log::debug("CP Log - Current Billing Amount (PrecioPlanActual para crédito): {$service->billing_amount}");
+            Log::debug("CP Log - Current Next Due Date (raw del servicio): {$service->next_due_date}");
 
-            $currentPricingForCredit = $service->productPricing; // Renamed for clarity in this context
-            $currentCycleForCredit = $currentPricingForCredit->billingCycle;
-            $billingAmountForCredit = $service->billing_amount;
-            $originalNextDueDateForPreview = Carbon::parse($service->next_due_date); // This IS the original for preview
-            Log::debug("CP Log - Current Next Due Date (Carbon parsed for preview): {$originalNextDueDateForPreview->toDateString()}");
+            $currentPricing = $service->productPricing;
+            $currentCycle = $currentPricing->billingCycle;
+            $originalNextDueDateForPreview = Carbon::parse($service->next_due_date);
+            Log::debug("CP Log - Original Next Due Date (para preview y base de cálculo, Carbon parsed): {$originalNextDueDateForPreview->toDateString()}");
 
-            if (!$currentCycleForCredit) {
-                Log::error("CP Log - Error: El objeto currentCycleForCredit es null para el servicio ID: {$service->id}.");
+            if (!$currentCycle) {
+                Log::error("CP Log - Error: El objeto currentCycle es null para el servicio ID: {$service->id}.");
                 return response()->json(['error' => 'Error de configuración interna del ciclo de facturación (actual). Contacte a soporte.'], 500);
             }
-            $daysInCurrentCycleRaw = $currentCycleForCredit->getAttributeValue('days');
-            Log::debug("CP Log - Current Cycle ID: {$currentCycleForCredit->id}, Days (raw from getAttributeValue): " . gettype($daysInCurrentCycleRaw) . " - " . print_r($daysInCurrentCycleRaw, true));
+            $daysInCurrentCycleRaw = $currentCycle->getAttributeValue('days');
+            Log::debug("CP Log - Current Cycle ID: {$currentCycle->id}, Days (raw from getAttributeValue): " . gettype($daysInCurrentCycleRaw) . " - " . print_r($daysInCurrentCycleRaw, true));
             if (!is_numeric($daysInCurrentCycleRaw) || $daysInCurrentCycleRaw <= 0) {
-                Log::error("CP Log - Error: Configuración inválida para BillingCycle ID: {$currentCycleForCredit->id} (actual) - 'days' es inválido. Raw: " . print_r($daysInCurrentCycleRaw, true));
+                Log::error("CP Log - Error: Configuración inválida para BillingCycle ID: {$currentCycle->id} (actual) - 'days' es inválido. Raw: " . print_r($daysInCurrentCycleRaw, true));
                 return response()->json(['error' => 'Error de configuración interna del ciclo de facturación (actual). Contacte a soporte.'], 500);
             }
             $daysInCurrentCycle = (int) $daysInCurrentCycleRaw;
-            Log::debug("CP Log - Days in Current Cycle (validated): {$daysInCurrentCycle}");
+            Log::debug("CP Log - Days in Current Cycle (usado para cálculo): {$daysInCurrentCycle}");
 
             $fechaInicioCicloActual = $originalNextDueDateForPreview->copy()->subDays($daysInCurrentCycle);
             Log::debug("CP Log - Fecha Inicio Ciclo Actual (calculada): {$fechaInicioCicloActual->toDateString()}");
 
-            $diasUtilizadosPlanActual = Carbon::now()->diffInDaysFiltered(fn(Carbon $date) => true, $fechaInicioCicloActual, false);
-            if ($diasUtilizadosPlanActual < 1 && Carbon::now()->isSameDay($fechaInicioCicloActual)) {
+            $hoy = Carbon::now()->startOfDay();
+            Log::debug("CP Log - Fecha de 'Hoy' (para diff): {$hoy->toDateString()}");
+            $diasUtilizadosPlanActual = $hoy->diffInDaysFiltered(fn(Carbon $date) => true, $fechaInicioCicloActual->copy()->startOfDay(), false);
+            if ($hoy->isSameDay($fechaInicioCicloActual->copy()->startOfDay())) {
                 $diasUtilizadosPlanActual = 1;
+            } else {
+                 $diasUtilizadosPlanActual = $diasUtilizadosPlanActual +1;
             }
-            $diasUtilizadosPlanActual = max(1, min($diasUtilizadosPlanActual, $daysInCurrentCycle));
+            $diasUtilizadosPlanActual = max(1, $diasUtilizadosPlanActual);
+            $diasUtilizadosPlanActual = min($diasUtilizadosPlanActual, $daysInCurrentCycle);
             Log::debug("CP Log - Días Utilizados Plan Actual (calculados): {$diasUtilizadosPlanActual}");
 
-            $tarifaDiariaPlanActual = ($daysInCurrentCycle > 0 && $billingAmountForCredit > 0) ? ($billingAmountForCredit / $daysInCurrentCycle) : 0;
+            $tarifaDiariaPlanActual = ($daysInCurrentCycle > 0 && $service->billing_amount > 0) ? ($service->billing_amount / $daysInCurrentCycle) : 0;
             Log::debug("CP Log - Tarifa Diaria Plan Actual (calculada): {$tarifaDiariaPlanActual}");
             $costoUtilizadoPlanActual = $tarifaDiariaPlanActual * $diasUtilizadosPlanActual;
             Log::debug("CP Log - Costo Utilizado Plan Actual (calculado): {$costoUtilizadoPlanActual}");
-            $creditoNoUtilizado = $billingAmountForCredit - $costoUtilizadoPlanActual;
+            $creditoNoUtilizado = $service->billing_amount - $costoUtilizadoPlanActual;
             $creditoNoUtilizado = max(0, round($creditoNoUtilizado, 2));
             Log::debug("CP Log - Crédito No Utilizado (calculado): {$creditoNoUtilizado}");
 
-            $newCycle = $newProductPricing->billingCycle;
-            Log::debug("CP Log - New ProductPricing ID: {$newProductPricing->id}");
-            Log::debug("CP Log - Precio Total Nuevo Plan: {$newProductPricing->price}");
+            // Load $newProductPricing here as per prompt structure
+            $newProductPricingLoaded = ProductPricing::with('billingCycle')->find($newProductPricingId);
+            if (!$newProductPricingLoaded) { // find() can return null if not found, findOrFail was in original
+                Log::error('CP Log - Error: Model not found for new_product_pricing_id: ' . $newProductPricingId);
+                return response()->json(['error' => 'El plan seleccionado no es válido.'], 404);
+            }
+
+            // Initial validations after loading newProductPricingLoaded
+            if (strtolower($service->status) !== 'active') { // Repeated, but okay
+                return response()->json(['error' => 'El servicio debe estar activo para calcular el prorrateo.'], 422);
+            }
+            if ($newProductPricingLoaded->id === $service->product_pricing_id) {
+                return response()->json(['error' => 'Esta selección es tu plan actual.'], 422);
+            }
+            if ($newProductPricingLoaded->product->product_type_id !== $service->product->product_type_id) {
+                return response()->json(['error' => 'No puedes cambiar a un tipo de producto diferente.'], 422);
+            }
+
+            $newCycle = $newProductPricingLoaded->billingCycle;
+            Log::debug("CP Log - New ProductPricing ID: {$newProductPricingLoaded->id}");
+            Log::debug("CP Log - Precio Total Nuevo Plan: {$newProductPricingLoaded->price}");
+
             if (!$newCycle) {
-                Log::error("CP Log - Error: El objeto newCycle es null para ProductPricing ID: {$newProductPricing->id}.");
+                Log::error("CP Log - Error: El objeto newCycle es null para ProductPricing ID: {$newProductPricingLoaded->id}.");
                 return response()->json(['error' => 'Error de configuración interna del ciclo de facturación (nuevo). Contacte a soporte.'], 500);
             }
-            $daysRawValueNew = $newCycle->getAttributeValue('days');
-            Log::debug("CP Log - New Cycle ID: {$newCycle->id}, Days (raw from getAttributeValue): " . gettype($daysRawValueNew) . " - " . print_r($daysRawValueNew, true));
-            if (!is_numeric($daysRawValueNew) || $daysRawValueNew <= 0) {
-                Log::error("CP Log - Error: Configuración inválida para BillingCycle ID: {$newCycle->id} (nuevo) - 'days' es inválido. Raw: " . print_r($daysRawValueNew, true));
+            $daysInNewCycleRaw = $newCycle->getAttributeValue('days');
+            Log::debug("CP Log - New Cycle ID: {$newCycle->id}, Days (raw from getAttributeValue): " . gettype($daysInNewCycleRaw) . " - " . print_r($daysInNewCycleRaw, true));
+            if (!is_numeric($daysInNewCycleRaw) || $daysInNewCycleRaw <= 0) {
+                Log::error("CP Log - Error: Configuración inválida para BillingCycle ID: {$newCycle->id} (nuevo) - 'days' es inválido. Raw: " . print_r($daysInNewCycleRaw, true));
                 return response()->json(['error' => 'Error de configuración interna del ciclo de facturación (nuevo). Contacte a soporte.'], 500);
             }
-            $daysInNewCycle = (int) $daysRawValueNew;
-            Log::debug("CP Log - Days in New Cycle (validated): {$daysInNewCycle}");
+            $daysInNewCycle = (int) $daysInNewCycleRaw;
+            Log::debug("CP Log - Days in New Cycle (usado para info): {$daysInNewCycle}");
 
-
-            $precioTotalNuevoPlan = $newProductPricing->price;
+            $precioTotalNuevoPlan = $newProductPricingLoaded->price;
             $montoFinal = $precioTotalNuevoPlan - $creditoNoUtilizado;
             $montoFinal = round($montoFinal, 2);
             Log::debug("CP Log - Monto Final (calculado) [PrecioNuevo - CreditoNoUtilizado]: {$montoFinal}");
@@ -355,17 +367,19 @@ class ClientServiceController extends Controller
             Log::debug("CP Log - New Next Due Date Preview (string, siempre original): {$newNextDueDatePreviewString}");
 
             $message = $montoFinal > 0 ? 'Monto a pagar para la actualización completa.' : ($montoFinal < 0 ? 'Crédito a tu balance por la actualización.' : 'Actualización completa sin costo adicional inmediato.');
-            $message .= " Tu próxima fecha de vencimiento seguirá siendo el " . Carbon::parse($newNextDueDatePreviewString)->format('d/m/Y') . ".";
+            $message .= " Tu próxima fecha de vencimiento seguirá siendo el " . $originalNextDueDateForPreview->format('d/m/Y') . ".";
+
+            Log::debug("CP Log - --- Fin Cálculo de Prorrateo ---");
 
             return response()->json([
                 'prorated_amount' => $montoFinal,
-                'currency_code' => $newProductPricing->currency_code ?? $currentPricingForCredit->currency_code,
+                'currency_code' => $newProductPricingLoaded->currency_code ?? $currentPricing->currency_code,
                 'message' => $message,
                 'new_next_due_date_preview' => $newNextDueDatePreviewString,
             ]);
 
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-            Log::error('CP Log - Error: Model not found for new_product_pricing_id: ' . $newProductPricingId . ' - ' . $e->getMessage());
+            Log::error('CP Log - Error: ModelNotFoundException. new_product_pricing_id: ' . $newProductPricingId . ' - ' . $e->getMessage());
             return response()->json(['error' => 'El plan seleccionado no es válido.'], 404);
         } catch (\Exception $e) {
             Log::error('CP Log - Error en calculateProration para el servicio ID ' . ($service->id ?? 'desconocido') . ': ' . $e->getMessage() . ' Trace: ' . $e->getTraceAsString());
@@ -452,7 +466,7 @@ class ClientServiceController extends Controller
         }
         catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Password update failed: ' . $e->getMessage(), ['client_service_id' => $service->id, 'user_id' => $request->user()->id, 'exception' => $e]);
+            Log::error('Password update failed: . Controller: ' . __CLASS__ . '. Method: ' . __METHOD__ . '. Line: ' . __LINE__ . 'Service ID: ' . ($service->id ?? 'N/A') . ' Error: ' . $e->getMessage(), ['client_service_id' => $service->id ?? null, 'user_id' => $request->user()->id ?? null, 'exception_trace' => $e->getTraceAsString()]);
             return redirect()->back()->with('error', 'Error al actualizar la contraseña. Por favor, inténtalo de nuevo más tarde.');
         }
     }
