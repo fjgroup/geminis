@@ -247,23 +247,32 @@ const handlePlanChange = () => {
                                     <p>{{ prorationError }}</p>
                                 </div>
 
-                                <div v-if="proratedResult && !isCalculatingProration && !prorationError" class="mt-4 p-3 rounded-md text-sm"
+                                <div v-if="proratedResult && !isCalculatingProration && !prorationError" class="mt-4 p-3 rounded-md text-sm space-y-1"
                                      :class="{
                                         'bg-green-100 dark:bg-green-800 text-green-700 dark:text-green-100': proratedResult.prorated_amount < 0,
                                         'bg-yellow-100 dark:bg-yellow-700 text-yellow-700 dark:text-yellow-100': proratedResult.prorated_amount > 0,
                                         'bg-blue-100 dark:bg-blue-800 text-blue-700 dark:text-blue-100': proratedResult.prorated_amount === 0
                                      }">
-                                    <h4 class="font-semibold">Resultado del Prorrateo:</h4>
-                                    <p v-if="proratedResult.prorated_amount > 0">
-                                        Monto adicional a pagar: {{ formatCurrency(proratedResult.prorated_amount, proratedResult.currency_code) }}
-                                    </p>
-                                    <p v-else-if="proratedResult.prorated_amount < 0">
-                                        Crédito a tu balance: {{ formatCurrency(Math.abs(proratedResult.prorated_amount), proratedResult.currency_code) }}
-                                    </p>
-                                    <p v-else>
-                                        No hay cargos adicionales ni créditos por el período actual.
-                                    </p>
-                                    <p class="text-xs mt-1 italic">{{ proratedResult.message }}</p>
+                                    <h4 class="font-semibold text-md">Resumen de la Actualización:</h4>
+
+                                    <div>
+                                        <span class="font-medium">Monto por cambio:</span>
+                                        <span v-if="proratedResult.prorated_amount > 0">
+                                            {{ formatCurrency(proratedResult.prorated_amount, proratedResult.currency_code) }} (a pagar)
+                                        </span>
+                                        <span v-else-if="proratedResult.prorated_amount < 0">
+                                            {{ formatCurrency(Math.abs(proratedResult.prorated_amount), proratedResult.currency_code) }} (crédito a tu balance)
+                                        </span>
+                                        <span v-else>
+                                            Sin cargos adicionales ni créditos.
+                                        </span>
+                                    </div>
+
+                                    <div v-if="proratedResult.new_next_due_date_preview">
+                                        <span class="font-medium">Nueva Fecha de Vencimiento Estimada:</span>
+                                        {{ formatDate(proratedResult.new_next_due_date_preview) }}
+                                    </div>
+                                     <p class="text-xs mt-1 italic pt-1 border-t border-gray-300 dark:border-gray-600">{{ proratedResult.message }}</p>
                                 </div>
                             </div>
                             <!-- End Proration Display -->
