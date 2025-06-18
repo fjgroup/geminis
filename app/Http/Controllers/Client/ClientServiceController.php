@@ -125,11 +125,11 @@ class ClientServiceController extends Controller
         try {
             $service->loadMissing(['product.productType', 'productPricing.billingCycle', 'client']);
             $originalNextDueDate = Carbon::parse($service->getOriginal('next_due_date'));
-            Log::debug("PUD Log - Service ID: {$service->id}, Original Next Due Date: {$originalNextDueDate->toDateString()}");
+            // Log::debug("PUD Log - Service ID: {$service->id}, Original Next Due Date: {$originalNextDueDate->toDateString()}");
 
             $newProductPricing = ProductPricing::with(['product.productType', 'billingCycle'])
                 ->findOrFail($newProductPricingId);
-        dd('processUpgradeDowngrade START', $service->toArray(), $newProductPricing->toArray());
+        // dd('processUpgradeDowngrade START', $service->toArray(), $newProductPricing->toArray());
 
             if (strtolower($service->status) !== 'active') {
                  DB::rollBack();
@@ -149,8 +149,8 @@ class ClientServiceController extends Controller
             $currentCycleForCredit = $currentPricingForCredit->billingCycle;
             $billingAmountForCredit = $service->billing_amount;
 
-            Log::debug("PUD Log - Current ProductPricing ID for credit: {$currentPricingForCredit->id}");
-            Log::debug("PUD Log - Current Billing Amount for credit: {$billingAmountForCredit}");
+            // Log::debug("PUD Log - Current ProductPricing ID for credit: {$currentPricingForCredit->id}");
+            // Log::debug("PUD Log - Current Billing Amount for credit: {$billingAmountForCredit}");
 
             if (!$currentCycleForCredit) {
                 Log::error("PUD Log - Error: El objeto currentCycleForCredit es null para el servicio ID: {$service->id}.");
@@ -158,37 +158,37 @@ class ClientServiceController extends Controller
                 return redirect()->route('client.services.index')->with('error', 'Error de configuración interna del ciclo de facturación (actual). Contacte a soporte.');
             }
             $daysInCurrentCycleRaw = $currentCycleForCredit->getAttributeValue('days');
-            Log::debug("PUD Log - Current Cycle ID for credit: {$currentCycleForCredit->id}, Days (raw): " . gettype($daysInCurrentCycleRaw) . " - " . print_r($daysInCurrentCycleRaw, true));
+            // Log::debug("PUD Log - Current Cycle ID for credit: {$currentCycleForCredit->id}, Days (raw): " . gettype($daysInCurrentCycleRaw) . " - " . print_r($daysInCurrentCycleRaw, true));
             if (!is_numeric($daysInCurrentCycleRaw) || $daysInCurrentCycleRaw <= 0) {
                 Log::error("PUD Log - Error: Configuración inválida para BillingCycle ID: {$currentCycleForCredit->id} (actual) - 'days' es inválido. Raw: " . print_r($daysInCurrentCycleRaw, true));
                 DB::rollBack();
                 return redirect()->route('client.services.index')->with('error', 'Error de configuración interna del ciclo de facturación (actual). Contacte a soporte.');
             }
             $daysInCurrentCycleForCreditCalc = (int) $daysInCurrentCycleRaw;
-            Log::debug("PUD Log - Days in Current Cycle for credit (validated): {$daysInCurrentCycleForCreditCalc}");
+            // Log::debug("PUD Log - Days in Current Cycle for credit (validated): {$daysInCurrentCycleForCreditCalc}");
 
             $fechaInicioCicloActual = $originalNextDueDate->copy()->subDays($daysInCurrentCycleForCreditCalc); // Usa originalNextDueDate aquí
-            Log::debug("PUD Log - Fecha Inicio Ciclo Actual (calculada): {$fechaInicioCicloActual->toDateString()}");
+            // Log::debug("PUD Log - Fecha Inicio Ciclo Actual (calculada): {$fechaInicioCicloActual->toDateString()}");
 
             $hoy = Carbon::now()->startOfDay();
             $inicioCicloParaDiff = $fechaInicioCicloActual->copy()->startOfDay();
-            Log::debug("PUD Log - Fecha de 'Hoy' (para diff): {$hoy->toDateString()}");
-            dd('processUpgradeDowngrade - Antes de diasUtilizados', [
-                'hoy' => $hoy->toDateString(),
-                'inicioCicloParaDiff' => $inicioCicloParaDiff->toDateString(),
-                'originalNextDueDate' => $originalNextDueDate->toDateString(),
-                'daysInCurrentCycleForCreditCalc' => $daysInCurrentCycleForCreditCalc,
-                'billingAmountForCredit' => $billingAmountForCredit,
-                'service_original_next_due_date' => $service->getOriginal('next_due_date')
-            ]);
+            // Log::debug("PUD Log - Fecha de 'Hoy' (para diff): {$hoy->toDateString()}");
+            // dd('processUpgradeDowngrade - Antes de diasUtilizados', [
+            //     'hoy' => $hoy->toDateString(),
+            //     'inicioCicloParaDiff' => $inicioCicloParaDiff->toDateString(),
+            //     'originalNextDueDate' => $originalNextDueDate->toDateString(),
+            //     'daysInCurrentCycleForCreditCalc' => $daysInCurrentCycleForCreditCalc,
+            //     'billingAmountForCredit' => $billingAmountForCredit,
+            //     'service_original_next_due_date' => $service->getOriginal('next_due_date')
+            // ]);
 
             // Copia la misma lógica de cálculo de $diasUtilizadosPlanActual de calculateProration
             if ($hoy->lt($inicioCicloParaDiff)) {
                 $diasUtilizadosPlanActual = 0;
-                Log::debug("PUD Log - Hoy ({$hoy->toDateString()}) es anterior al inicio del ciclo ({$inicioCicloParaDiff->toDateString()}). Días Utilizados inicial = 0.");
+                // Log::debug("PUD Log - Hoy ({$hoy->toDateString()}) es anterior al inicio del ciclo ({$inicioCicloParaDiff->toDateString()}). Días Utilizados inicial = 0.");
             } else {
                 $diasTranscurridos = $hoy->diffInDays($inicioCicloParaDiff);
-                Log::debug("PUD Log - Días Transcurridos Brutos (diffInDays hoy e inicioCiclo): {$diasTranscurridos}");
+                // Log::debug("PUD Log - Días Transcurridos Brutos (diffInDays hoy e inicioCiclo): {$diasTranscurridos}");
 
                 if ($hoy->gte($inicioCicloParaDiff) && $diasTranscurridos < 0) {
                     Log::warning("PUD Log - diffInDays retornó un valor negativo anómalo. Forzando a positivo.", ['raw_diff' => $diasTranscurridos]);
@@ -196,11 +196,11 @@ class ClientServiceController extends Controller
                 }
 
                 $diasUtilizadosPlanActual = $diasTranscurridos + 1;
-                Log::debug("PUD Log - Días Utilizados después de sumar 1: {$diasUtilizadosPlanActual}");
+                // Log::debug("PUD Log - Días Utilizados después de sumar 1: {$diasUtilizadosPlanActual}");
             }
 
             $diasUtilizadosPlanActual = min($diasUtilizadosPlanActual, $daysInCurrentCycleForCreditCalc); // Usa $daysInCurrentCycleForCreditCalc aquí
-            Log::debug("PUD Log - Días Utilizados después de min(diasDelCiclo): {$diasUtilizadosPlanActual}");
+            // Log::debug("PUD Log - Días Utilizados después de min(diasDelCiclo): {$diasUtilizadosPlanActual}");
 
             // Esta condición 'max(1, ...)' ya estaba presente y es ligeramente diferente, la mantenemos así por ahora
             // y vemos el resultado. La lógica original era:
@@ -212,24 +212,24 @@ class ClientServiceController extends Controller
             // Por ahora, confiamos en la lógica copiada.
             if ($hoy->gte($inicioCicloParaDiff) && $diasUtilizadosPlanActual < 1) { // Re-aplicar la condición de ajuste a 1.
                  $diasUtilizadosPlanActual = 1;
-                 Log::debug("PUD Log - Días Utilizados ajustado a 1 porque hoy >= inicioCiclo y cálculo < 1 (después de min).");
+                 // Log::debug("PUD Log - Días Utilizados ajustado a 1 porque hoy >= inicioCiclo y cálculo < 1 (después de min).");
             }
-            Log::debug("PUD Log - Días Utilizados Plan Actual (final refinado): {$diasUtilizadosPlanActual}");
+            // Log::debug("PUD Log - Días Utilizados Plan Actual (final refinado): {$diasUtilizadosPlanActual}");
 
             $tarifaDiariaPlanActual = ($daysInCurrentCycleForCreditCalc > 0 && $billingAmountForCredit > 0) ? ($billingAmountForCredit / $daysInCurrentCycleForCreditCalc) : 0;
-            Log::debug("PUD Log - Tarifa Diaria Plan Actual: {$tarifaDiariaPlanActual}");
+            // Log::debug("PUD Log - Tarifa Diaria Plan Actual: {$tarifaDiariaPlanActual}");
             $costoUtilizadoPlanActual = $tarifaDiariaPlanActual * $diasUtilizadosPlanActual;
-            Log::debug("PUD Log - Costo Utilizado Plan Actual: {$costoUtilizadoPlanActual}");
+            // Log::debug("PUD Log - Costo Utilizado Plan Actual: {$costoUtilizadoPlanActual}");
             $creditoNoUtilizado = $billingAmountForCredit - $costoUtilizadoPlanActual;
             $creditoNoUtilizado = max(0, round($creditoNoUtilizado, 2));
-            Log::debug("PUD Log - Crédito No Utilizado: {$creditoNoUtilizado}");
-            dd('processUpgradeDowngrade - Despues de creditoNoUtilizado', [
-                'diasUtilizadosPlanActual' => $diasUtilizadosPlanActual,
-                'tarifaDiariaPlanActual' => $tarifaDiariaPlanActual,
-                'costoUtilizadoPlanActual' => $costoUtilizadoPlanActual,
-                'creditoNoUtilizado' => $creditoNoUtilizado,
-                'billingAmountForCredit' => $billingAmountForCredit
-            ]);
+            // Log::debug("PUD Log - Crédito No Utilizado: {$creditoNoUtilizado}");
+            // dd('processUpgradeDowngrade - Despues de creditoNoUtilizado', [
+            //     'diasUtilizadosPlanActual' => $diasUtilizadosPlanActual,
+            //     'tarifaDiariaPlanActual' => $tarifaDiariaPlanActual,
+            //     'costoUtilizadoPlanActual' => $costoUtilizadoPlanActual,
+            //     'creditoNoUtilizado' => $creditoNoUtilizado,
+            //     'billingAmountForCredit' => $billingAmountForCredit
+            // ]);
 
             $newCycle = $newProductPricing->billingCycle;
             if (!$newCycle) {
@@ -237,7 +237,7 @@ class ClientServiceController extends Controller
                 DB::rollBack(); return redirect()->route('client.services.index')->with('error', 'Error de configuración interna del ciclo de facturación (nuevo). Contacte a soporte.');
             }
             $daysRawValueNew = $newCycle->getAttributeValue('days');
-            Log::debug("PUD Log - New Cycle ID: {$newCycle->id}, Days (raw): " . gettype($daysRawValueNew) . " - " . print_r($daysRawValueNew, true));
+            // Log::debug("PUD Log - New Cycle ID: {$newCycle->id}, Days (raw): " . gettype($daysRawValueNew) . " - " . print_r($daysRawValueNew, true));
             if (!is_numeric($daysRawValueNew) || $daysRawValueNew <= 0) {
                  Log::error("PUD Log - Error: Configuración inválida para BillingCycle ID: {$newCycle->id} (nuevo) - 'days' es inválido. Raw: " . print_r($daysRawValueNew, true));
                  DB::rollBack(); return redirect()->route('client.services.index')->with('error', 'Error de configuración interna del ciclo de facturación (nuevo). Contacte a soporte.');
@@ -245,10 +245,10 @@ class ClientServiceController extends Controller
             $daysInNewCycle = (int) $daysRawValueNew;
 
             $precioTotalNuevoPlan = $newProductPricing->price;
-            Log::debug("PUD Log - Precio Total Nuevo Plan: {$precioTotalNuevoPlan}");
+            // Log::debug("PUD Log - Precio Total Nuevo Plan: {$precioTotalNuevoPlan}");
             $montoFinal = $precioTotalNuevoPlan - $creditoNoUtilizado;
             $montoFinal = round($montoFinal, 2);
-            Log::debug("PUD Log - Monto Final [PrecioNuevo - CreditoNoUtilizado]: {$montoFinal}");
+            // Log::debug("PUD Log - Monto Final [PrecioNuevo - CreditoNoUtilizado]: {$montoFinal}");
 
             $invoiceToPay = null;
             $originalProductIdValue = $service->getOriginal('product_id');
@@ -351,56 +351,56 @@ class ClientServiceController extends Controller
                 return response()->json(['error' => 'No puedes cambiar a un tipo de producto diferente.'], 422);
             }
 
-            Log::debug("PRORATE_CALC_DEBUG: --- Iniciando Cálculo de Prorrateo para Service ID: {$service->id} ---");
-            Log::debug("PRORATE_CALC_DEBUG: Hoy (Carbon::now()->startOfDay()): " . Carbon::now()->startOfDay()->toDateString());
-            Log::debug("PRORATE_CALC_DEBUG: Service Current ProductPricing ID: {$service->product_pricing_id}");
-            Log::debug("PRORATE_CALC_DEBUG: Service Current Billing Amount (PrecioPlanActual para crédito): {$service->billing_amount}");
-            Log::debug("PRORATE_CALC_DEBUG: Service Current Next Due Date (raw): {$service->next_due_date}");
+            // Log::debug("PRORATE_CALC_DEBUG: --- Iniciando Cálculo de Prorrateo para Service ID: {$service->id} ---");
+            // Log::debug("PRORATE_CALC_DEBUG: Hoy (Carbon::now()->startOfDay()): " . Carbon::now()->startOfDay()->toDateString());
+            // Log::debug("PRORATE_CALC_DEBUG: Service Current ProductPricing ID: {$service->product_pricing_id}");
+            // Log::debug("PRORATE_CALC_DEBUG: Service Current Billing Amount (PrecioPlanActual para crédito): {$service->billing_amount}");
+            // Log::debug("PRORATE_CALC_DEBUG: Service Current Next Due Date (raw): {$service->next_due_date}");
 
             $currentPricing = $service->productPricing;
             $currentCycle = $currentPricing->billingCycle;
             $originalNextDueDateForPreview = Carbon::parse($service->next_due_date);
-            Log::debug("PRORATE_CALC_DEBUG: Original Next Due Date (para preview y base de cálculo, Carbon parsed): {$originalNextDueDateForPreview->toDateString()}");
+            // Log::debug("PRORATE_CALC_DEBUG: Original Next Due Date (para preview y base de cálculo, Carbon parsed): {$originalNextDueDateForPreview->toDateString()}");
 
             if (!$currentCycle) {
                 Log::error("PRORATE_CALC_DEBUG: Error - El objeto currentCycle es null para el servicio ID: {$service->id}.");
                 return response()->json(['error' => 'Error de configuración interna del ciclo de facturación (actual). Contacte a soporte.'], 500);
             }
             $daysInCurrentCycleRaw = $currentCycle->getAttributeValue('days');
-            Log::debug("PRORATE_CALC_DEBUG: Current Cycle ID: {$currentCycle->id}, Days (raw from getAttributeValue): " . gettype($daysInCurrentCycleRaw) . " - " . print_r($daysInCurrentCycleRaw, true));
+            // Log::debug("PRORATE_CALC_DEBUG: Current Cycle ID: {$currentCycle->id}, Days (raw from getAttributeValue): " . gettype($daysInCurrentCycleRaw) . " - " . print_r($daysInCurrentCycleRaw, true));
             if (!is_numeric($daysInCurrentCycleRaw) || $daysInCurrentCycleRaw <= 0) {
                 Log::error("PRORATE_CALC_DEBUG: Error - Configuración inválida para BillingCycle ID: {$currentCycle->id} (actual) - 'days' es inválido. Raw: " . print_r($daysInCurrentCycleRaw, true));
                 return response()->json(['error' => 'Error de configuración interna del ciclo de facturación (actual). Contacte a soporte.'], 500);
             }
             $daysInCurrentCycle = (int) $daysInCurrentCycleRaw;
-            Log::debug("PRORATE_CALC_DEBUG: Days in Current Cycle (usado para cálculo): {$daysInCurrentCycle}");
+            // Log::debug("PRORATE_CALC_DEBUG: Days in Current Cycle (usado para cálculo): {$daysInCurrentCycle}");
 
             $fechaInicioCicloActual = $originalNextDueDateForPreview->copy()->subDays($daysInCurrentCycle);
-            Log::debug("PRORATE_CALC_DEBUG: Fecha Inicio Ciclo Actual (calculada): {$fechaInicioCicloActual->toDateString()}");
+            // Log::debug("PRORATE_CALC_DEBUG: Fecha Inicio Ciclo Actual (calculada): {$fechaInicioCicloActual->toDateString()}");
 
             $hoy = Carbon::now()->startOfDay();
             $inicioCicloParaDiff = $fechaInicioCicloActual->copy()->startOfDay();
-            Log::debug("PRORATE_CALC_DEBUG: Fecha de 'Hoy' (para diff): {$hoy->toDateString()}");
-            Log::debug('calculateProration - Antes de diasUtilizados', [
-                'service_id' => $service->id,
-                'new_product_pricing_id' => $newProductPricingId,
-                'hoy' => $hoy->toDateString(),
-                'inicioCicloParaDiff' => $inicioCicloParaDiff->toDateString(),
-                'originalNextDueDateForPreview' => $originalNextDueDateForPreview->toDateString(),
-                'daysInCurrentCycle' => $daysInCurrentCycle,
-                'billing_amount' => $service->billing_amount
-            ]);
+            // Log::debug("PRORATE_CALC_DEBUG: Fecha de 'Hoy' (para diff): {$hoy->toDateString()}");
+            // Log::debug('calculateProration - Antes de diasUtilizados', [
+            //     'service_id' => $service->id,
+            //     'new_product_pricing_id' => $newProductPricingId,
+            //     'hoy' => $hoy->toDateString(),
+            //     'inicioCicloParaDiff' => $inicioCicloParaDiff->toDateString(),
+            //     'originalNextDueDateForPreview' => $originalNextDueDateForPreview->toDateString(),
+            //     'daysInCurrentCycle' => $daysInCurrentCycle,
+            //     'billing_amount' => $service->billing_amount
+            // ]);
 
             if ($hoy->lt($inicioCicloParaDiff)) {
                 $diasUtilizadosPlanActual = 0;
-                Log::debug("PRORATE_CALC_DEBUG: Hoy ({$hoy->toDateString()}) es anterior al inicio del ciclo ({$inicioCicloParaDiff->toDateString()}). Días Utilizados inicial = 0.");
+                // Log::debug("PRORATE_CALC_DEBUG: Hoy ({$hoy->toDateString()}) es anterior al inicio del ciclo ({$inicioCicloParaDiff->toDateString()}). Días Utilizados inicial = 0.");
             } else {
                 // Calcular días transcurridos. diffInDays debería devolver un valor positivo
                 // ya que $abs = true por defecto.
                 $diasTranscurridos = $hoy->diffInDays($inicioCicloParaDiff);
 
                 // Log para verificar el valor crudo de diffInDays
-                Log::debug("PRORATE_CALC_DEBUG: Días Transcurridos Brutos (diffInDays entre hoy e inicioCiclo): {$diasTranscurridos}");
+                // Log::debug("PRORATE_CALC_DEBUG: Días Transcurridos Brutos (diffInDays entre hoy e inicioCiclo): {$diasTranscurridos}");
 
                 // Salvaguarda: Si $hoy es posterior o igual a inicioCicloParaDiff,
                 // diasTranscurridos no debería ser negativo. Si lo es, es anómalo, pero lo corregimos.
@@ -414,47 +414,47 @@ class ClientServiceController extends Controller
                 // Si el ciclo empezó ayer, y hoy es el cambio, son 2 días de uso.
                 // diffInDays entre hoy y ayer es 1. 1+1 = 2.
                 $diasUtilizadosPlanActual = $diasTranscurridos + 1;
-                Log::debug("PRORATE_CALC_DEBUG: Días Utilizados después de sumar 1 (considerando día actual): {$diasUtilizadosPlanActual}");
+                // Log::debug("PRORATE_CALC_DEBUG: Días Utilizados después de sumar 1 (considerando día actual): {$diasUtilizadosPlanActual}");
             }
 
             // Esta lógica de min y ajuste a 1 si es < 1 (y el ciclo está vigente) se mantiene:
             $diasUtilizadosPlanActual = min($diasUtilizadosPlanActual, $daysInCurrentCycle);
-            Log::debug("PRORATE_CALC_DEBUG: Días Utilizados después de min(diasDelCiclo): {$diasUtilizadosPlanActual}");
+            // Log::debug("PRORATE_CALC_DEBUG: Días Utilizados después de min(diasDelCiclo): {$diasUtilizadosPlanActual}");
 
             if ($hoy->gte($inicioCicloParaDiff) && $diasUtilizadosPlanActual < 1) {
                 $diasUtilizadosPlanActual = 1;
-                Log::debug("PRORATE_CALC_DEBUG: Días Utilizados ajustado a 1 porque hoy >= inicioCiclo y cálculo < 1.");
+                // Log::debug("PRORATE_CALC_DEBUG: Días Utilizados ajustado a 1 porque hoy >= inicioCiclo y cálculo < 1.");
             }
             // Fin de la lógica de $diasUtilizadosPlanActual
-            Log::debug("PRORATE_CALC_DEBUG: Días Utilizados Plan Actual (final refinado): {$diasUtilizadosPlanActual}");
+            // Log::debug("PRORATE_CALC_DEBUG: Días Utilizados Plan Actual (final refinado): {$diasUtilizadosPlanActual}");
 
 
             $tarifaDiariaPlanActual = ($daysInCurrentCycle > 0 && $service->billing_amount > 0) ? ($service->billing_amount / $daysInCurrentCycle) : 0;
-            Log::debug("PRORATE_CALC_DEBUG: Tarifa Diaria Plan Actual (calculada): {$tarifaDiariaPlanActual}");
+            // Log::debug("PRORATE_CALC_DEBUG: Tarifa Diaria Plan Actual (calculada): {$tarifaDiariaPlanActual}");
             $costoUtilizadoPlanActual = $tarifaDiariaPlanActual * $diasUtilizadosPlanActual;
-            Log::debug("PRORATE_CALC_DEBUG: Costo Utilizado Plan Actual (calculado): {$costoUtilizadoPlanActual}");
+            // Log::debug("PRORATE_CALC_DEBUG: Costo Utilizado Plan Actual (calculado): {$costoUtilizadoPlanActual}");
             $creditoNoUtilizado = $service->billing_amount - $costoUtilizadoPlanActual;
             $creditoNoUtilizado = max(0, round($creditoNoUtilizado, 2));
-            Log::debug("PRORATE_CALC_DEBUG: Crédito No Utilizado (calculado): {$creditoNoUtilizado}");
-            Log::debug('calculateProration - Despues de creditoNoUtilizado', [
-                'service_id' => $service->id,
-                'diasUtilizadosPlanActual' => $diasUtilizadosPlanActual,
-                'tarifaDiariaPlanActual' => $tarifaDiariaPlanActual,
-                'costoUtilizadoPlanActual' => $costoUtilizadoPlanActual,
-                'creditoNoUtilizado' => $creditoNoUtilizado,
-                'service_billing_amount' => $service->billing_amount
-            ]);
+            // Log::debug("PRORATE_CALC_DEBUG: Crédito No Utilizado (calculado): {$creditoNoUtilizado}");
+            // Log::debug('calculateProration - Despues de creditoNoUtilizado', [
+            //     'service_id' => $service->id,
+            //     'diasUtilizadosPlanActual' => $diasUtilizadosPlanActual,
+            //     'tarifaDiariaPlanActual' => $tarifaDiariaPlanActual,
+            //     'costoUtilizadoPlanActual' => $costoUtilizadoPlanActual,
+            //     'creditoNoUtilizado' => $creditoNoUtilizado,
+            //     'service_billing_amount' => $service->billing_amount
+            // ]);
 
             $newCycle = $newProductPricingLoaded->billingCycle;
-            Log::debug("PRORATE_CALC_DEBUG: New ProductPricing ID: {$newProductPricingLoaded->id}");
-            Log::debug("PRORATE_CALC_DEBUG: Precio Total Nuevo Plan: {$newProductPricingLoaded->price}");
+            // Log::debug("PRORATE_CALC_DEBUG: New ProductPricing ID: {$newProductPricingLoaded->id}");
+            // Log::debug("PRORATE_CALC_DEBUG: Precio Total Nuevo Plan: {$newProductPricingLoaded->price}");
 
             if (!$newCycle) {
                 Log::error("PRORATE_CALC_DEBUG: Error - El objeto newCycle es null para ProductPricing ID: {$newProductPricingLoaded->id}.");
                 return response()->json(['error' => 'Error de configuración interna del ciclo de facturación (nuevo). Contacte a soporte.'], 500);
             }
             $daysInNewCycleRaw = $newCycle->getAttributeValue('days');
-            Log::debug("PRORATE_CALC_DEBUG: New Cycle ID: {$newCycle->id}, Days (raw from getAttributeValue): " . gettype($daysInNewCycleRaw) . " - " . print_r($daysInNewCycleRaw, true));
+            // Log::debug("PRORATE_CALC_DEBUG: New Cycle ID: {$newCycle->id}, Days (raw from getAttributeValue): " . gettype($daysInNewCycleRaw) . " - " . print_r($daysInNewCycleRaw, true));
             if (!is_numeric($daysInNewCycleRaw) || $daysInNewCycleRaw <= 0) {
                 Log::error("PRORATE_CALC_DEBUG: Error - Configuración inválida para BillingCycle ID: {$newCycle->id} (nuevo) - 'days' es inválido. Raw: " . print_r($daysInNewCycleRaw, true));
                 return response()->json(['error' => 'Error de configuración interna del ciclo de facturación (nuevo). Contacte a soporte.'], 500);
@@ -464,15 +464,15 @@ class ClientServiceController extends Controller
             $precioTotalNuevoPlan = $newProductPricingLoaded->price;
             $montoFinal = $precioTotalNuevoPlan - $creditoNoUtilizado;
             $montoFinal = round($montoFinal, 2);
-            Log::debug("PRORATE_CALC_DEBUG: Monto Final (calculado) [PrecioNuevo - CreditoNoUtilizado]: {$montoFinal}");
+            // Log::debug("PRORATE_CALC_DEBUG: Monto Final (calculado) [PrecioNuevo - CreditoNoUtilizado]: {$montoFinal}");
 
             $newNextDueDatePreview = Carbon::now()->startOfDay()->addDays($daysInNewCycle);
             $newNextDueDatePreviewString = $newNextDueDatePreview->toDateString();
-            Log::debug("PRORATE_CALC_DEBUG: New Next Due Date Preview (calculada: hoy + {$daysInNewCycle} days): {$newNextDueDatePreviewString}");
+            // Log::debug("PRORATE_CALC_DEBUG: New Next Due Date Preview (calculada: hoy + {$daysInNewCycle} days): {$newNextDueDatePreviewString}");
 
             $message = $montoFinal > 0 ? 'Monto a pagar para la actualización completa.' : ($montoFinal < 0 ? 'Crédito a tu balance por la actualización.' : 'Actualización completa sin costo adicional inmediato.');
             $message .= " Tu nueva fecha de vencimiento será el " . $newNextDueDatePreview->format('d/m/Y') . "."; // Updated message
-            Log::debug("PRORATE_CALC_DEBUG: --- Fin Cálculo de Prorrateo ---");
+            // Log::debug("PRORATE_CALC_DEBUG: --- Fin Cálculo de Prorrateo ---");
 
             return response()->json([
                 'prorated_amount' => $montoFinal,
