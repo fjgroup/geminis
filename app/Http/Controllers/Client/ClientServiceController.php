@@ -118,7 +118,10 @@ class ClientServiceController extends Controller
     {
         $this->authorize('processUpgradeDowngrade', $service);
         $validated = $request->validate(['new_product_pricing_id' => 'required|exists:product_pricings,id']);
+
         $service->loadMissing(['product.productType', 'productPricing.billingCycle', 'client']);
+        $originalNextDueDate = Carbon::parse($service->getOriginal('next_due_date')); // Use getOriginal for safety
+
         $newProductPricing = ProductPricing::with(['product.productType', 'billingCycle'])
             ->findOrFail($validated['new_product_pricing_id']);
 
@@ -135,35 +138,37 @@ class ClientServiceController extends Controller
 
         DB::beginTransaction();
         try {
-            $currentPricing = $service->productPricing;
-            $currentCycle = $currentPricing->billingCycle;
+            // Details for credit calculation, based on the state *before* any changes
+            $currentPricingForCredit = $service->productPricing;
+            $currentCycleForCredit = $currentPricingForCredit->billingCycle;
+            $billingAmountForCreditCalc = $service->billing_amount; // Original billing amount
 
-            if (!$currentCycle) {
-                Log::error("ClientServiceController: El objeto currentCycle es null para el servicio ID: {$service->id} en processUpgradeDowngrade.");
+            if (!$currentCycleForCredit) {
+                Log::error("ClientServiceController: El objeto currentCycleForCredit es null para el servicio ID: {$service->id} en processUpgradeDowngrade.");
                 DB::rollBack();
                 return redirect()->route('client.services.index')->with('error', 'Error de configuración interna del ciclo de facturación (actual). Contacte a soporte.');
             }
-            $daysRawValueCurrent = $currentCycle->getAttributeValue('days');
-            Log::debug("ClientServiceController PUD: Para BillingCycle ID: " . ($currentCycle->id ?? 'desconocido') . " (actual), valor raw de 'days' obtenido con getAttributeValue(): " . gettype($daysRawValueCurrent) . " - " . print_r($daysRawValueCurrent, true));
+            $daysRawValueCurrent = $currentCycleForCredit->getAttributeValue('days');
+            Log::debug("ClientServiceController PUD: Para BillingCycle ID: " . ($currentCycleForCredit->id ?? 'desconocido') . " (actual para crédito), valor raw de 'days': " . gettype($daysRawValueCurrent) . " - " . print_r($daysRawValueCurrent, true));
             if (!is_numeric($daysRawValueCurrent) || $daysRawValueCurrent <= 0) {
-                Log::error("ClientServiceController PUD: Configuración inválida para BillingCycle ID: " . ($currentCycle->id ?? 'desconocido') . " (actual) - el valor 'days' es inválido o no numérico. Valor raw: " . print_r($daysRawValueCurrent, true));
+                Log::error("ClientServiceController PUD: Configuración inválida para BillingCycle ID: " . ($currentCycleForCredit->id ?? 'desconocido') . " (actual para crédito) - 'days' es inválido. Valor raw: " . print_r($daysRawValueCurrent, true));
                 DB::rollBack();
                 return redirect()->route('client.services.index')->with('error', 'Error de configuración interna del ciclo de facturación (actual). Contacte a soporte.');
             }
-            $daysInCurrentCycle = (int) $daysRawValueCurrent;
+            $daysInCurrentCycleForCreditCalc = (int) $daysRawValueCurrent;
 
-            $currentNextDueDate = Carbon::parse($service->next_due_date);
-            $fechaInicioCicloActual = $currentNextDueDate->copy()->subDays($daysInCurrentCycle);
+            $fechaInicioCicloActual = $originalNextDueDate->copy()->subDays($daysInCurrentCycleForCreditCalc);
             $diasUtilizadosPlanActual = Carbon::now()->diffInDaysFiltered(fn(Carbon $date) => true, $fechaInicioCicloActual, false);
             if ($diasUtilizadosPlanActual < 1 && Carbon::now()->isSameDay($fechaInicioCicloActual)) {
                 $diasUtilizadosPlanActual = 1;
             }
-            $diasUtilizadosPlanActual = max(1, min($diasUtilizadosPlanActual, $daysInCurrentCycle));
-            $tarifaDiariaPlanActual = ($daysInCurrentCycle > 0 && $service->billing_amount > 0) ? ($service->billing_amount / $daysInCurrentCycle) : 0;
+            $diasUtilizadosPlanActual = max(1, min($diasUtilizadosPlanActual, $daysInCurrentCycleForCreditCalc));
+            $tarifaDiariaPlanActual = ($daysInCurrentCycleForCreditCalc > 0 && $billingAmountForCreditCalc > 0) ? ($billingAmountForCreditCalc / $daysInCurrentCycleForCreditCalc) : 0;
             $costoUtilizadoPlanActual = $tarifaDiariaPlanActual * $diasUtilizadosPlanActual;
-            $creditoNoUtilizado = $service->billing_amount - $costoUtilizadoPlanActual;
+            $creditoNoUtilizado = $billingAmountForCreditCalc - $costoUtilizadoPlanActual;
             $creditoNoUtilizado = max(0, round($creditoNoUtilizado, 2));
 
+            // New cycle details (still needed for notes, even if not for next_due_date calculation)
             $newCycle = $newProductPricing->billingCycle;
             if (!$newCycle) {
                 Log::error("ClientServiceController: El objeto newCycle es null para ProductPricing ID: {$newProductPricing->id} en processUpgradeDowngrade.");
@@ -171,37 +176,38 @@ class ClientServiceController extends Controller
                 return redirect()->route('client.services.index')->with('error', 'Error de configuración interna del ciclo de facturación (nuevo). Contacte a soporte.');
             }
             $daysRawValueNew = $newCycle->getAttributeValue('days');
-            Log::debug("ClientServiceController PUD: Para BillingCycle ID: " . ($newCycle->id ?? 'desconocido') . " (nuevo), valor raw de 'days' obtenido con getAttributeValue(): " . gettype($daysRawValueNew) . " - " . print_r($daysRawValueNew, true));
+            Log::debug("ClientServiceController PUD: Para BillingCycle ID: " . ($newCycle->id ?? 'desconocido') . " (nuevo), valor raw de 'days': " . gettype($daysRawValueNew) . " - " . print_r($daysRawValueNew, true));
             if (!is_numeric($daysRawValueNew) || $daysRawValueNew <= 0) {
-                Log::error("ClientServiceController PUD: Configuración inválida para BillingCycle ID: " . ($newCycle->id ?? 'desconocido') . " (nuevo) - el valor 'days' es inválido o no numérico. Valor raw: " . print_r($daysRawValueNew, true));
+                Log::error("ClientServiceController PUD: Configuración inválida para BillingCycle ID: " . ($newCycle->id ?? 'desconocido') . " (nuevo) - 'days' es inválido. Valor raw: " . print_r($daysRawValueNew, true));
                 DB::rollBack();
                 return redirect()->route('client.services.index')->with('error', 'Error de configuración interna del ciclo de facturación (nuevo). Contacte a soporte.');
             }
-            $daysInNewCycle = (int) $daysRawValueNew;
+            // $daysInNewCycle = (int) $daysRawValueNew; // Not directly used for NDD if it's always original
 
             $precioTotalNuevoPlan = $newProductPricing->price;
             $montoFinal = $precioTotalNuevoPlan - $creditoNoUtilizado;
             $montoFinal = round($montoFinal, 2);
 
             $invoiceToPay = null;
-            $originalProductId = $service->product_id;
-            $old_product_name = $service->product->name;
-            $old_cycle_name = $currentCycle->name;
+            $originalProductIdValue = $service->getOriginal('product_id');
+            $old_product_name = $service->product->name; // Name before changing product_id
+            $old_cycle_name = $currentCycleForCredit->name;
+
             $notesForService = "Actualización completa de plan de '{$old_product_name} ({$old_cycle_name})' a '{$newProductPricing->product->name} ({$newCycle->name})' el " . Carbon::now()->toDateTimeString() . ".";
-            $notesForService .= " Antigua fecha de vencimiento: " . $currentNextDueDate->format('Y-m-d') . ".";
-            $notesForService .= " Crédito por tiempo no utilizado: {$creditoNoUtilizado} {$currentPricing->currency_code}.";
+            $notesForService .= " Fecha de vencimiento original: " . $originalNextDueDate->format('Y-m-d') . ".";
+            $notesForService .= " Crédito por tiempo no utilizado: {$creditoNoUtilizado} {$currentPricingForCredit->currency_code}."; // Use currency from original pricing
             $notesForService .= " Costo nuevo plan: {$precioTotalNuevoPlan} {$newProductPricing->currency_code}.";
 
             if ($montoFinal > 0) {
                 $invoiceNumber = 'INV-UPGRADE-' . strtoupper(Str::random(8));
-                $newInvoice = Invoice::create([
+                $newInvoice = Invoice::create([ /* ... invoice details ... */
                     'client_id' => $service->client_id, 'reseller_id' => $service->client->reseller_id,
                     'invoice_number' => $invoiceNumber, 'issue_date' => Carbon::now(), 'due_date' => Carbon::now(),
                     'status' => 'unpaid', 'subtotal' => $montoFinal, 'total_amount' => $montoFinal,
                     'currency_code' => $newProductPricing->currency_code,
                     'notes_to_client' => "Cargo por actualización de plan de '{$old_product_name}' a '{$newProductPricing->product->name}'.",
                 ]);
-                InvoiceItem::create([
+                InvoiceItem::create([ /* ... invoice item details ... */
                     'invoice_id' => $newInvoice->id, 'client_service_id' => $service->id,
                     'description' => "Cargo por actualización a {$newProductPricing->product->name} ({$newCycle->name})",
                     'quantity' => 1, 'unit_price' => $montoFinal, 'total_price' => $montoFinal,
@@ -214,7 +220,7 @@ class ClientServiceController extends Controller
                 $client = $service->client;
                 $client->balance += $creditToBalance;
                 $client->save();
-                $notesForService .= " Se acreditó {$creditToBalance} {$currentPricing->currency_code} al balance del cliente por la diferencia.";
+                $notesForService .= " Se acreditó {$creditToBalance} {$currentPricingForCredit->currency_code} al balance del cliente por la diferencia.";
             } else {
                 $notesForService .= " La actualización no generó costos adicionales ni créditos inmediatos.";
             }
@@ -223,21 +229,26 @@ class ClientServiceController extends Controller
             $service->product_pricing_id = $newProductPricing->id;
             $service->billing_cycle_id = $newProductPricing->billing_cycle_id;
             $service->billing_amount = $newProductPricing->price;
-            $service->next_due_date = Carbon::now()->addDays($daysInNewCycle);
+
+            // Always maintain original next_due_date
+            $service->next_due_date = $originalNextDueDate;
+            $notesForService .= " La fecha de vencimiento del servicio (" . $originalNextDueDate->format('Y-m-d') . ") se mantiene.";
+
             $service->notes = ($service->notes ? trim($service->notes) . "\n" : '') . trim($notesForService);
 
-            if ($service->isDirty('product_id') && $service->status !== 'pending_configuration') {
+            if ($originalProductIdValue !== $newProductPricing->product_id && $service->status !== 'pending_configuration') {
                 $service->status = 'pending_configuration';
             }
+
             $service->save();
             DB::commit();
 
             $successMessage = "Plan actualizado de '{$old_product_name} ({$old_cycle_name})' a '{$newProductPricing->product->name} ({$newCycle->name})'.";
-            $successMessage .= " Próximo vencimiento: " . Carbon::parse($service->next_due_date)->format('Y-m-d') . ".";
+            $successMessage .= " Tu próxima fecha de vencimiento sigue siendo el " . $originalNextDueDate->format('Y-m-d') . ".";
             if ($invoiceToPay) {
                 $successMessage .= " Se generó la factura {$invoiceToPay->invoice_number} por {$invoiceToPay->total_amount_formatted} para la actualización.";
             } elseif ($montoFinal < 0) {
-                $successMessage .= " Se acreditó " . abs($montoFinal) . " {$currentPricing->currency_code} a tu balance.";
+                $successMessage .= " Se acreditó " . abs($montoFinal) . " {$currentPricingForCredit->currency_code} a tu balance.";
             } else {
                 $successMessage .= " La actualización no tuvo costo adicional inmediato.";
             }
@@ -278,57 +289,64 @@ class ClientServiceController extends Controller
                 return response()->json(['error' => 'No puedes cambiar a un tipo de producto diferente.'], 422);
             }
 
-            $currentPricing = $service->productPricing;
-            $currentCycle = $currentPricing->billingCycle;
-            if (!$currentCycle) {
-                Log::error("ClientServiceController: El objeto currentCycle es null para el servicio ID: {$service->id} en calculateProration.");
-                return response()->json(['error' => 'Error de configuración interna del ciclo de facturación (actual). Contacte a soporte.'], 500);
-            }
-            $daysRawValueCurrent = $currentCycle->getAttributeValue('days');
-            Log::debug("ClientServiceController CP: Para BillingCycle ID: " . ($currentCycle->id ?? 'desconocido') . " (actual), valor raw de 'days' obtenido con getAttributeValue(): " . gettype($daysRawValueCurrent) . " - " . print_r($daysRawValueCurrent, true));
-            if (!is_numeric($daysRawValueCurrent) || $daysRawValueCurrent <= 0) {
-                Log::error("ClientServiceController CP: Configuración inválida para BillingCycle ID: " . ($currentCycle->id ?? 'desconocido') . " (actual) - el valor 'days' es inválido o no numérico. Valor raw: " . print_r($daysRawValueCurrent, true));
-                return response()->json(['error' => 'Error de configuración interna del ciclo de facturación (actual). Contacte a soporte.'], 500);
-            }
-            $daysInCurrentCycle = (int) $daysRawValueCurrent;
+            // Use current service state for these values in calculation
+            $currentPricingForCredit = $service->productPricing;
+            $currentCycleForCredit = $currentPricingForCredit->billingCycle;
+            $billingAmountForCreditCalc = $service->billing_amount;
+            $originalNextDueDateForPreview = Carbon::parse($service->next_due_date);
 
-            $currentNextDueDate = Carbon::parse($service->next_due_date);
-            $fechaInicioCicloActual = $currentNextDueDate->copy()->subDays($daysInCurrentCycle);
+
+            if (!$currentCycleForCredit) {
+                Log::error("ClientServiceController: El objeto currentCycleForCredit es null para el servicio ID: {$service->id} en calculateProration.");
+                return response()->json(['error' => 'Error de configuración interna del ciclo de facturación (actual). Contacte a soporte.'], 500);
+            }
+            $daysRawValueCurrent = $currentCycleForCredit->getAttributeValue('days');
+            Log::debug("ClientServiceController CP: Para BillingCycle ID: " . ($currentCycleForCredit->id ?? 'desconocido') . " (actual), valor raw de 'days': " . gettype($daysRawValueCurrent) . " - " . print_r($daysRawValueCurrent, true));
+            if (!is_numeric($daysRawValueCurrent) || $daysRawValueCurrent <= 0) {
+                Log::error("ClientServiceController CP: Configuración inválida para BillingCycle ID: " . ($currentCycleForCredit->id ?? 'desconocido') . " (actual) - 'days' es inválido. Valor raw: " . print_r($daysRawValueCurrent, true));
+                return response()->json(['error' => 'Error de configuración interna del ciclo de facturación (actual). Contacte a soporte.'], 500);
+            }
+            $daysInCurrentCycleForCreditCalc = (int) $daysRawValueCurrent;
+
+            $fechaInicioCicloActual = $originalNextDueDateForPreview->copy()->subDays($daysInCurrentCycleForCreditCalc);
             $diasUtilizadosPlanActual = Carbon::now()->diffInDaysFiltered(fn(Carbon $date) => true, $fechaInicioCicloActual, false);
             if ($diasUtilizadosPlanActual < 1 && Carbon::now()->isSameDay($fechaInicioCicloActual)) {
                 $diasUtilizadosPlanActual = 1;
             }
-            $diasUtilizadosPlanActual = max(1, min($diasUtilizadosPlanActual, $daysInCurrentCycle));
-            $tarifaDiariaPlanActual = ($daysInCurrentCycle > 0 && $service->billing_amount > 0) ? ($service->billing_amount / $daysInCurrentCycle) : 0;
+            $diasUtilizadosPlanActual = max(1, min($diasUtilizadosPlanActual, $daysInCurrentCycleForCreditCalc));
+            $tarifaDiariaPlanActual = ($daysInCurrentCycleForCreditCalc > 0 && $billingAmountForCreditCalc > 0) ? ($billingAmountForCreditCalc / $daysInCurrentCycleForCreditCalc) : 0;
             $costoUtilizadoPlanActual = $tarifaDiariaPlanActual * $diasUtilizadosPlanActual;
-            $creditoNoUtilizado = $service->billing_amount - $costoUtilizadoPlanActual;
+            $creditoNoUtilizado = $billingAmountForCreditCalc - $costoUtilizadoPlanActual;
             $creditoNoUtilizado = max(0, round($creditoNoUtilizado, 2));
 
+            // New cycle validation (though its days aren't used for NDD preview in this specific logic)
             $newCycle = $newProductPricing->billingCycle;
             if (!$newCycle) {
                 Log::error("ClientServiceController: El objeto newCycle es null para ProductPricing ID: {$newProductPricing->id} en calculateProration.");
                 return response()->json(['error' => 'Error de configuración interna del ciclo de facturación (nuevo). Contacte a soporte.'], 500);
             }
             $daysRawValueNew = $newCycle->getAttributeValue('days');
-            Log::debug("ClientServiceController CP: Para BillingCycle ID: " . ($newCycle->id ?? 'desconocido') . " (nuevo), valor raw de 'days' obtenido con getAttributeValue(): " . gettype($daysRawValueNew) . " - " . print_r($daysRawValueNew, true));
+            Log::debug("ClientServiceController CP: Para BillingCycle ID: " . ($newCycle->id ?? 'desconocido') . " (nuevo), valor raw de 'days': " . gettype($daysRawValueNew) . " - " . print_r($daysRawValueNew, true));
             if (!is_numeric($daysRawValueNew) || $daysRawValueNew <= 0) {
-                Log::error("ClientServiceController CP: Configuración inválida para BillingCycle ID: " . ($newCycle->id ?? 'desconocido') . " (nuevo) - el valor 'days' es inválido o no numérico. Valor raw: " . print_r($daysRawValueNew, true));
+                Log::error("ClientServiceController CP: Configuración inválida para BillingCycle ID: " . ($newCycle->id ?? 'desconocido') . " (nuevo) - 'days' es inválido. Valor raw: " . print_r($daysRawValueNew, true));
                 return response()->json(['error' => 'Error de configuración interna del ciclo de facturación (nuevo). Contacte a soporte.'], 500);
             }
-            $daysInNewCycle = (int) $daysRawValueNew; // This line is now active
+            // $daysInNewCycle = (int) $daysRawValueNew; // Not used for NDD preview here, but validated
 
             $precioTotalNuevoPlan = $newProductPricing->price;
             $montoFinal = $precioTotalNuevoPlan - $creditoNoUtilizado;
             $montoFinal = round($montoFinal, 2);
 
-            $newNextDueDatePreview = Carbon::now()->addDays($daysInNewCycle)->toDateString();
+            // new_next_due_date_preview will always be the original NDD as per new requirements
+            $newNextDueDatePreviewString = $originalNextDueDateForPreview->toDateString();
+
             $message = $montoFinal > 0 ? 'Monto a pagar para la actualización completa.' : ($montoFinal < 0 ? 'Crédito a tu balance por la actualización.' : 'Actualización completa sin costo adicional inmediato.');
 
             return response()->json([
                 'prorated_amount' => $montoFinal,
-                'currency_code' => $newProductPricing->currency_code ?? $service->productPricing->currency_code,
+                'currency_code' => $newProductPricing->currency_code ?? $currentPricingForCredit->currency_code, // Use original currency for context
                 'message' => $message,
-                'new_next_due_date_preview' => $newNextDueDatePreview,
+                'new_next_due_date_preview' => $newNextDueDatePreviewString,
             ]);
 
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
