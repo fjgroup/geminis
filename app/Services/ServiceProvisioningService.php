@@ -64,30 +64,31 @@ class ServiceProvisioningService
                 $registrationDate = $invoice->paid_date ? Carbon::parse($invoice->paid_date) : Carbon::now();
                 $nextDueDate = $registrationDate->copy();
 
-                // Calcular next_due_date basado en BillingCycle
-                if (isset($billingCycle->period_unit) && isset($billingCycle->period_amount) && is_numeric($billingCycle->period_amount) && $billingCycle->period_amount > 0) {
-                    switch (strtolower($billingCycle->period_unit)) {
-                        case 'day':
-                        case 'days':
-                            $nextDueDate->addDays($billingCycle->period_amount);
-                            break;
-                        case 'month':
-                        case 'months':
-                            $nextDueDate->addMonthsNoOverflow($billingCycle->period_amount);
-                            break;
-                        case 'year':
-                        case 'years':
-                            $nextDueDate->addYearsNoOverflow($billingCycle->period_amount);
-                            break;
-                        default:
-                            Log::warning("[ServiceProvisioningService] Unknown billing cycle unit '{$billingCycle->period_unit}' for ProductPricing ID: {$productPricing->id}. Defaulting next_due_date to 1 month.");
-                            $nextDueDate->addMonth(); // Fallback seguro
+                // Calcular next_due_date basado en BillingCycle->days
+                if (!$billingCycle || !property_exists($billingCycle, 'days') || !is_numeric($billingCycle->days) || $billingCycle->days <= 0) {
+                    $daysValue = 'N/A';
+                    if ($billingCycle && property_exists($billingCycle, 'days')) {
+                        $daysValue = is_scalar($billingCycle->days) ? strval($billingCycle->days) : gettype($billingCycle->days);
+                    } elseif ($billingCycle) {
+                        $daysValue = 'propiedad days NO EXISTE';
+                    } else {
+                        $daysValue = 'billingCycle ES NULL';
                     }
-                } elseif (isset($billingCycle->days) && is_numeric($billingCycle->days) && $billingCycle->days > 0) {
-                    $nextDueDate->addDays((int)$billingCycle->days);
+                    Log::error("[SPS] Configuración inválida para BillingCycle ID: " . ($billingCycle->id ?? 'desconocido') . " al crear nuevo servicio para ProductPricing ID: {$productPricing->id} - la propiedad 'days' es inválida: " . $daysValue . ". Saltando creación de este servicio.");
+                    // No se puede continuar sin una duración de ciclo válida para un nuevo servicio.
+                    // Opcionalmente, se podría asignar un fallback muy largo y marcar para revisión manual.
+                    // Por ahora, se omite la creación de este servicio específico.
+                    // $nextDueDate->addYears(100); // Fallback anterior, ahora se omite.
+                    // continue; // Saltar al siguiente invoiceItem si no se puede determinar la duración
+                    // Mejor aún, si esto es crítico, la factura no debería llegar a este punto o el item debería marcarse como fallido.
+                    // Para este ejemplo, si no hay días, el servicio no se crea con fecha válida.
+                    // Considerar una excepción o una política más estricta.
+                    // Por ahora, si esto falla, el servicio no se creará con una fecha de vencimiento correcta,
+                    // lo que podría ser problemático. Se loguea el error.
+                    // Si se decide continuar, la fecha de vencimiento será igual a la de registro.
+                    Log::warning("[SPS] BillingCycle period info not found or invalid for ProductPricing ID: {$productPricing->id}. Next due date will be same as registration date. Manual review needed.");
                 } else {
-                    Log::warning("[ServiceProvisioningService] BillingCycle period info not found or invalid for ProductPricing ID: {$productPricing->id}. Defaulting next_due_date to 100 years (error/manual check indicator).");
-                    $nextDueDate->addYears(100); // Indica un problema que necesita revisión manual
+                    $nextDueDate->addDays((int)$billingCycle->days);
                 }
 
                 $serviceStatus = 'pending_configuration'; // Estado inicial estándar
@@ -132,52 +133,70 @@ class ServiceProvisioningService
 
                 $service = $invoiceItem->clientService;
                 if ($service) {
-                    Log::info("[SPS] Processing existing service ID: {$service->id}. Current status: {$service->status}, Next Due Date: {$service->next_due_date}");
+                    Log::info("[SPS] Processing existing service ID: {$service->id}. Current status: {$service->status}, Next Due Date: {$service->next_due_date->toDateString()}");
+                    $service->loadMissing(['productPricing.billingCycle', 'product']); // Ensure current service relations are loaded
 
-                    $billingCycleForItem = $invoiceItem->productPricing->billingCycle;
+                    $billingCycleForItem = $invoiceItem->productPricing->billingCycle; // Cycle being paid for
 
-                    if (!$billingCycleForItem) {
-                        Log::error("[SPS] BillingCycle for InvoiceItem ID: {$invoiceItem->id} (ProductPricing ID: {$invoiceItem->product_pricing_id}) not found. Cannot extend due date.");
-                    } else {
-                        Log::info("[SPS] BillingCycle for item: Name: {$billingCycleForItem->name}, Months: " . ($billingCycleForItem->period_amount ?? 'N/A') . " " . ($billingCycleForItem->period_unit ?? 'N/A') . " (or days: " . ($billingCycleForItem->days ?? 'N/A') . ")");
-
-                        // Use current date if next_due_date is in the past (e.g., for reactivating an expired service)
-                        $baseDate = Carbon::parse($service->next_due_date);
-                        if ($baseDate->isPast()) {
-                            Log::info("[SPS] Service ID: {$service->id} next_due_date is in the past. Using current date as base for renewal calculation.");
-                            $baseDate = Carbon::now();
-                        }
-                        $newDueDate = $baseDate->copy();
-
-                        $periodUnit = isset($billingCycleForItem->period_unit) ? strtolower($billingCycleForItem->period_unit) : null;
-                        $periodAmount = isset($billingCycleForItem->period_amount) && is_numeric($billingCycleForItem->period_amount) ? (int)$billingCycleForItem->period_amount : 0;
-                        $days = isset($billingCycleForItem->days) && is_numeric($billingCycleForItem->days) ? (int)$billingCycleForItem->days : 0;
-
-                        if ($periodAmount > 0 && $periodUnit) {
-                            switch ($periodUnit) {
-                                case 'day': case 'days': $newDueDate->addDays($periodAmount); break;
-                                case 'month': case 'months': $newDueDate->addMonthsNoOverflow($periodAmount); break;
-                                case 'year': case 'years': $newDueDate->addYearsNoOverflow($periodAmount); break;
-                                default: Log::warning("[SPS] Unknown billing cycle unit '{$billingCycleForItem->period_unit}'.");
-                            }
-                        } elseif ($days > 0) {
-                            $newDueDate->addDays($days);
+                    if (!$billingCycleForItem || !property_exists($billingCycleForItem, 'days') || !is_numeric($billingCycleForItem->days) || $billingCycleForItem->days <= 0) {
+                        $daysValue = 'N/A';
+                        if ($billingCycleForItem && property_exists($billingCycleForItem, 'days')) {
+                            $daysValue = is_scalar($billingCycleForItem->days) ? strval($billingCycleForItem->days) : gettype($billingCycleForItem->days);
+                        } elseif ($billingCycleForItem) {
+                            $daysValue = 'propiedad days NO EXISTE';
                         } else {
-                             Log::error("[SPS] BillingCycle period info for item not found or invalid for BillingCycle ID: {$billingCycleForItem->id}. Cannot extend due date.");
+                            $daysValue = 'billingCycleForItem ES NULL';
                         }
+                        Log::error("[SPS] Configuración de ciclo inválida para InvoiceItem ID: {$invoiceItem->id} (BillingCycle ID: " . ($billingCycleForItem->id ?? 'desconocido') . ") - 'days' es inválido: " . $daysValue . ". No se puede procesar la extensión de fecha.");
+                    } else {
+                        // Determine if this is a renewal or an upgrade invoice item
+                        $itemDescription = strtolower($invoiceItem->description);
+                        $isRenewal = str_contains($itemDescription, 'renewal') || str_contains($itemDescription, 'renovación');
+                        // Description for upgrade items from ClientServiceController: "Cargo por actualización a PRODUCT_NAME (CYCLE_NAME)"
+                        $isUpgrade = str_contains($itemDescription, 'actualización a') || str_contains($itemDescription, 'upgrade to');
 
-                        Log::info("[SPS] Calculated new Next Due Date: {$newDueDate->toDateString()} from base: {$baseDate->toDateString()} for service ID: {$service->id}");
-                        $service->next_due_date = $newDueDate->toDateString();
 
-                        if (in_array(strtolower($service->status), ['suspended', 'pending', 'cancelled', 'terminated'])) { // Consider 'cancelled' or 'terminated' if payment implies reactivation
-                            $service->status = 'active';
-                            Log::info("[SPS] Service ID: {$service->id} status updated to 'active'.");
+                        if ($isRenewal) {
+                            Log::info("[SPS] InvoiceItem ID: {$invoiceItem->id} identified as RENEWAL for service ID: {$service->id}.");
+                            $baseDate = Carbon::parse($service->next_due_date);
+                            if ($baseDate->isPast()) {
+                                Log::info("[SPS] Service ID: {$service->id} next_due_date is in the past. Using current date as base for renewal calculation.");
+                                $baseDate = Carbon::now();
+                            }
+                            $newDueDate = $baseDate->copy()->addDays((int)$billingCycleForItem->days);
+                            $service->next_due_date = $newDueDate->toDateString();
+                            Log::info("[SPS] Service ID: {$service->id} RENEWED. New next_due_date: {$service->next_due_date}. Old: {$baseDate->toDateString()}");
+
+                            if (in_array(strtolower($service->status), ['suspended', 'pending', 'cancelled', 'terminated'])) {
+                                $service->status = 'active'; // Reactivate on renewal
+                                Log::info("[SPS] Service ID: {$service->id} status updated to 'active' due to renewal.");
+                            }
+                        } elseif ($isUpgrade) {
+                            Log::info("[SPS] InvoiceItem ID: {$invoiceItem->id} identified as UPGRADE payment for service ID: {$service->id}. Next_due_date already set by upgrade process to {$service->next_due_date->toDateString()}. No change to next_due_date here.");
+                            // For upgrades, next_due_date is set in ClientServiceController@processUpgradeDowngrade.
+                            // Status might be 'pending_configuration' if product_id changed, or 'active'.
+                            // If it was 'active' and only cycle changed, it remains 'active'.
+                            // If it became 'pending_configuration', it stays that way for admin action.
+                            // No specific status change here unless a suspended service was upgraded and should become active/pending_config.
+                            if (strtolower($service->status) === 'suspended') { // If somehow an upgrade was processed for a suspended service
+                                 // If product_id changed during upgrade, it would be pending_configuration, otherwise active
+                                if ($service->product_id !== $service->getOriginal('product_id', $service->product_id)) { // Checking if product_id was changed in current loaded model state (it was already saved by controller)
+                                     $service->status = 'pending_configuration';
+                                } else {
+                                     $service->status = 'active';
+                                }
+                                Log::info("[SPS] Service ID: {$service->id} status updated to '{$service->status}' post-upgrade payment from suspended state.");
+                            }
+                        } else {
+                            Log::warning("[SPS] InvoiceItem ID: {$invoiceItem->id} for service ID: {$service->id} is neither clearly a renewal nor an upgrade. Description: '{$invoiceItem->description}'. Next_due_date NOT extended based on this item alone.");
+                            // Potentially apply a default extension if that's the desired behavior for unknown items linked to a service.
+                            // For now, only explicit renewals extend.
                         }
                         $service->save();
-                        Log::info("[SPS] Service ID: {$service->id} next_due_date updated to {$service->next_due_date}. Status: {$service->status}");
+                        Log::info("[SPS] Service ID: {$service->id} saved. Final status: {$service->status}, Next Due Date: {$service->next_due_date->toDateString()}");
                     }
 
-                    // This service existed and was processed (renewal/reactivation)
+                    // This service existed and was processed (renewal/reactivation/upgrade paid)
                     // If its status is now active, pending, or pending_configuration, it might influence invoice status.
                     if (in_array(strtolower($service->status), ['pending_configuration', 'pending', 'active'])) {
                          $hasAnyServiceToCreateOrProvision = true;
