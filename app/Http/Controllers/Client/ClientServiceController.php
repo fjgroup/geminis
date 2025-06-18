@@ -328,7 +328,6 @@ class ClientServiceController extends Controller
             $service->loadMissing(['product.productType', 'productPricing.billingCycle', 'client']);
             $newProductPricingLoaded = ProductPricing::with(['product.productType', 'billingCycle'])
                 ->findOrFail($newProductPricingId);
-        dd('calculateProration START', $service->toArray(), $newProductPricingLoaded->toArray());
 
             if (strtolower($service->status) !== 'active') {
                 return response()->json(['error' => 'El servicio debe estar activo para calcular el prorrateo.'], 422);
@@ -370,7 +369,9 @@ class ClientServiceController extends Controller
             $hoy = Carbon::now()->startOfDay();
             $inicioCicloParaDiff = $fechaInicioCicloActual->copy()->startOfDay();
             Log::debug("PRORATE_CALC_DEBUG: Fecha de 'Hoy' (para diff): {$hoy->toDateString()}"); // Log de $hoy que faltaba
-            dd('calculateProration - Antes de diasUtilizados', [
+            Log::debug('calculateProration - Antes de diasUtilizados', [
+                'service_id' => $service->id,
+                'new_product_pricing_id' => $newProductPricingId,
                 'hoy' => $hoy->toDateString(),
                 'inicioCicloParaDiff' => $inicioCicloParaDiff->toDateString(),
                 'originalNextDueDateForPreview' => $originalNextDueDateForPreview->toDateString(),
@@ -407,7 +408,8 @@ class ClientServiceController extends Controller
             $creditoNoUtilizado = $service->billing_amount - $costoUtilizadoPlanActual;
             $creditoNoUtilizado = max(0, round($creditoNoUtilizado, 2));
             Log::debug("PRORATE_CALC_DEBUG: Crédito No Utilizado (calculado): {$creditoNoUtilizado}");
-            dd('calculateProration - Despues de creditoNoUtilizado', [
+            Log::debug('calculateProration - Despues de creditoNoUtilizado', [
+                'service_id' => $service->id,
                 'diasUtilizadosPlanActual' => $diasUtilizadosPlanActual,
                 'tarifaDiariaPlanActual' => $tarifaDiariaPlanActual,
                 'costoUtilizadoPlanActual' => $costoUtilizadoPlanActual,
