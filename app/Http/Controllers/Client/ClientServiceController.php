@@ -161,12 +161,46 @@ class ClientServiceController extends Controller
             }
             $daysInCurrentCycleForCreditCalc = (int) $daysRawValueCurrent;
 
-            $fechaInicioCicloActual = $originalNextDueDate->copy()->subDays($daysInCurrentCycleForCreditCalc);
-            $diasUtilizadosPlanActual = Carbon::now()->diffInDaysFiltered(fn(Carbon $date) => true, $fechaInicioCicloActual, false);
-            if ($diasUtilizadosPlanActual < 1 && Carbon::now()->isSameDay($fechaInicioCicloActual)) {
-                $diasUtilizadosPlanActual = 1;
+            // Determine true start of current cycle
+            $parsedNextDueDate = Carbon::parse($service->next_due_date)->startOfDay(); // Use actual NDD from service
+            $parsedRegistrationDate = Carbon::parse($service->registration_date)->startOfDay();
+            $hoyForCycleCalc = Carbon::now()->startOfDay(); // Renamed to avoid conflict
+
+            $trueEndDateOfCurrentCycle = $parsedNextDueDate->copy(); // Start with the service's next_due_date
+            $trueStartDateOfCurrentCycle = $trueEndDateOfCurrentCycle->copy()->subDays($daysInCurrentCycleForCreditCalc);
+
+            // Rewind if next_due_date is for a future cycle
+            while ($trueStartDateOfCurrentCycle->gt($hoyForCycleCalc) && $trueStartDateOfCurrentCycle->gt($parsedRegistrationDate)) {
+                $trueStartDateOfCurrentCycle->subDays($daysInCurrentCycleForCreditCalc);
             }
-            $diasUtilizadosPlanActual = max(1, min($diasUtilizadosPlanActual, $daysInCurrentCycleForCreditCalc));
+
+            // Ensure trueStartDateOfCurrentCycle is not earlier than registration_date
+            if ($trueStartDateOfCurrentCycle->lt($parsedRegistrationDate)) {
+                $trueStartDateOfCurrentCycle = $parsedRegistrationDate->copy();
+            }
+            // Ensure that trueStartDateOfCurrentCycle is not later than hoyForCycleCalc
+            if ($trueStartDateOfCurrentCycle->gt($hoyForCycleCalc)) {
+                $trueStartDateOfCurrentCycle = $hoyForCycleCalc->copy();
+            }
+            Log::debug("PUD Log - True Start Date of Current Cycle (para cálculo días usados): {$trueStartDateOfCurrentCycle->toDateString()}");
+
+            // New diasUtilizadosPlanActual calculation
+            $hoyForUsageCalc = Carbon::now()->startOfDay();
+
+            if ($trueStartDateOfCurrentCycle->gt($hoyForUsageCalc)) { // Should not happen due to capping
+                $diasTranscurridos = 0;
+            } else {
+                $diasTranscurridos = $hoyForUsageCalc->diffInDays($trueStartDateOfCurrentCycle);
+            }
+
+            $diasUtilizadosPlanActual = $diasTranscurridos + 1;
+            $diasUtilizadosPlanActual = max(1, $diasUtilizadosPlanActual);
+            $diasUtilizadosPlanActual = min($diasUtilizadosPlanActual, $daysInCurrentCycleForCreditCalc);
+
+            Log::debug("PUD Log - Hoy (for usage calc): {$hoyForUsageCalc->toDateString()}");
+            Log::debug("PUD Log - Days Transcurridos (diffInDays from true start): {$diasTranscurridos}");
+            Log::debug("PUD Log - Días Utilizados Plan Actual (corregido): {$diasUtilizadosPlanActual}");
+
             $tarifaDiariaPlanActual = ($daysInCurrentCycleForCreditCalc > 0 && $billingAmountForCredit > 0) ? ($billingAmountForCredit / $daysInCurrentCycleForCreditCalc) : 0;
             $costoUtilizadoPlanActual = $tarifaDiariaPlanActual * $diasUtilizadosPlanActual;
             $creditoNoUtilizado = $billingAmountForCredit - $costoUtilizadoPlanActual;
@@ -300,20 +334,46 @@ class ClientServiceController extends Controller
             $daysInCurrentCycle = (int) $daysInCurrentCycleRaw;
             Log::debug("CP Log - Days in Current Cycle (usado para cálculo): {$daysInCurrentCycle}");
 
-            $fechaInicioCicloActual = $originalNextDueDateForPreview->copy()->subDays($daysInCurrentCycle);
-            Log::debug("CP Log - Fecha Inicio Ciclo Actual (calculada): {$fechaInicioCicloActual->toDateString()}");
+            // Determine true start of current cycle
+            $parsedNextDueDate = Carbon::parse($service->next_due_date)->startOfDay(); // Use actual NDD from service
+            $parsedRegistrationDate = Carbon::parse($service->registration_date)->startOfDay();
+            $hoyForCycleCalc = Carbon::now()->startOfDay(); // Renamed to avoid conflict if 'hoy' is used later differently
 
-            $hoy = Carbon::now()->startOfDay();
-            Log::debug("CP Log - Fecha de 'Hoy' (para diff): {$hoy->toDateString()}");
-            $diasUtilizadosPlanActual = $hoy->diffInDaysFiltered(fn(Carbon $date) => true, $fechaInicioCicloActual->copy()->startOfDay(), false);
-            if ($hoy->isSameDay($fechaInicioCicloActual->copy()->startOfDay())) {
-                $diasUtilizadosPlanActual = 1;
-            } else {
-                 $diasUtilizadosPlanActual = $diasUtilizadosPlanActual +1;
+            $trueEndDateOfCurrentCycle = $parsedNextDueDate->copy(); // Start with the service's next_due_date
+            $trueStartDateOfCurrentCycle = $trueEndDateOfCurrentCycle->copy()->subDays($daysInCurrentCycle);
+
+            // Rewind if next_due_date is for a future cycle
+            while ($trueStartDateOfCurrentCycle->gt($hoyForCycleCalc) && $trueStartDateOfCurrentCycle->gt($parsedRegistrationDate)) {
+                // $trueEndDateOfCurrentCycle->subDays($daysInCurrentCycle); // This line is not strictly needed for start date calc
+                $trueStartDateOfCurrentCycle->subDays($daysInCurrentCycle);
             }
+
+            // Ensure trueStartDateOfCurrentCycle is not earlier than registration_date
+            if ($trueStartDateOfCurrentCycle->lt($parsedRegistrationDate)) {
+                $trueStartDateOfCurrentCycle = $parsedRegistrationDate->copy();
+            }
+            // Ensure that trueStartDateOfCurrentCycle is not later than hoyForCycleCalc
+            if ($trueStartDateOfCurrentCycle->gt($hoyForCycleCalc)) {
+                $trueStartDateOfCurrentCycle = $hoyForCycleCalc->copy();
+            }
+            Log::debug("CP Log - True Start Date of Current Cycle (para cálculo días usados): {$trueStartDateOfCurrentCycle->toDateString()}");
+
+            // New diasUtilizadosPlanActual calculation
+            $hoyForUsageCalc = Carbon::now()->startOfDay();
+
+            if ($trueStartDateOfCurrentCycle->gt($hoyForUsageCalc)) { // Should not happen due to capping
+                $diasTranscurridos = 0;
+            } else {
+                $diasTranscurridos = $hoyForUsageCalc->diffInDays($trueStartDateOfCurrentCycle);
+            }
+
+            $diasUtilizadosPlanActual = $diasTranscurridos + 1;
             $diasUtilizadosPlanActual = max(1, $diasUtilizadosPlanActual);
             $diasUtilizadosPlanActual = min($diasUtilizadosPlanActual, $daysInCurrentCycle);
-            Log::debug("CP Log - Días Utilizados Plan Actual (calculados): {$diasUtilizadosPlanActual}");
+
+            Log::debug("CP Log - Hoy (for usage calc): {$hoyForUsageCalc->toDateString()}");
+            Log::debug("CP Log - Days Transcurridos (diffInDays from true start): {$diasTranscurridos}");
+            Log::debug("CP Log - Días Utilizados Plan Actual (corregido): {$diasUtilizadosPlanActual}");
 
             $tarifaDiariaPlanActual = ($daysInCurrentCycle > 0 && $service->billing_amount > 0) ? ($service->billing_amount / $daysInCurrentCycle) : 0;
             Log::debug("CP Log - Tarifa Diaria Plan Actual (calculada): {$tarifaDiariaPlanActual}");
