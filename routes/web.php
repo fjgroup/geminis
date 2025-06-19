@@ -52,6 +52,7 @@ use App\Http\Controllers\Admin\AdminProductTypeController; // Import the new Pro
 use App\Http\Controllers\LandingPageController; // Import the new LandingPageController
 use App\Http\Controllers\Reseller\ResellerClientController;
 use App\Http\Controllers\Reseller\ResellerDashboardController; // Added for reseller dashboard
+use App\Http\Controllers\Api\ProductController as ApiProductController; // Import ApiProductController
 
 // Rutas para la administración
 // Aplicamos el middleware 'admin' para proteger estas rutas
@@ -127,9 +128,15 @@ Route::prefix('client')->name('client.')->middleware(['auth', 'verified'])->grou
   // Ruta para el dashboard de cliente
   Route::get('/', [ClientDashboardController::class, 'index'])->name('dashboard'); // Route for client dashboard
 
-  // Checkout Route
+  // Checkout Route (Legacy or direct product link)
   Route::get('/checkout/product/{product}', [ClientCheckoutController::class, 'showProductCheckoutPage'])->name('checkout.product');
-  Route::post('/checkout/product/{product}/submit', [ClientCheckoutController::class, 'submitProductCheckout'])->name('checkout.submit');
+  // Route::post('/checkout/product/{product}/submit', [ClientCheckoutController::class, 'submitProductCheckout'])->name('checkout.submit'); // Replaced by new flow submit
+
+  // New Checkout Flow Routes
+  Route::post('/checkout/submit', [ClientCheckoutController::class, 'submitCurrentOrder'])->name('checkout.submit'); // New submit for cart-based checkout
+  Route::get('/checkout/select-domain', [ClientCheckoutController::class, 'showSelectDomainPage'])->name('checkout.selectDomain');
+  Route::get('/checkout/select-services', [ClientCheckoutController::class, 'showSelectServicesPage'])->name('checkout.selectServices');
+  Route::get('/checkout/confirm', [ClientCheckoutController::class, 'showConfirmOrderPage'])->name('checkout.confirm');
 
 
   // Rutas de Recurso para la gestión de servicios de cliente
@@ -233,6 +240,17 @@ Route::prefix('client')->name('client.')->middleware(['auth', 'verified'])->grou
 
     // Ruta para solicitar la cancelación de una nueva orden/factura
     Route::post('/invoices/{invoice}/cancel-new-order', [App\Http\Controllers\Client\ClientInvoiceController::class, 'requestInvoiceCancellation'])->name('invoices.cancelNewOrder');
+
+    // Rutas para el Carrito de Compras
+    Route::prefix('cart')->name('cart.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Client\ClientCartController::class, 'getCart'])->name('get');
+        Route::post('/add', [\App\Http\Controllers\Client\ClientCartController::class, 'addItem'])->name('add');
+        Route::post('/update', [\App\Http\Controllers\Client\ClientCartController::class, 'updateItem'])->name('update');
+        Route::post('/remove', [\App\Http\Controllers\Client\ClientCartController::class, 'removeItem'])->name('remove');
+        Route::post('/clear', [\App\Http\Controllers\Client\ClientCartController::class, 'clearCart'])->name('clear');
+        Route::post('/account/set-domain', [\App\Http\Controllers\Client\ClientCartController::class, 'setDomainForAccount'])->name('account.setDomain');
+        Route::post('/account/set-primary-service', [\App\Http\Controllers\Client\ClientCartController::class, 'setPrimaryServiceForAccount'])->name('account.setPrimaryService');
+    });
 });
 
 // Comment out or remove the existing landing page route
@@ -254,6 +272,15 @@ Route::get('/', [LandingPageController::class, 'showHome'])->name('landing.home'
 Route::get('/servicios/{categorySlug}', [LandingPageController::class, 'showCategory'])->name('landing.category');
 
 
+// API Routes for fetching products (used by checkout pages)
+Route::prefix('api/products')->name('api.products.')->group(function () {
+    Route::get('/main-services', [ApiProductController::class, 'getMainServices'])->name('mainServices');
+    Route::get('/ssl-certificates', [ApiProductController::class, 'getSslCertificates'])->name('sslCertificates');
+    Route::get('/software-licenses', [ApiProductController::class, 'getSoftwareLicenses'])->name('softwareLicenses');
+    Route::get('/domain-registration', [ApiProductController::class, 'getDomainRegistrationProducts'])->name('domainRegistration');
+    // Example for generic by type:
+    // Route::get('/by-type/{typeIdentifier}', [ApiProductController::class, 'getProductsByType'])->name('byType');
+});
 
 
 Route::middleware('auth')->group(function () {

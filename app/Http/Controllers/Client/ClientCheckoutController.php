@@ -4,86 +4,178 @@ namespace App\Http\Controllers\Client;
 
 use App\Http\Controllers\Controller;
 use App\Models\Product;
+use App\Models\ProductPricing;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
-use App\Http\Requests\Client\PlaceOrderRequest; // Añadir al inicio del archivo
-use App\Actions\Client\PlaceOrderAction;        // Añadir al inicio del archivo
-use Illuminate\Support\Facades\Auth;            // Añadir al inicio del archivo
-use Illuminate\Http\RedirectResponse;           // Añadir al inicio del archivo
-use Illuminate\Support\Facades\Log;             // Añadir al inicio del archivo
-use Illuminate\Validation\ValidationException;  // Añadir al inicio del archivo
-use Illuminate\Database\Eloquent\ModelNotFoundException; // Añadir al inicio del archivo
-use Exception; // Asegurarse que Exception esté importado
+use App\Actions\Client\PlaceOrderAction;
+use App\Http\Controllers\Client\ClientCartController;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
+use Illuminate\Database\Eloquent\ModelNotFoundException; // Aunque no se usa directamente, es bueno tenerlo por si acaso en el futuro.
+use Exception;
 
 class ClientCheckoutController extends Controller
 {
-    /**
-     * Show the form for creating a new order/invoice for a specific product.
-     *
-     * @param  Product  $product
-     * @return InertiaResponse
-     */
     public function showProductCheckoutPage(Product $product): InertiaResponse
     {
-        // Autorización similar a la que tenía ClientOrderController@showOrderForm
-        // $this->authorize('view', $product); // Asumiendo ProductPolicy@view
-        // For now, policies are not strictly enforced in this step for this controller.
-        // This can be added later if ProductPolicy or a general CheckoutPolicy is established.
-
         $product->load(['pricings.billingCycle', 'configurableOptionGroups.options', 'productType']);
-
-        return Inertia::render('Client/Checkout/ProductCheckoutPage', [ // Actualizar la ruta de Inertia
+        return Inertia::render('Client/Checkout/ProductCheckoutPage', [
             'product' => $product,
         ]);
     }
 
-    public function submitProductCheckout(PlaceOrderRequest $request, Product $product, PlaceOrderAction $placeOrderAction): RedirectResponse
+    public function submitCurrentOrder(Request $request, PlaceOrderAction $placeOrderAction): RedirectResponse
     {
-        // Podríamos considerar una política aquí, ej. $this->authorize('create', Invoice::class);
-        // o $this->authorize('checkout', $product);
-
-        $validatedData = $request->validated();
         $client = Auth::user();
-
-        // Añadir ip_address al $validatedData si no viene del request y PlaceOrderAction lo espera
-        if (!isset($validatedData['ip_address'])) {
-            $validatedData['ip_address'] = $request->ip();
+        if (!$client) {
+            return redirect()->route('login')->with('error', 'Por favor, inicia sesión para continuar.');
         }
 
+        $validatedData = $request->validate([
+            'notes_to_client' => 'nullable|string|max:2000',
+            // Se comenta la validación de payment_method_slug para que no sea obligatoria si el cliente no elige uno explícitamente
+            // y se pueda procesar el pedido para generar una factura que luego pagará.
+            // Si se requiere un método de pago en este punto, se debe descomentar y ajustar la lógica.
+            // 'payment_method_slug' => 'nullable|string|exists:payment_methods,slug',
+            'payment_method_slug' => 'nullable|string', // Permitir cualquier string o null por ahora
+        ]);
+
+        $additionalData = [
+            'notes_to_client' => $validatedData['notes_to_client'] ?? null,
+            'payment_method_slug' => $validatedData['payment_method_slug'] ?? null,
+            'ip_address' => $request->ip(),
+        ];
+
         try {
-            $invoice = $placeOrderAction->execute($product, $validatedData, $client);
+            $invoice = $placeOrderAction->execute($client, $additionalData);
 
             if (!$invoice) {
-                Log::error("PlaceOrderAction returned null during checkout for product ID {$product->id} and client ID {$client->id}");
-                return redirect()->back()->withInput()->with('error', 'No se pudo crear una factura para su solicitud. Por favor, inténtelo de nuevo.');
+                Log::error("PlaceOrderAction returned null for client ID {$client->id} with cart.");
+                return redirect()->route('client.checkout.confirm')
+                                    ->with('error', 'No se pudo procesar su pedido. Por favor, inténtelo de nuevo.');
             }
 
             return redirect()->route('client.invoices.show', $invoice->id)
-                                ->with('success', 'Factura generada exitosamente. Por favor, proceda con el pago.');
+                                ->with('success', '¡Pedido realizado con éxito! Factura generada.');
 
         } catch (ValidationException $e) {
-            // Los errores de validación de PlaceOrderRequest ya deberían manejarse antes de llegar aquí.
-            // Esto sería para validaciones internas de la acción, si las hubiera.
-            Log::warning("ValidationException en submitProductCheckout: " . $e->getMessage(), ['errors' => $e->errors()]);
+            Log::warning("ValidationException en submitCurrentOrder: " . $e->getMessage(), ['errors' => $e->errors()]);
             return redirect()->back()->withErrors($e->errors())->withInput();
-        } catch (ModelNotFoundException $e) {
-            Log::error("Recurso no encontrado durante el checkout (ej. ProductPricing): " . $e->getMessage(), [
-                'product_id' => $product->id,
-                'client_id' => $client->id,
-                'exception_trace' => $e->getTraceAsString()
-            ]);
-            return redirect()->back()
-                                ->withInput()
-                                ->with('error', 'La opción de precio seleccionada no es válida o no se encontró. Por favor, inténtelo de nuevo.');
         } catch (Exception $e) {
-            Log::error("Error al procesar el checkout para el producto ID {$product->id}: " . $e->getMessage(), [
-                'product_id' => $product->id,
+            Log::error("Error al procesar el pedido desde el carrito para el cliente ID {$client->id}: " . $e->getMessage(), [
                 'client_id' => $client->id,
                 'exception_trace' => $e->getTraceAsString()
             ]);
-            return redirect()->back()
-                                ->withInput()
-                                ->with('error', 'Ocurrió un error inesperado al procesar su solicitud. Por favor, inténtelo de nuevo.');
+            return redirect()->route('client.checkout.confirm')
+                                ->with('error', 'Ocurrió un error inesperado al procesar su pedido: ' . $e->getMessage());
         }
+    }
+
+    public function showSelectDomainPage(): InertiaResponse
+    {
+        return Inertia::render('Client/Checkout/SelectDomainPage');
+    }
+
+    public function showSelectServicesPage(Request $request): InertiaResponse|RedirectResponse
+    {
+        $cartController = app(ClientCartController::class);
+        $cartData = $cartController->getCart($request)->getData(true);
+        $cart = $cartData['cart'] ?? null;
+
+        // Validar que haya una cuenta activa y un dominio configurado
+        if (empty($cart) || empty($cart['accounts']) || empty($cart['active_account_id'])) {
+            return redirect()->route('client.checkout.selectDomain')->with('info', 'Por favor, selecciona o configura un dominio primero.');
+        }
+        $activeAccount = null;
+        foreach($cart['accounts'] as $account) {
+            if($account['account_id'] === $cart['active_account_id']) {
+                $activeAccount = $account;
+                break;
+            }
+        }
+        if (!$activeAccount || empty($activeAccount['domain_info']['domain_name'])) {
+             return redirect()->route('client.checkout.selectDomain')->with('info', 'Por favor, configura un dominio para la cuenta activa antes de seleccionar servicios.');
+        }
+
+        $mainServiceTypeIds = [1, 2, 7];
+        $sslTypeIds = [4];
+        $licenseTypeIds = [6];
+
+        $mainServiceProducts = Product::whereIn('product_type_id', $mainServiceTypeIds)
+            ->where('status', 'active')->with(['pricings.billingCycle', 'productType', 'configurableOptionGroups.options'])->orderBy('display_order')->get();
+
+        $sslProducts = Product::whereIn('product_type_id', $sslTypeIds)
+            ->where('status', 'active')->with(['pricings.billingCycle', 'productType'])->orderBy('display_order')->get();
+
+        $licenseProducts = Product::whereIn('product_type_id', $licenseTypeIds)
+            ->where('status', 'active')->with(['pricings.billingCycle', 'productType'])->orderBy('display_order')->get();
+
+        return Inertia::render('Client/Checkout/SelectServicesPage', [
+            'initialCart' => $cart,
+            'mainServiceProducts' => $mainServiceProducts,
+            'sslProducts' => $sslProducts,
+            'licenseProducts' => $licenseProducts,
+        ]);
+    }
+
+    public function showConfirmOrderPage(Request $request): InertiaResponse|RedirectResponse
+    {
+        $cartController = app(ClientCartController::class);
+        $cartData = $cartController->getCart($request)->getData(true);
+        $cart = $cartData['cart'] ?? null;
+
+        if (empty($cart) || empty($cart['accounts'])) {
+            return redirect()->route('client.dashboard')->with('info', 'Tu carrito está vacío. Por favor, añade productos antes de confirmar el pedido.');
+        }
+        // Adicionalmente, verificar si hay al menos un ítem facturable en el carrito
+        $hasBillableItem = false;
+        foreach($cart['accounts'] as $account) {
+            if (!empty($account['domain_info']['product_id']) || !empty($account['primary_service']) || !empty($account['additional_services'])) {
+                $hasBillableItem = true;
+                break;
+            }
+        }
+        if (!$hasBillableItem && !$this->cartHasOnlyDomainRegistrationWithoutProduct($cart, $cartController)) { // Pasar $cartController o $request
+             return redirect()->route('client.checkout.selectServices')->with('info', 'No hay servicios seleccionados en tu carrito.');
+        }
+
+
+        return Inertia::render('Client/Checkout/ConfirmOrderPage', [
+            'initialCart' => $cart,
+            // 'paymentMethods' => \App\Models\PaymentMethod::where('is_active', true)->orderBy('name')->get(['name', 'slug']),
+        ]);
+    }
+
+    // Helper para showConfirmOrderPage, similar al de PlaceOrderAction pero adaptado
+    private function cartHasOnlyDomainRegistrationWithoutProduct(array $cart, ClientCartController $cartController): bool
+    {
+        // Esta función es para el caso donde solo hay un `domain_name` en `domain_info`
+        // pero NO hay `product_id` ni `pricing_id` asociados a él, ni otros servicios.
+        // Es un caso especial de "solo reservar dominio" que podría no generar factura inmediatamente.
+        // La lógica original en PlaceOrderAction es:
+        // if (count($cart['accounts']) !== 1) return false;
+        // $account = $cart['accounts'][0];
+        // return !empty($account['domain_info']['domain_name']) &&
+        //        empty($account['domain_info']['product_id']) &&
+        //        empty($account['primary_service']) &&
+        //        empty($account['additional_services']);
+        // Para el contexto de mostrar la página de confirmación, si el único "item" es un nombre de dominio
+        // sin producto asociado, probablemente no deberíamos llegar a la confirmación de "pedido"
+        // a menos que el acto de registrar un nombre de dominio sin producto sea en sí mismo un pedido.
+        // Si ese no es el caso, entonces esto debería considerarse un carrito "efectivamente vacío" para facturación.
+
+        // Simplificamos: si no hay product_id en domain_info, y no hay otros servicios, no es facturable aun.
+        if (count($cart['accounts']) === 1) {
+            $account = $cart['accounts'][0];
+            if (empty($account['domain_info']['product_id']) &&
+                empty($account['primary_service']) &&
+                empty($account['additional_services'])) {
+                return true; // Es solo un nombre de dominio sin producto/precio.
+            }
+        }
+        return false;
     }
 }
