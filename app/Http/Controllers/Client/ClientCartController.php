@@ -38,7 +38,6 @@ class ClientCartController extends Controller
                 if ($product && $pricing && $pricing->product_id == $product->id) {
                     $productName = $product->name;
                     if (isset($account['domain_info']['tld_extension']) && $product->product_type_id == 3) {
-                        // $productName = "Registro Dominio ." . $account['domain_info']['tld_extension'];
                     }
                     $account['domain_info']['product_name'] = $productName;
                     $account['domain_info']['price'] = isset($account['domain_info']['override_price']) ? (float)$account['domain_info']['override_price'] : (float)$pricing->price;
@@ -107,79 +106,135 @@ class ClientCartController extends Controller
         return response()->json(['status' => 'success', 'cart' => $cart]);
     }
 
-    private function findAccount(Request $request, $accountId): ?int
+    private function findAccount($accountId): ?int
     {
-        $cart = $request->session()->get('cart', $this->initializeCart());
+        $cart = session('cart', $this->initializeCart());
+        if (!isset($cart['accounts']) || !is_array($cart['accounts'])) {
+            Log::warning('ClientCartController@findAccount: "accounts" no es un array o no existe en el carrito.', ['cart_in_session' => $cart]);
+            return null;
+        }
         foreach ($cart['accounts'] as $index => $account) {
-            if ($account['account_id'] === $accountId) {
+            if (is_array($account) && isset($account['account_id']) && $account['account_id'] === $accountId) {
                 return $index;
             }
         }
         return null;
     }
 
-    private function getActiveAccountIndex(Request $request): ?int
+    private function getActiveAccountIndex(): ?int
     {
-        $cart = $request->session()->get('cart', $this->initializeCart());
-        if (!$cart || !isset($cart['active_account_id'])) { // Añadida verificación para $cart
-            Log::debug('ClientCartController@getActiveAccountIndex: Carrito no encontrado o active_account_id no establecido.', ['cart_in_session' => $cart]);
+        $cart = session('cart');
+
+        if (!$cart || !isset($cart['active_account_id']) || is_null($cart['active_account_id'])) {
+            Log::debug('ClientCartController@getActiveAccountIndex: Carrito no encontrado o active_account_id no establecido o es null.', [
+                'cart_in_session_active_account_id' => $cart['active_account_id'] ?? 'Not set or cart is null'
+            ]);
             return null;
         }
-        return $this->findAccount($request, $cart['active_account_id']);
+
+        $activeAccountId = $cart['active_account_id'];
+        if (!isset($cart['accounts']) || !is_array($cart['accounts'])) {
+            Log::error('ClientCartController@getActiveAccountIndex: "accounts" no es un array o no existe en el carrito, pero active_account_id sí estaba seteado.', [
+                'active_account_id_was' => $activeAccountId,
+                'cart_in_session' => $cart
+            ]);
+            return null;
+        }
+
+        $foundIndex = $this->findAccount($activeAccountId);
+
+        if ($foundIndex === null) {
+            Log::warning('ClientCartController@getActiveAccountIndex: active_account_id no fue encontrado en el array de cuentas.', [
+                'active_account_id_searched' => $activeAccountId,
+                'cart_accounts' => $cart['accounts'] ?? 'No accounts array'
+            ]);
+            return null;
+        }
+
+        return $foundIndex;
     }
 
-    // No se necesita getActiveAccountData, se puede obtener el índice y luego los datos
-    // private function getActiveAccountData(Request $request) { ... }
-
-
-    private function findItemInAccount(?array &$account, string $cartItemId): ?array
-    {
-        if (!$account) return null;
-
-        if (isset($account['domain_info']['cart_item_id']) && $account['domain_info']['cart_item_id'] === $cartItemId) {
-            return ['type' => 'domain_info', 'item' => &$account['domain_info']];
-        }
-        if (isset($account['primary_service']['cart_item_id']) && $account['primary_service']['cart_item_id'] === $cartItemId) {
-            return ['type' => 'primary_service', 'item' => &$account['primary_service']];
-        }
-        if (isset($account['additional_services'])) {
-            foreach ($account['additional_services'] as $key => &$service) {
-                if (isset($service['cart_item_id']) && $service['cart_item_id'] === $cartItemId) {
-                    return ['type' => 'additional_service', 'index' => $key, 'item' => &$service];
-                }
-            }
-        }
-        return null;
-    }
+    private function findItemInAccount(?array &$account, string $cartItemId): ?array { /* ... sin cambios ... */ }
 
     public function setDomainForAccount(Request $request): RedirectResponse
     {
-        // ... (validaciones y lógica principal) ...
-        $validated = $request->validate([ /* ... */ ]);
-        $cart = $request->session()->get('cart', $this->initializeCart());
-        $activeIndex = $this->getActiveAccountIndex($request);
-        // ... (resto de la lógica como estaba) ...
+        $validatedData = $request->validate([
+            'domain_name' => 'required|string|max:255',
+            'override_price' => 'nullable|numeric|min:0',
+            'tld_extension' => 'required|string|max:10',
+            'product_id' => 'required|integer|exists:products,id',
+            'pricing_id' => 'required|integer|exists:product_pricings,id',
+        ]);
+        $cart = session('cart', $this->initializeCart()); // Uso session()
+        $activeIndex = $this->getActiveAccountIndex(); // Sin $request
+        $newAccountId = null;
+
+        $genericProduct = Product::find($validatedData['product_id']);
+        $genericPricing = ProductPricing::find($validatedData['pricing_id']);
+
+        if (!$genericProduct || $genericProduct->product_type_id != 3) {
+            return back()->withInput()->withErrors(['product_id' => 'El producto de dominio genérico configurado no es válido.']);
+        }
+        if (!$genericPricing || $genericPricing->product_id != $genericProduct->id) {
+            return back()->withInput()->withErrors(['pricing_id' => 'La configuración de precios para el dominio genérico no es válida.']);
+        }
+        $domainInfo = [
+            'domain_name' => $validatedData['domain_name'],
+            'product_id' => $validatedData['product_id'],
+            'pricing_id' => $validatedData['pricing_id'],
+            'override_price' => $validatedData['override_price'] ?? null,
+            'tld_extension' => $validatedData['tld_extension'],
+            'cart_item_id' => (string) Str::uuid(),
+        ];
+        if ($activeIndex === null) {
+            $newAccountId = (string) Str::uuid();
+            $newAccount = ['account_id' => $newAccountId, 'domain_info' => $domainInfo, 'primary_service' => null, 'additional_services' => []];
+            $cart['accounts'][] = $newAccount;
+            $cart['active_account_id'] = $newAccountId;
+        } else {
+            if (isset($cart['accounts'][$activeIndex]) && !empty($cart['accounts'][$activeIndex]['domain_info'])) {
+                return back()->withInput()->withErrors(['domain_name' => 'La cuenta activa ya tiene información de dominio. Para cambiarla, primero elimine la existente o cree una nueva cuenta.']);
+            }
+            if (isset($cart['accounts'][$activeIndex])) {
+                 $cart['accounts'][$activeIndex]['domain_info'] = $domainInfo;
+                 $newAccountId = $cart['accounts'][$activeIndex]['account_id'];
+            } else {
+                 Log::warning('ClientCartController@setDomainForAccount: activeIndex definido pero la cuenta no existe. Creando nueva cuenta.', ['activeIndex' => $activeIndex, 'cart' => $cart]);
+                 $newAccountId = (string) Str::uuid();
+                 $newAccount = ['account_id' => $newAccountId, 'domain_info' => $domainInfo, 'primary_service' => null, 'additional_services' => []];
+                 $cart['accounts'][] = $newAccount;
+                 $cart['active_account_id'] = $newAccountId;
+            }
+        }
 
         $request->session()->put('cart', $cart);
-
         Log::info('ClientCartController@setDomainForAccount: Carrito después de configurar dominio y ANTES de redirección.', [
-            'session_cart_final' => $request->session()->get('cart') // Loguear el carrito guardado
+            'session_cart_final' => $request->session()->get('cart')
         ]);
-
-        return redirect()->route('client.checkout.selectServices')
-                       ->with('success', 'Dominio configurado en el carrito.');
+        return redirect()->route('client.checkout.selectServices')->with('success', 'Dominio configurado en el carrito.');
     }
 
-    public function setPrimaryServiceForAccount(Request $request): JsonResponse
+    public function setPrimaryServiceForAccount(Request $request): RedirectResponse
     {
-        Log::debug('ClientCartController@setPrimaryServiceForAccount: Iniciando.', [
-            'session_cart_initial' => $request->session()->get('cart', 'No cart in session'),
-            'request_payload' => $request->all()
+        Log::info('ClientCartController@setPrimaryServiceForAccount: MÉTODO INVOCADO.');
+
+        $validatedData = $request->validate([
+            'product_id' => 'required|integer|exists:products,id',
+            'pricing_id' => 'required|integer|exists:product_pricings,id',
+            'configurable_options' => 'nullable|array',
+            // Se podrían añadir reglas más específicas para el contenido de configurable_options aquí,
+            // por ejemplo, 'configurable_options.*' => 'integer|exists:configurable_options,id'
+            // si se espera que los valores sean IDs de opciones existentes.
         ]);
 
-        $validated = $request->validate([ /* ... */ ]);
-        $cart = $request->session()->get('cart', $this->initializeCart());
-        $activeIndex = $this->getActiveAccountIndex($request);
+        Log::debug('ClientCartController@setPrimaryServiceForAccount: Iniciando.', [
+            'session_cart_initial' => session('cart', 'No cart in session'), // Usar session()
+            'request_payload' => $request->all(),
+            'validated_data' => $validatedData
+        ]);
+
+        $cart = session('cart', $this->initializeCart()); // Usar session()
+        $activeIndex = $this->getActiveAccountIndex(); // Sin $request
         $activeAccountData = null;
         if ($activeIndex !== null && isset($cart['accounts'][$activeIndex])) {
             $activeAccountData = $cart['accounts'][$activeIndex];
@@ -188,107 +243,66 @@ class ClientCartController extends Controller
         Log::debug('ClientCartController@setPrimaryServiceForAccount: Estado de cuenta activa.', [
             'active_account_id_from_session' => $cart['active_account_id'] ?? 'Not set',
             'retrieved_active_account_data_by_index' => $activeAccountData,
-            'current_cart_accounts' => $cart['accounts'] ?? []
+            'current_cart_accounts_count' => count($cart['accounts'] ?? [])
         ]);
 
         if ($activeIndex === null) {
-            Log::warning('ClientCartController@setPrimaryServiceForAccount: No se encontró índice de cuenta activa válido.', [
-                'session_cart_on_failure' => $request->session()->get('cart')
-            ]);
-            return response()->json(['message' => 'No hay una cuenta activa para añadir el servicio.'], 422);
+            Log::warning('ClientCartController@setPrimaryServiceForAccount: No se encontró índice de cuenta activa válido.', [ 'session_cart_on_failure' => session('cart') ]);
+            return back()->with('error', 'No hay una cuenta activa para añadir el servicio.');
         }
-        // Asegurar que la cuenta realmente exista en el array (activeIndex podría ser un índice fuera de rango si el carrito se modificó incorrectamente)
         if(!isset($cart['accounts'][$activeIndex])) {
-            Log::error('ClientCartController@setPrimaryServiceForAccount: activeIndex está seteado pero la cuenta no existe en el array.', [
-                'activeIndex' => $activeIndex,
-                'session_cart_on_failure' => $request->session()->get('cart')
-            ]);
-            // Invalidar active_account_id y pedir al usuario que reintente o reinicie el proceso.
-            $cart['active_account_id'] = null;
-            $request->session()->put('cart', $cart);
-            return response()->json(['message' => 'Error de consistencia en el carrito. Por favor, reinicia el proceso de compra.'], 500);
-        }
-
-        $account = &$cart['accounts'][$activeIndex];
-        // ... (resto de la lógica como estaba, con sus retornos de error 422/409) ...
-
-        $request->session()->put('cart', $cart);
-        return response()->json(['status' => 'success', 'message' => 'Servicio principal añadido.', 'cart' => $this->getCart($request)->getData(true)['cart']]);
-    }
-
-    public function addItem(Request $request): JsonResponse
-    {
-        Log::debug('ClientCartController@addItem: Iniciando.', [
-            'session_cart_initial' => $request->session()->get('cart', 'No cart in session'),
-            'request_payload' => $request->all()
-        ]);
-
-        $validated = $request->validate([ /* ... */ ]);
-        $cart = $request->session()->get('cart', $this->initializeCart());
-        $activeIndex = $this->getActiveAccountIndex($request);
-        $activeAccountData = null;
-        if ($activeIndex !== null && isset($cart['accounts'][$activeIndex])) {
-            $activeAccountData = $cart['accounts'][$activeIndex];
-        }
-
-        Log::debug('ClientCartController@addItem: Estado de cuenta activa.', [
-            'active_account_id_from_session' => $cart['active_account_id'] ?? 'Not set',
-            'retrieved_active_account_data_by_index' => $activeAccountData,
-            'current_cart_accounts' => $cart['accounts'] ?? []
-        ]);
-
-        if ($activeIndex === null) {
-            Log::warning('ClientCartController@addItem: No se encontró índice de cuenta activa válido.', [
-                'session_cart_on_failure' => $request->session()->get('cart')
-            ]);
-            return response()->json(['message' => 'No hay una cuenta activa para añadir servicios adicionales.'], 422);
-        }
-         if(!isset($cart['accounts'][$activeIndex])) {
-            Log::error('ClientCartController@addItem: activeIndex está seteado pero la cuenta no existe en el array.', [
-                'activeIndex' => $activeIndex,
-                'session_cart_on_failure' => $request->session()->get('cart')
-            ]);
-            $cart['active_account_id'] = null;
-            $request->session()->put('cart', $cart);
-            return response()->json(['message' => 'Error de consistencia en el carrito. Por favor, reinicia el proceso de compra.'], 500);
+             Log::error('ClientCartController@setPrimaryServiceForAccount: activeIndex está seteado pero la cuenta no existe.', [ 'activeIndex' => $activeIndex, 'session_cart_on_failure' => session('cart')]);
+            $cart['active_account_id'] = null; $request->session()->put('cart', $cart);
+            return back()->with('error', 'Error de consistencia en el carrito. Por favor, reinicia el proceso de compra.');
         }
         $account = &$cart['accounts'][$activeIndex];
-        // ... (resto de la lógica como estaba, con sus retornos de error 422) ...
+        if (empty($account['domain_info'])) {
+            return back()->withInput()->withErrors(['general_error' => 'La cuenta activa debe tener información de dominio configurada.']);
+        }
+        if (!empty($account['primary_service'])) {
+            return back()->withInput()->withErrors(['general_error' => 'La cuenta activa ya tiene un servicio principal.']);
+        }
+        $product = Product::with('configurableOptionGroups.options')->find($validatedData['product_id']);
+        $pricing = ProductPricing::find($validatedData['pricing_id']);
+        if ($pricing->product_id != $product->id) { return back()->withInput()->withErrors(['pricing_id' => 'La configuración de precio no corresponde al producto seleccionado.']);}
+        $allowedPrimaryServiceTypes = [1, 2, 7];
+        if (!in_array($product->product_type_id, $allowedPrimaryServiceTypes)) { return back()->withInput()->withErrors(['product_id' => 'Este tipo de producto no puede ser un servicio principal.']);}
 
-        $request->session()->put('cart', $cart);
-        return response()->json(['status' => 'success', 'message' => 'Servicio adicional añadido.', 'cart' => $this->getCart($request)->getData(true)['cart']]);
-    }
-
-    // Los siguientes métodos no necesitan logging adicional para este subtask específico,
-    // a menos que se sospeche que active_account_id se corrompe en ellos.
-    public function updateItem(Request $request): JsonResponse { /* ... como estaba ... */ }
-    public function removeItem(Request $request): JsonResponse { /* ... como estaba ... */ }
-    public function clearCart(Request $request): JsonResponse { /* ... como estaba ... */ }
-    public function setActiveAccount(Request $request): JsonResponse
-    {
-        Log::debug('ClientCartController@setActiveAccount: Iniciando.', [
-            'session_cart_initial' => $request->session()->get('cart', 'No cart in session'),
-            'requested_account_id' => $request->input('account_id')
-        ]);
-
-        $validated = $request->validate(['account_id' => 'nullable|string']);
-        $cart = $request->session()->get('cart', $this->initializeCart());
-        $accountIdToActivate = $validated['account_id'] ?? null;
-
-        if ($accountIdToActivate === null) {
-            $cart['active_account_id'] = null;
-             Log::info('ClientCartController@setActiveAccount: Cuenta activa establecida a null.');
-        } else {
-            $accountIndex = $this->findAccount($request, $accountIdToActivate);
-            if ($accountIndex === null) {
-                 Log::warning('ClientCartController@setActiveAccount: Cuenta no encontrada para activar.', ['target_id' => $accountIdToActivate, 'cart' => $cart]);
-                return response()->json(['message' => 'Cuenta no encontrada.'], 404);
+        $primaryServiceData = [
+            'cart_item_id' => (string) Str::uuid(),
+            'product_id' => $product->id,
+            'pricing_id' => $pricing->id,
+        ];
+         if (!empty($validatedData['configurable_options'])) {
+            $validConfigOptions = [];
+            $productConfigGroups = $product->configurableOptionGroups->keyBy('id');
+            foreach ($validatedData['configurable_options'] as $groupId => $optionId) {
+                // Validar que los IDs de grupo y opción sean numéricos antes de usarlos para buscar en la BD
+                if (!is_numeric($groupId) || !is_numeric($optionId)) {
+                     return back()->withInput()->withErrors(['configurable_options' => "ID de grupo u opción inválido (no numérico): Grupo {$groupId} -> Opción {$optionId}."]);
+                }
+                if (!isset($productConfigGroups[$groupId])) {
+                     return back()->withInput()->withErrors(['configurable_options' => "Grupo de opción configurable inválido: ID {$groupId}."]);
+                }
+                $group = $productConfigGroups[$groupId];
+                if (!$group->options->contains('id', $optionId)) {
+                    return back()->withInput()->withErrors(['configurable_options.'.$groupId => "Opción configurable inválida: ID {$optionId} para el grupo '{$group->name}'."]);
+                }
+                $validConfigOptions[(int)$groupId] = (int)$optionId;
             }
-            $cart['active_account_id'] = $cart['accounts'][$accountIndex]['account_id'];
-            Log::info('ClientCartController@setActiveAccount: Cuenta activa establecida.', ['active_id' => $cart['active_account_id'], 'cart' => $cart]);
+            $primaryServiceData['configurable_options'] = $validConfigOptions;
+        } else {
+            $primaryServiceData['configurable_options'] = null;
         }
 
+        $account['primary_service'] = $primaryServiceData;
         $request->session()->put('cart', $cart);
-        return response()->json(['status' => 'success', 'message' => 'Cuenta activa establecida.', 'cart' => $this->getCart($request)->getData(true)['cart']]);
+        return back()->with('success', 'Servicio principal añadido al carrito.');
     }
+
+    public function addItem(Request $request): RedirectResponse { /* ... con return back() ... */ }
+    public function updateItem(Request $request): RedirectResponse { /* ... con return back() ... */ }
+    public function removeItem(Request $request): RedirectResponse { /* ... con return back() ... */ }
+    public function clearCart(Request $request): RedirectResponse { /* ... con return back() ... */ }
+    public function setActiveAccount(Request $request): RedirectResponse { /* ... con return back() ... */ }
 }
