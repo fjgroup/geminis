@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
-use Illuminate\Database\Eloquent\ModelNotFoundException; // Aunque no se usa directamente, es bueno tenerlo por si acaso en el futuro.
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Exception;
 
 class ClientCheckoutController extends Controller
@@ -36,11 +36,7 @@ class ClientCheckoutController extends Controller
 
         $validatedData = $request->validate([
             'notes_to_client' => 'nullable|string|max:2000',
-            // Se comenta la validación de payment_method_slug para que no sea obligatoria si el cliente no elige uno explícitamente
-            // y se pueda procesar el pedido para generar una factura que luego pagará.
-            // Si se requiere un método de pago en este punto, se debe descomentar y ajustar la lógica.
-            // 'payment_method_slug' => 'nullable|string|exists:payment_methods,slug',
-            'payment_method_slug' => 'nullable|string', // Permitir cualquier string o null por ahora
+            'payment_method_slug' => 'nullable|string',
         ]);
 
         $additionalData = [
@@ -74,9 +70,53 @@ class ClientCheckoutController extends Controller
         }
     }
 
-    public function showSelectDomainPage(): InertiaResponse
+    public function showSelectDomainPage(Request $request): InertiaResponse
     {
-        return Inertia::render('Client/Checkout/SelectDomainPage');
+        // IDs proporcionados por el usuario para el producto y precio genéricos de dominio.
+        // Es RECOMENDABLE gestionar estos IDs a través de archivos de configuración
+        // (ej. config('myapp.generic_domain_product_id')) o un Seeder dedicado
+        // para asegurar la consistencia entre entornos.
+        $genericDomainProductId = 4;
+        $genericDomainPricingId = 8;
+
+        Log::info('Usando IDs de dominio genéricos para SelectDomainPage', [
+            'genericDomainProductId' => $genericDomainProductId,
+            'genericDomainPricingId' => $genericDomainPricingId
+        ]);
+
+        // Validación para asegurar que estos IDs existen y son del tipo correcto.
+        $productExists = Product::where('id', $genericDomainProductId)
+                                ->where('product_type_id', 3) // Asumiendo 3 = Registro de Dominio
+                                ->exists();
+        $pricingExists = ProductPricing::where('id', $genericDomainPricingId)
+                                ->where('product_id', $genericDomainProductId)
+                                ->exists();
+
+        if (!$productExists || !$pricingExists) {
+            Log::error('El ID del Producto de Dominio Genérico o el ID del Pricing Genérico no se encontraron en la BD, o no son del tipo/producto correcto.', [
+                'genericDomainProductId_val' => $genericDomainProductId,
+                'genericDomainPricingId_val' => $genericDomainPricingId,
+                'productExists' => $productExists,
+                'pricingExists' => $pricingExists
+            ]);
+            // En un entorno de producción, esto debería probablemente lanzar una excepción
+            // o redirigir con un error fatal, ya que la página no podrá funcionar correctamente.
+            // throw new \RuntimeException("Configuración de producto de dominio genérico incorrecta.");
+            // Para desarrollo, permitir continuar pero el frontend podría fallar o no permitir añadir al carrito.
+            // Establecer a null para que el frontend pueda detectar el error de configuración.
+            $finalProductId = null;
+            $finalPricingId = null;
+             // Opcionalmente, añadir un mensaje flash de error para el usuario si se redirige.
+             // session()->flash('error', 'Error de configuración del sistema. Por favor, contacte a soporte.');
+        } else {
+            $finalProductId = $genericDomainProductId;
+            $finalPricingId = $genericDomainPricingId;
+        }
+
+        return Inertia::render('Client/Checkout/SelectDomainPage', [
+            'genericDomainProductId' => $finalProductId, // Pasar como entero o null
+            'genericDomainPricingId' => $finalPricingId, // Pasar como entero o null
+        ]);
     }
 
     public function showSelectServicesPage(Request $request): InertiaResponse|RedirectResponse
@@ -85,7 +125,6 @@ class ClientCheckoutController extends Controller
         $cartData = $cartController->getCart($request)->getData(true);
         $cart = $cartData['cart'] ?? null;
 
-        // Validar que haya una cuenta activa y un dominio configurado
         if (empty($cart) || empty($cart['accounts']) || empty($cart['active_account_id'])) {
             return redirect()->route('client.checkout.selectDomain')->with('info', 'Por favor, selecciona o configura un dominio primero.');
         }
@@ -130,7 +169,6 @@ class ClientCheckoutController extends Controller
         if (empty($cart) || empty($cart['accounts'])) {
             return redirect()->route('client.dashboard')->with('info', 'Tu carrito está vacío. Por favor, añade productos antes de confirmar el pedido.');
         }
-        // Adicionalmente, verificar si hay al menos un ítem facturable en el carrito
         $hasBillableItem = false;
         foreach($cart['accounts'] as $account) {
             if (!empty($account['domain_info']['product_id']) || !empty($account['primary_service']) || !empty($account['additional_services'])) {
@@ -138,42 +176,23 @@ class ClientCheckoutController extends Controller
                 break;
             }
         }
-        if (!$hasBillableItem && !$this->cartHasOnlyDomainRegistrationWithoutProduct($cart, $cartController)) { // Pasar $cartController o $request
+        if (!$hasBillableItem && !$this->cartHasOnlyDomainRegistrationWithoutProduct($cart)) {
              return redirect()->route('client.checkout.selectServices')->with('info', 'No hay servicios seleccionados en tu carrito.');
         }
 
-
         return Inertia::render('Client/Checkout/ConfirmOrderPage', [
             'initialCart' => $cart,
-            // 'paymentMethods' => \App\Models\PaymentMethod::where('is_active', true)->orderBy('name')->get(['name', 'slug']),
         ]);
     }
 
-    // Helper para showConfirmOrderPage, similar al de PlaceOrderAction pero adaptado
-    private function cartHasOnlyDomainRegistrationWithoutProduct(array $cart, ClientCartController $cartController): bool
+    private function cartHasOnlyDomainRegistrationWithoutProduct(array $cart): bool
     {
-        // Esta función es para el caso donde solo hay un `domain_name` en `domain_info`
-        // pero NO hay `product_id` ni `pricing_id` asociados a él, ni otros servicios.
-        // Es un caso especial de "solo reservar dominio" que podría no generar factura inmediatamente.
-        // La lógica original en PlaceOrderAction es:
-        // if (count($cart['accounts']) !== 1) return false;
-        // $account = $cart['accounts'][0];
-        // return !empty($account['domain_info']['domain_name']) &&
-        //        empty($account['domain_info']['product_id']) &&
-        //        empty($account['primary_service']) &&
-        //        empty($account['additional_services']);
-        // Para el contexto de mostrar la página de confirmación, si el único "item" es un nombre de dominio
-        // sin producto asociado, probablemente no deberíamos llegar a la confirmación de "pedido"
-        // a menos que el acto de registrar un nombre de dominio sin producto sea en sí mismo un pedido.
-        // Si ese no es el caso, entonces esto debería considerarse un carrito "efectivamente vacío" para facturación.
-
-        // Simplificamos: si no hay product_id en domain_info, y no hay otros servicios, no es facturable aun.
         if (count($cart['accounts']) === 1) {
             $account = $cart['accounts'][0];
             if (empty($account['domain_info']['product_id']) &&
                 empty($account['primary_service']) &&
                 empty($account['additional_services'])) {
-                return true; // Es solo un nombre de dominio sin producto/precio.
+                return true;
             }
         }
         return false;

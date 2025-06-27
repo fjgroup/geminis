@@ -7,6 +7,7 @@ use App\Services\NameSiloService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Log; // Para logging si es necesario
 
 class DomainApiController extends Controller
 {
@@ -26,7 +27,7 @@ class DomainApiController extends Controller
     public function checkAvailability(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'domain' => 'required|string|max:255', // Podría añadirse una regex para validar mejor el formato de dominio
+            'domain' => 'required|string|max:255',
         ]);
 
         if ($validator->fails()) {
@@ -36,18 +37,19 @@ class DomainApiController extends Controller
         $domainName = $validator->validated()['domain'];
         $serviceResponse = $this->nameSiloService->checkDomainAvailability($domainName);
 
-        // Mapear la respuesta del servicio a la estructura que el frontend espera
         $frontendData = [
             'available' => ($serviceResponse['status'] === 'available'),
             'domain_name' => $serviceResponse['domain_name'],
-            'is_new' => ($serviceResponse['status'] === 'available'), // Asumir 'is_new' si está disponible para registro
-            'price' => $serviceResponse['price'] ?? null, // Precio de NameSilo
+            'is_new' => ($serviceResponse['status'] === 'available'),
+            'price' => $serviceResponse['price'] ?? null,
             'is_premium' => $serviceResponse['is_premium'] ?? false,
             'message' => $serviceResponse['message'],
-            'status_from_provider' => $serviceResponse['status'], // Para depuración o lógica avanzada en frontend
+            'status_from_provider' => $serviceResponse['status'],
         ];
 
         if ($serviceResponse['status'] === 'error') {
+            // El servicio ya debería haber logueado el error con más detalle.
+            // Devolvemos el mensaje del servicio al frontend.
             return response()->json(['status' => 'error', 'message' => $serviceResponse['message'], 'data' => $frontendData], 500);
         }
 
@@ -55,7 +57,7 @@ class DomainApiController extends Controller
     }
 
     /**
-     * Get TLD pricing information.
+     * Get TLD pricing information directly from NameSilo.
      *
      * @param Request $request
      * @return JsonResponse
@@ -63,77 +65,41 @@ class DomainApiController extends Controller
     public function getTldPricingInfo(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'tlds' => 'sometimes|array',
-            'tlds.*' => 'string|max:10', // ej. "com", "net"
+            'tlds' => 'sometimes|array', // 'tlds' es opcional
+            'tlds.*' => 'string|max:10|alpha_num', // Cada TLD como string, ej. "com", "net" (alpha_num para evitar puntos)
         ]);
 
         if ($validator->fails()) {
             return response()->json(['status' => 'error', 'message' => 'Lista de TLDs no válida.', 'errors' => $validator->errors()], 422);
         }
 
-        $requestedTlds = $validator->validated()['tlds'] ?? []; // TLDs específicos solicitados por el frontend
+        $requestedTlds = $validator->validated()['tlds'] ?? [];
 
-        // 1. Obtener precios de NameSilo (costo/referencia)
-        // Si $requestedTlds está vacío, NameSiloService->getTldPricingInfo podría devolver todos o un conjunto por defecto.
+        // 1. Obtener precios de NameSilo
+        // $nameSiloService->getTldPricingInfo ya devuelve un array ['tld' => ['registration' => X, ...]]
+        // o un array vacío si hay error o no hay TLDs.
         $nameSiloPrices = $this->nameSiloService->getTldPricingInfo($requestedTlds);
 
-        // 2. Obtener Productos Internos de Dominio (product_type_id = 3)
-        $internalDomainProductsRaw = \App\Models\Product::where('product_type_id', 3) // 3 = Registro de Dominio
-            ->where('status', 'active')
-            ->with(['pricings.billingCycle', 'productType']) // productType para el slug si se usa
-            ->get();
+        if ($nameSiloPrices === null) { // Podría ser null si el servicio tiene un error grave no capturado antes
+            Log::error('NameSiloService::getTldPricingInfo devolvió null inesperadamente.');
+            return response()->json(['status' => 'error', 'message' => 'No se pudo obtener la información de precios de TLDs del proveedor.'], 500);
+        }
 
-        // Asumimos que Product->name es el TLD sin el punto (ej. "com", "net")
-        // O si hay un campo `tld` dedicado, usarlo: ->keyBy('tld')
-        $internalDomainProducts = $internalDomainProductsRaw->keyBy(function ($product) {
-            return strtolower(str_replace('.', '', $product->name)); // Normalizar a minúsculas y sin punto
-        });
-
-        $responseTlds = [];
-
-        // 3. Mapear y Combinar Datos
-        // Iterar sobre los productos internos para asegurar que solo ofrecemos TLDs que tenemos configurados.
-        foreach ($internalDomainProducts as $tldKey => $internalProduct) {
-            $nameSiloTldInfo = $nameSiloPrices[$tldKey] ?? null;
-
-            $formattedPricings = $internalProduct->pricings->map(function ($pricing) {
-                return [
-                    'id' => $pricing->id,
-                    'term' => $pricing->billingCycle->name, // ej. "Anual", "2 Años"
-                    'years' => $pricing->billingCycle->period_in_years ?? $pricing->billingCycle->period_in_months / 12 ?? 1, // Calcular años
-                    'price' => (float) $pricing->price,
-                    'currency_code' => $pricing->currency_code,
-                    'setup_fee' => (float) ($pricing->setup_fee ?? 0),
-                    // Añadir más detalles del billing_cycle si es necesario
-                ];
-            })->sortBy('years')->values()->all(); // Ordenar por duración y reindexar
-
-            if(empty($formattedPricings)) {
-                // Si un producto de dominio interno no tiene precios de venta, podemos omitirlo o marcarlo.
-                // Por ahora lo omitimos.
-                continue;
-            }
-
-            $responseTlds[] = [
-                'tld' => $tldKey,
-                'internal_product_id' => $internalProduct->id,
-                'internal_product_slug' => $internalProduct->slug, // Para construir URLs si es necesario
-                'name_silo_info' => $nameSiloTldInfo, // Puede ser null si no hay info de NameSilo para este TLD
-                'pricings' => $formattedPricings, // Nuestros precios de venta
+        // 2. Formatear para el frontend: convertir el array asociativo a una lista de objetos
+        $formattedTldList = [];
+        foreach ($nameSiloPrices as $tld => $prices) {
+            // $prices ya contiene 'tld', 'registration', 'renewal', 'transfer', 'currency'
+            // Solo necesitamos asegurar que la estructura sea una lista de estos objetos.
+             $formattedTldList[] = [
+                'tld' => $tld, // ej. "com"
+                'name' => '.' . $tld, // ej. ".com" para mostrar
+                'name_silo_info' => $prices, // toda la info de precios de namesilo para este tld
+                // Ya no se incluyen 'internal_product_id', 'internal_product_slug', 'pricings' (internos)
+                // porque el objetivo es devolver solo la info de NameSilo.
+                // El frontend (SelectDomainPage) necesitará ser ajustado para usar esta nueva estructura.
             ];
         }
 
-        // Si $requestedTlds no estaba vacío, podríamos querer filtrar $responseTlds para devolver solo esos.
-        // Sin embargo, al iterar sobre $internalDomainProducts, ya estamos limitados a lo que ofrecemos.
-        // Si un TLD solicitado no es un producto interno, no aparecerá.
-        if (!empty($requestedTlds)) {
-            $responseTlds = array_filter($responseTlds, function ($tldData) use ($requestedTlds) {
-                return in_array($tldData['tld'], $requestedTlds);
-            });
-            $responseTlds = array_values($responseTlds); // Reindexar array
-        }
-
-
-        return response()->json(['status' => 'success', 'data' => $responseTlds]);
+        return response()->json(['status' => 'success', 'data' => $formattedTldList]);
     }
 }
