@@ -53,6 +53,7 @@ use App\Http\Controllers\LandingPageController; // Import the new LandingPageCon
 use App\Http\Controllers\Reseller\ResellerClientController;
 use App\Http\Controllers\Reseller\ResellerDashboardController; // Added for reseller dashboard
 use App\Http\Controllers\Api\ProductController as ApiProductController; // Import ApiProductController
+use App\Http\Controllers\Api\DomainApiController; // Import DomainApiController
 
 // Rutas para la administración
 // Aplicamos el middleware 'admin' para proteger estas rutas
@@ -280,6 +281,12 @@ Route::prefix('api/products')->name('api.products.')->group(function () {
     Route::get('/domain-registration', [ApiProductController::class, 'getDomainRegistrationProducts'])->name('domainRegistration');
     // Example for generic by type:
     // Route::get('/by-type/{typeIdentifier}', [ApiProductController::class, 'getProductsByType'])->name('byType');
+});
+
+// API Routes for Domain Operations (NameSilo, etc.)
+Route::prefix('api/domain')->name('api.domain.')->group(function () {
+    Route::get('/check-availability', [DomainApiController::class, 'checkAvailability'])->name('checkAvailability');
+    Route::get('/tld-pricing', [DomainApiController::class, 'getTldPricingInfo'])->name('tldPricingInfo');
 });
 
 

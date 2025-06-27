@@ -9,6 +9,7 @@ use App\Models\Product;
 use App\Models\ProductPricing;
 use App\Models\ConfigurableOptionGroup;
 use App\Models\ConfigurableOption;
+use App\Models\ConfigurableOptionPricing; // Asegurar importación
 use Illuminate\Support\Facades\Log;
 
 class ClientCartController extends Controller
@@ -28,14 +29,16 @@ class ClientCartController extends Controller
             $cart = $this->initializeCart();
         }
 
-        foreach ($cart['accounts'] as &$account) {
+        foreach ($cart['accounts'] as &$account) { // Usar referencia
+            // Enriquecer domain_info
             if (isset($account['domain_info']['product_id'], $account['domain_info']['pricing_id'])) {
                 $product = Product::find($account['domain_info']['product_id']);
                 $pricing = ProductPricing::find($account['domain_info']['pricing_id']);
                 if ($product && $pricing && $pricing->product_id == $product->id) {
                     $account['domain_info']['product_name'] = $product->name;
-                    $account['domain_info']['price'] = (float) $pricing->price;
-                    $account['domain_info']['currency_code'] = $pricing->currency_code;
+                    // Usar override_price si está presente para el precio mostrado en el carrito para el dominio
+                    $account['domain_info']['price'] = isset($account['domain_info']['override_price']) ? (float)$account['domain_info']['override_price'] : (float)$pricing->price;
+                    $account['domain_info']['currency_code'] = $pricing->currency_code; // Asumir que override_price está en la misma moneda
                 } else {
                     $account['domain_info']['product_name'] = 'Información no disponible';
                     $account['domain_info']['price'] = 0.00;
@@ -43,16 +46,19 @@ class ClientCartController extends Controller
                 }
             } elseif (isset($account['domain_info']['domain_name']) && !isset($account['domain_info']['product_id'])) {
                 $account['domain_info']['product_name'] = 'Registro de Dominio';
-                $account['domain_info']['price'] = 0.00;
+                $account['domain_info']['price'] = isset($account['domain_info']['override_price']) ? (float)$account['domain_info']['override_price'] : 0.00;
                 $account['domain_info']['currency_code'] = config('app.currency_code', 'USD');
             }
 
+            // Enriquecer primary_service
             if (isset($account['primary_service']['product_id'], $account['primary_service']['pricing_id'])) {
                 $product = Product::find($account['primary_service']['product_id']);
                 $pricing = ProductPricing::find($account['primary_service']['pricing_id']);
+
                 if ($product && $pricing && $pricing->product_id == $product->id) {
                     $account['primary_service']['product_name'] = $product->name;
-                    $account['primary_service']['price'] = (float) $pricing->price;
+                    $basePrice = (float) $pricing->price;
+                    $optionsPriceAdjustment = 0.0;
                     $account['primary_service']['currency_code'] = $pricing->currency_code;
 
                     if (isset($account['primary_service']['configurable_options']) && is_array($account['primary_service']['configurable_options'])) {
@@ -65,6 +71,12 @@ class ClientCartController extends Controller
                                     'group_id' => $group->id, 'group_name' => $group->name,
                                     'option_id' => $option->id, 'option_name' => $option->name,
                                 ];
+                                $optionPricing = ConfigurableOptionPricing::where('configurable_option_id', $option->id)
+                                    ->where('billing_cycle_id', $pricing->billing_cycle_id)
+                                    ->first();
+                                if ($optionPricing) {
+                                    $optionsPriceAdjustment += (float) $optionPricing->price;
+                                }
                             } else {
                                 $enrichedOptions[] = [
                                     'group_id' => $groupId, 'group_name' => "ID Grupo: {$groupId}",
@@ -74,6 +86,7 @@ class ClientCartController extends Controller
                         }
                         $account['primary_service']['configurable_options_details'] = $enrichedOptions;
                     }
+                    $account['primary_service']['price'] = $basePrice + $optionsPriceAdjustment;
                 } else {
                     $account['primary_service']['product_name'] = 'Servicio primario no disponible';
                     $account['primary_service']['price'] = 0.00;
@@ -147,7 +160,8 @@ class ClientCartController extends Controller
         $validated = $request->validate([
             'domain_name' => 'required|string|max:255',
             'product_id' => 'nullable|integer|exists:products,id',
-            'pricing_id' => 'nullable|integer|exists:product_pricings,id',
+            'pricing_id' => 'nullable|integer|exists:product_pricings,id', // Este es tu ProductPricing ID interno
+            'override_price' => 'nullable|numeric|min:0', // Precio de NameSilo
         ]);
 
         $cart = $request->session()->get('cart', $this->initializeCart());
@@ -155,25 +169,39 @@ class ClientCartController extends Controller
 
         $domainName = $validated['domain_name'];
         $productId = $validated['product_id'] ?? null;
-        $pricingId = $validated['pricing_id'] ?? null;
+        $pricingId = $validated['pricing_id'] ?? null; // Tu pricing_id interno
+        $overridePrice = $validated['override_price'] ?? null;
 
         if ($productId) {
             $product = Product::find($productId);
-            if ($product->product_type_id != 3) {
+            if ($product->product_type_id != 3) { // 3 = Registro de Dominio
                 return response()->json(['status' => 'error', 'message' => 'El producto seleccionado no es un tipo de registro de dominio válido.'], 422);
             }
-            if ($pricingId) {
+            if ($pricingId) { // Tu pricing_id interno es obligatorio si hay product_id
                 $pricing = ProductPricing::find($pricingId);
-                if ($pricing->product_id != $product->id) {
-                    return response()->json(['status' => 'error', 'message' => 'La configuración de precio no corresponde al producto de dominio seleccionado.'], 422);
+                if (!$pricing || $pricing->product_id != $product->id) {
+                    return response()->json(['status' => 'error', 'message' => 'La configuración de precio interna no corresponde al producto de dominio seleccionado.'], 422);
                 }
+            } else {
+                 return response()->json(['status' => 'error', 'message' => 'Se requiere un plan de precios interno para el producto de dominio.'], 422);
             }
-        } elseif ($pricingId && !$productId) {
-            return response()->json(['status' => 'error', 'message' => 'Se especificó un precio sin un producto de dominio.'], 422);
+        } elseif ($pricingId && !$productId) { // No debería ocurrir si la UI es correcta
+            return response()->json(['status' => 'error', 'message' => 'Se especificó un precio interno sin un producto de dominio.'], 422);
+        }
+        // Si no hay productId (ej. solo registrar nombre), no debería haber override_price de NameSilo para un producto específico.
+        // El override_price solo tiene sentido si estamos registrando un TLD que es un producto.
+        if (!$productId && $overridePrice !== null) {
+            // Log::warning('Override price provided without a product_id for domain registration.', $validated);
+            // Considerar si esto es un error o si se permite un override_price global para dominios "solo nombre".
+            // Por ahora, lo permitiremos, pero PlaceOrderAction lo ignorará si no hay product_id.
         }
 
+
         $domainInfo = [
-            'domain_name' => $domainName, 'product_id' => $productId, 'pricing_id' => $pricingId,
+            'domain_name' => $domainName,
+            'product_id' => $productId,
+            'pricing_id' => $pricingId, // Tu ProductPricing ID interno
+            'override_price' => $overridePrice, // Precio de NameSilo para el registro inicial
             'cart_item_id' => (string) Str::uuid(),
         ];
 
