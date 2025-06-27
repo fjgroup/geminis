@@ -72,10 +72,6 @@ class ClientCheckoutController extends Controller
 
     public function showSelectDomainPage(Request $request): InertiaResponse
     {
-        // IDs proporcionados por el usuario para el producto y precio genéricos de dominio.
-        // Es RECOMENDABLE gestionar estos IDs a través de archivos de configuración
-        // (ej. config('myapp.generic_domain_product_id')) o un Seeder dedicado
-        // para asegurar la consistencia entre entornos.
         $genericDomainProductId = 4;
         $genericDomainPricingId = 8;
 
@@ -84,13 +80,15 @@ class ClientCheckoutController extends Controller
             'genericDomainPricingId' => $genericDomainPricingId
         ]);
 
-        // Validación para asegurar que estos IDs existen y son del tipo correcto.
         $productExists = Product::where('id', $genericDomainProductId)
-                                ->where('product_type_id', 3) // Asumiendo 3 = Registro de Dominio
+                                ->where('product_type_id', 3)
                                 ->exists();
         $pricingExists = ProductPricing::where('id', $genericDomainPricingId)
                                 ->where('product_id', $genericDomainProductId)
                                 ->exists();
+
+        $finalProductId = null;
+        $finalPricingId = null;
 
         if (!$productExists || !$pricingExists) {
             Log::error('El ID del Producto de Dominio Genérico o el ID del Pricing Genérico no se encontraron en la BD, o no son del tipo/producto correcto.', [
@@ -99,43 +97,47 @@ class ClientCheckoutController extends Controller
                 'productExists' => $productExists,
                 'pricingExists' => $pricingExists
             ]);
-            // En un entorno de producción, esto debería probablemente lanzar una excepción
-            // o redirigir con un error fatal, ya que la página no podrá funcionar correctamente.
-            // throw new \RuntimeException("Configuración de producto de dominio genérico incorrecta.");
-            // Para desarrollo, permitir continuar pero el frontend podría fallar o no permitir añadir al carrito.
-            // Establecer a null para que el frontend pueda detectar el error de configuración.
-            $finalProductId = null;
-            $finalPricingId = null;
-             // Opcionalmente, añadir un mensaje flash de error para el usuario si se redirige.
-             // session()->flash('error', 'Error de configuración del sistema. Por favor, contacte a soporte.');
         } else {
             $finalProductId = $genericDomainProductId;
             $finalPricingId = $genericDomainPricingId;
         }
 
         return Inertia::render('Client/Checkout/SelectDomainPage', [
-            'genericDomainProductId' => $finalProductId, // Pasar como entero o null
-            'genericDomainPricingId' => $finalPricingId, // Pasar como entero o null
+            'genericDomainProductId' => $finalProductId,
+            'genericDomainPricingId' => $finalPricingId,
         ]);
     }
 
     public function showSelectServicesPage(Request $request): InertiaResponse|RedirectResponse
     {
+        Log::debug('ClientCheckoutController@showSelectServicesPage: Carrito al cargar la página.', [
+            'session_cart_on_load' => session('cart', 'No cart in session')
+        ]);
+
         $cartController = app(ClientCartController::class);
         $cartData = $cartController->getCart($request)->getData(true);
         $cart = $cartData['cart'] ?? null;
 
         if (empty($cart) || empty($cart['accounts']) || empty($cart['active_account_id'])) {
+            Log::warning('ClientCheckoutController@showSelectServicesPage: Carrito vacío o sin cuenta activa. Redirigiendo a selectDomain.', ['cart' => $cart]);
             return redirect()->route('client.checkout.selectDomain')->with('info', 'Por favor, selecciona o configura un dominio primero.');
         }
+
         $activeAccount = null;
+        $activeAccountIdFromSession = $cart['active_account_id']; // Guardar antes del bucle para loguear
         foreach($cart['accounts'] as $account) {
-            if($account['account_id'] === $cart['active_account_id']) {
+            if($account['account_id'] === $activeAccountIdFromSession) {
                 $activeAccount = $account;
                 break;
             }
         }
+
         if (!$activeAccount || empty($activeAccount['domain_info']['domain_name'])) {
+             Log::warning('ClientCheckoutController@showSelectServicesPage: Cuenta activa no encontrada o sin nombre de dominio. Redirigiendo a selectDomain.', [
+                'active_account_id_from_session' => $activeAccountIdFromSession,
+                'active_account_found_in_loop' => $activeAccount,
+                'cart' => $cart
+             ]);
              return redirect()->route('client.checkout.selectDomain')->with('info', 'Por favor, configura un dominio para la cuenta activa antes de seleccionar servicios.');
         }
 
@@ -162,13 +164,20 @@ class ClientCheckoutController extends Controller
 
     public function showConfirmOrderPage(Request $request): InertiaResponse|RedirectResponse
     {
+        // Añadir log similar para esta página también
+        Log::debug('ClientCheckoutController@showConfirmOrderPage: Carrito al cargar la página.', [
+            'session_cart_on_load' => session('cart', 'No cart in session')
+        ]);
+
         $cartController = app(ClientCartController::class);
         $cartData = $cartController->getCart($request)->getData(true);
         $cart = $cartData['cart'] ?? null;
 
         if (empty($cart) || empty($cart['accounts'])) {
+             Log::warning('ClientCheckoutController@showConfirmOrderPage: Carrito vacío. Redirigiendo al dashboard.', ['cart' => $cart]);
             return redirect()->route('client.dashboard')->with('info', 'Tu carrito está vacío. Por favor, añade productos antes de confirmar el pedido.');
         }
+
         $hasBillableItem = false;
         foreach($cart['accounts'] as $account) {
             if (!empty($account['domain_info']['product_id']) || !empty($account['primary_service']) || !empty($account['additional_services'])) {
@@ -177,6 +186,7 @@ class ClientCheckoutController extends Controller
             }
         }
         if (!$hasBillableItem && !$this->cartHasOnlyDomainRegistrationWithoutProduct($cart)) {
+             Log::warning('ClientCheckoutController@showConfirmOrderPage: Carrito sin items facturables. Redirigiendo a selectServices.', ['cart' => $cart]);
              return redirect()->route('client.checkout.selectServices')->with('info', 'No hay servicios seleccionados en tu carrito.');
         }
 
