@@ -6,8 +6,12 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasOne; // Added HasOne import
-use App\Models\ClientService; // Added ClientService import
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use App\Models\ClientService;
+use Illuminate\Support\Carbon; // Import Carbon
+use Illuminate\Support\Facades\DB; // Import DB for potential raw queries if needed, or for transactions
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str; // Import Str if using Str::random or other Str helpers
 
 class Invoice extends Model
 {
@@ -26,7 +30,7 @@ class Invoice extends Model
         'due_date',
         'paid_date',
         'status',
-        'paypal_order_id', // Added
+        'paypal_order_id',
         'subtotal',
         'tax1_name',
         'tax1_rate',
@@ -54,6 +58,56 @@ class Invoice extends Model
         'paid_date' => 'date',
         'requested_date' => 'datetime',
     ];
+
+    /**
+     * Generate a unique invoice number.
+     * Example: INV-YYYYMMDD-XXXX (XXXX is a 4-digit padded number)
+     *
+     * @return string
+     */
+    public static function generateInvoiceNumber(): string
+    {
+        $prefix = 'INV-' . Carbon::now()->format('Ymd') . '-';
+        $nextNumber = 1;
+
+        // Lock la tabla o usar una transacción para evitar race conditions si la concurrencia es muy alta.
+        // Para la mayoría de los casos, ordenar por ID desc podría ser suficiente si la creación es secuencial.
+        // Una solución más robusta podría usar una secuencia de BD o una tabla dedicada para contadores.
+
+        // Obtener la última factura creada hoy con el mismo prefijo para determinar el siguiente número secuencial.
+        // Usar `orderBy('invoice_number', 'desc')` puede ser problemático si el padding no es consistente
+        // o si hay caracteres no numéricos. Ordenar por ID es más seguro si son auto-incrementales y se crean en orden.
+        $latestInvoiceToday = self::where('invoice_number', 'LIKE', $prefix . '%')
+                                ->orderBy('id', 'desc')
+                                ->first();
+
+        if ($latestInvoiceToday) {
+            // Extraer la parte numérica del último número de factura
+            // Asume formato $prefixNNNN
+            $lastNumberStr = substr($latestInvoiceToday->invoice_number, strlen($prefix));
+
+            if (is_numeric($lastNumberStr)) {
+                $nextNumber = (int)$lastNumberStr + 1;
+            } else {
+                // Esto podría ocurrir si el formato del número de factura cambia o hay datos corruptos.
+                // Como fallback, podríamos contar cuántas facturas hay hoy con ese prefijo.
+                // Sin embargo, esto no es a prueba de race conditions sin bloqueos.
+                // Por simplicidad y asumiendo que el formato se mantiene con str_pad, este fallback es menos probable.
+                // Considerar loguear una advertencia aquí.
+                Log::warning('Formato de número de factura inesperado al generar nuevo número.', [
+                    'last_invoice_number' => $latestInvoiceToday->invoice_number,
+                    'extracted_part' => $lastNumberStr
+                ]);
+                // Fallback a un número basado en el conteo + 1 (menos preciso que la secuencia)
+                $countTodayWithPrefix = self::where('invoice_number', 'LIKE', $prefix . '%')->count();
+                $nextNumber = $countTodayWithPrefix + 1;
+            }
+        }
+        // Si no hay facturas hoy con ese prefijo, $nextNumber permanece 1.
+
+        return $prefix . str_pad($nextNumber, 4, '0', STR_PAD_LEFT);
+    }
+
 
     /**
      * Get the client that owns the invoice.
