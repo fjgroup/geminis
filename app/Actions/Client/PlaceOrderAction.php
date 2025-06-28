@@ -43,7 +43,7 @@ class PlaceOrderAction
             $ipAddress = $additionalData['ip_address'] ?? request()->ip();
             $paymentGatewaySlug = $additionalData['payment_gateway_slug'] ?? null;
 
-            $currencyCode = $this->determineCurrencyCode($cart); // Llamada al método
+            $invoiceCurrencyCode = $this->determineCurrencyCode($cart);
 
             $invoice = new Invoice([
                 'client_id' => $client->id,
@@ -53,7 +53,7 @@ class PlaceOrderAction
                 'issue_date' => Carbon::now()->toDateString(),
                 'due_date' => Carbon::now()->addDays(config('invoicing.due_days', 7))->toDateString(),
                 'status' => 'unpaid',
-                'currency_code' => $currencyCode, // Usar la moneda determinada
+                'currency_code' => $invoiceCurrencyCode,
                 'subtotal' => 0, 'tax1_rate' => $client->tax_rate_1 ?? 0,
                 'tax1_description' => $client->tax_description_1 ?? 'Tax 1', 'tax1_amount' => 0,
                 'tax2_rate' => $client->tax_rate_2 ?? 0,
@@ -74,17 +74,27 @@ class PlaceOrderAction
                     $productModel = Product::find($item['product_id']);
                     $pricingModel = ProductPricing::with('billingCycle')->find($item['pricing_id']);
 
+                    if (!$productModel || !$pricingModel) {
+                        Log::error("PlaceOrderAction: Producto o Pricing no encontrado para domain_info.", ['item' => $item]);
+                        throw new Exception("Error al procesar el ítem de dominio: producto o precio no encontrado.");
+                    }
+
                     $unitPrice = (isset($item['override_price']) && is_numeric($item['override_price']))
                                  ? (float) $item['override_price']
-                                 : (float) $item['price'];
+                                 : (float) $pricingModel->price;
 
-                    $setupFee = $pricingModel->setup_fee ?? 0;
+                    $setupFee = $pricingModel->setup_fee ?? 0.0;
                     $itemTotalPrice = $unitPrice + $setupFee;
-                    $description = "Registro de Dominio: {$item['domain_name']} ({$pricingModel->billingCycle->name})";
+
+                    $description = $productModel->name;
+                    if ($pricingModel->billingCycle) {
+                        $description .= ' (' . $pricingModel->billingCycle->name . ')';
+                    }
+                    $description .= ' - ' . $item['domain_name'];
 
                     $invoiceItemsCollection[] = new InvoiceItem([
-                        'product_id' => $item['product_id'],
-                        'product_pricing_id' => $item['pricing_id'],
+                        'product_id' => $productModel->id,
+                        'product_pricing_id' => $pricingModel->id,
                         'description' => $description, 'quantity' => 1, 'unit_price' => $unitPrice,
                         'setup_fee' => $setupFee, 'total_price' => $itemTotalPrice,
                         'taxable' => $productModel->taxable ?? true,
@@ -92,26 +102,33 @@ class PlaceOrderAction
                         'item_type' => $productModel->productType?->slug ?? 'domain_registration',
                     ]);
                     $currentSubtotal += $itemTotalPrice;
+
                     $clientServicesCollection[] = new ClientService([
-                        'client_id' => $client->id, 'product_id' => $item['product_id'],
-                        'product_pricing_id' => $item['pricing_id'], 'billing_cycle_id' => $pricingModel->billing_cycle_id,
-                        'domain_name' => $item['domain_name'], 'status' => 'Pending',
+                        'client_id' => $client->id, 'product_id' => $productModel->id,
+                        'product_pricing_id' => $pricingModel->id, 'billing_cycle_id' => $pricingModel->billing_cycle_id,
+                        'domain_name' => $item['domain_name'], 'status' => 'pending',
                         'registration_date' => Carbon::now(),
                         'next_due_date' => $this->calculateNextDueDate($pricingModel->billingCycle),
                         'notes' => "Extensión: .{$item['tld_extension']}",
                         'first_payment_amount' => $unitPrice,
+                        'billing_amount' => $pricingModel->price,
                     ]);
                 }
 
                 if (!empty($account['primary_service'])) {
                     $item = $account['primary_service'];
-                    $productModel = Product::with('productType', 'configurableOptionGroups.options.pricings')
+                    $productModel = Product::with(['productType', 'configurableOptionGroups.options.pricings'])
                                         ->find($item['product_id']);
                     $pricingModel = ProductPricing::with('billingCycle')->find($item['pricing_id']);
 
+                    if (!$productModel || !$pricingModel) {
+                        Log::error("PlaceOrderAction: Producto o Pricing no encontrado para primary_service.", ['item' => $item]);
+                        throw new Exception("Error al procesar el servicio principal: producto o precio no encontrado.");
+                    }
+
                     $quantity = $item['quantity'] ?? 1;
-                    $baseUnitPriceFromModel = $pricingModel->price;
-                    $currentSetupFee = $pricingModel->setup_fee ?? 0;
+                    $baseUnitPrice = (float) $pricingModel->price;
+                    $currentSetupFee = (float) ($pricingModel->setup_fee ?? 0.0);
 
                     $configurableOptionsDescriptionArray = [];
                     $configurableOptionsPriceAdjustment = 0.0;
@@ -125,27 +142,32 @@ class PlaceOrderAction
                             if ($group && $option) {
                                 $configurableOptionsDescriptionArray[] = $group->name . ': ' . $option->name;
                                 $configurableOptionsForServiceNotes[] = $group->name . ': ' . $option->name;
+
                                 $optionPricing = $option->pricings
                                     ->where('billing_cycle_id', $pricingModel->billing_cycle_id)
                                     ->first();
                                 if ($optionPricing) {
-                                    $configurableOptionsPriceAdjustment += $optionPricing->price;
-                                    $currentSetupFee += $optionPricing->setup_fee ?? 0;
+                                    $configurableOptionsPriceAdjustment += (float) $optionPricing->price;
+                                    $currentSetupFee += (float) ($optionPricing->setup_fee ?? 0.0);
                                 }
                             }
                         }
                     }
 
-                    $finalUnitPrice = $baseUnitPriceFromModel + $configurableOptionsPriceAdjustment;
+                    $finalUnitPrice = $baseUnitPrice + $configurableOptionsPriceAdjustment;
                     $itemTotalPrice = ($finalUnitPrice * $quantity) + $currentSetupFee;
-                    $description = $item['product_name'] . ' (' . $pricingModel->billingCycle->name . ')';
+
+                    $description = $productModel->name;
+                    if ($pricingModel->billingCycle) {
+                        $description .= ' (' . $pricingModel->billingCycle->name . ')';
+                    }
                     if (!empty($configurableOptionsDescriptionArray)) {
                         $description .= ' - Opciones: ' . implode('; ', $configurableOptionsDescriptionArray);
                     }
                     if ($domainNameForService) { $description .= ' - ' . $domainNameForService; }
 
                     $invoiceItemsCollection[] = new InvoiceItem([
-                        'product_id' => $item['product_id'], 'product_pricing_id' => $item['pricing_id'],
+                        'product_id' => $productModel->id, 'product_pricing_id' => $pricingModel->id,
                         'description' => $description, 'quantity' => $quantity, 'unit_price' => $finalUnitPrice,
                         'setup_fee' => $currentSetupFee, 'total_price' => $itemTotalPrice,
                         'taxable' => $productModel->taxable ?? true, 'domain_name' => $domainNameForService,
@@ -153,12 +175,13 @@ class PlaceOrderAction
                     ]);
                     $currentSubtotal += $itemTotalPrice;
                     $clientServicesCollection[] = new ClientService([
-                        'client_id' => $client->id, 'product_id' => $item['product_id'],
-                        'product_pricing_id' => $item['pricing_id'], 'billing_cycle_id' => $pricingModel->billing_cycle_id,
-                        'domain_name' => $domainNameForService, 'status' => 'Pending',
+                        'client_id' => $client->id, 'product_id' => $productModel->id,
+                        'product_pricing_id' => $pricingModel->id, 'billing_cycle_id' => $pricingModel->billing_cycle_id,
+                        'domain_name' => $domainNameForService, 'status' => 'pending',
                         'registration_date' => Carbon::now(), 'next_due_date' => $this->calculateNextDueDate($pricingModel->billingCycle),
                         'notes' => implode("\n", $configurableOptionsForServiceNotes),
                         'first_payment_amount' => $finalUnitPrice,
+                        'billing_amount' => $finalUnitPrice,
                     ]);
                 }
 
@@ -166,14 +189,25 @@ class PlaceOrderAction
                     foreach ($account['additional_services'] as $item) {
                         $productModel = Product::with('productType')->find($item['product_id']);
                         $pricingModel = ProductPricing::with('billingCycle')->find($item['pricing_id']);
+
+                        if (!$productModel || !$pricingModel) {
+                            Log::error("PlaceOrderAction: Producto o Pricing no encontrado para additional_service.", ['item' => $item]);
+                            throw new Exception("Error al procesar un servicio adicional: producto o precio no encontrado.");
+                        }
+
                         $quantity = $item['quantity'] ?? 1;
-                        $unitPrice = $item['price'];
-                        $setupFee = $pricingModel->setup_fee ?? 0;
+                        $unitPrice = (float) $pricingModel->price;
+                        $setupFee = (float) ($pricingModel->setup_fee ?? 0.0);
                         $itemTotalPrice = ($unitPrice * $quantity) + $setupFee;
-                        $description = $item['product_name'] . ' (' . $pricingModel->billingCycle->name . ')' . ($domainNameForService ? ' - Associated with ' . $domainNameForService : '');
+
+                        $description = $productModel->name;
+                        if ($pricingModel->billingCycle) {
+                             $description .= ' (' . $pricingModel->billingCycle->name . ')';
+                        }
+                        if ($domainNameForService) { $description .= ' - Associated with ' . $domainNameForService; }
 
                         $invoiceItemsCollection[] = new InvoiceItem([
-                            'product_id' => $item['product_id'], 'product_pricing_id' => $item['pricing_id'],
+                            'product_id' => $productModel->id, 'product_pricing_id' => $pricingModel->id,
                             'description' => $description, 'quantity' => $quantity, 'unit_price' => $unitPrice,
                             'setup_fee' => $setupFee, 'total_price' => $itemTotalPrice,
                             'taxable' => $productModel->taxable ?? true, 'domain_name' => null,
@@ -181,11 +215,12 @@ class PlaceOrderAction
                         ]);
                         $currentSubtotal += $itemTotalPrice;
                         $clientServicesCollection[] = new ClientService([
-                            'client_id' => $client->id, 'product_id' => $item['product_id'],
-                            'product_pricing_id' => $item['pricing_id'], 'billing_cycle_id' => $pricingModel->billing_cycle_id,
-                            'domain_name' => $domainNameForService, 'status' => 'Pending',
+                            'client_id' => $client->id, 'product_id' => $productModel->id,
+                            'product_pricing_id' => $pricingModel->id, 'billing_cycle_id' => $pricingModel->billing_cycle_id,
+                            'domain_name' => $domainNameForService, 'status' => 'pending',
                             'registration_date' => Carbon::now(), 'next_due_date' => $this->calculateNextDueDate($pricingModel->billingCycle),
                             'first_payment_amount' => $unitPrice,
+                            'billing_amount' => $unitPrice,
                         ]);
                     }
                 }
@@ -214,60 +249,106 @@ class PlaceOrderAction
 
     private function validateCartItemsAvailability(array $cart): void
     {
-        foreach ($cart['accounts'] as $account) {
-             if (isset($account['domain_info']['product_id']) && isset($account['domain_info']['pricing_id'])) {
-                $this->validateCartItem($account['domain_info'], false, isset($account['domain_info']['override_price']));
+        if (empty($cart['accounts'])) {
+            throw new Exception("El carrito está vacío o no tiene cuentas.");
+        }
+
+        foreach ($cart['accounts'] as $accountIndex => $account) {
+            if (empty($account['account_id'])) {
+                 throw new Exception("Cuenta inválida en el carrito (índice {$accountIndex}): falta account_id.");
             }
 
-            $this->validateCartItem($account['primary_service'] ?? null, true);
-            if (!empty($account['additional_services'])) {
-                foreach ($account['additional_services'] as $additionalService) {
-                    $this->validateCartItem($additionalService);
+            $accountIdentifierForError = $account['domain_info']['domain_name'] ?? "Cuenta ID: {$account['account_id']}";
+
+            if (isset($account['domain_info']) && !empty($account['domain_info']['product_id'])) {
+                $domainPricing = ProductPricing::with('billingCycle')->find($account['domain_info']['pricing_id']);
+                if (!$domainPricing || !$domainPricing->billingCycle) {
+                    throw new Exception("Ciclo de facturación no encontrado para el servicio de dominio en '{$accountIdentifierForError}'.");
+                }
+                $this->validateCartItem($account['domain_info'], 'domain_info', $domainPricing->billingCycle, false, isset($account['domain_info']['override_price']));
+            }
+
+            if (isset($account['primary_service']) && !empty($account['primary_service']['product_id'])) {
+                $primaryServicePricing = ProductPricing::with('billingCycle')->find($account['primary_service']['pricing_id']);
+                if (!$primaryServicePricing || !$primaryServicePricing->billingCycle) {
+                    throw new Exception("Ciclo de facturación no encontrado para el servicio principal en '{$accountIdentifierForError}'.");
+                }
+                $this->validateCartItem($account['primary_service'], 'primary_service', $primaryServicePricing->billingCycle, true, false);
+            }
+
+            if (isset($account['additional_services']) && is_array($account['additional_services'])) {
+                foreach ($account['additional_services'] as $additionalServiceIndex => $additionalService) {
+                    if (empty($additionalService['product_id']) || empty($additionalService['pricing_id'])) {
+                        Log::warning("Servicio adicional malformado omitido en validación.", ['service_data' => $additionalService]);
+                        continue;
+                    }
+                    $additionalServicePricing = ProductPricing::with('billingCycle')->find($additionalService['pricing_id']);
+                     if (!$additionalServicePricing || !$additionalServicePricing->billingCycle) {
+                        $serviceName = $additionalService['product_name'] ?? "ID: {$additionalService['product_id']}";
+                        throw new Exception("Ciclo de facturación no encontrado para el servicio adicional '{$serviceName}' en '{$accountIdentifierForError}'.");
+                    }
+                    $this->validateCartItem($additionalService, "additional_service[{$additionalServiceIndex}]", $additionalServicePricing->billingCycle, false, false);
                 }
             }
         }
     }
 
-    private function validateCartItem(?array $item, bool $checkConfigOptions = false, bool $hasOverridePrice = false): void
+    private function validateCartItem(?array $item, string $itemKeyInAccount, BillingCycle $itemBillingCycle, bool $checkConfigOptions = false, bool $hasOverridePrice = false): void
     {
-        if (empty($item) || empty($item['product_id']) || empty($item['pricing_id'])) {
-            return;
+        if (empty($item) || !isset($item['product_id']) || !isset($item['pricing_id'])) {
+            Log::warning("PlaceOrderAction@validateCartItem: Ítem inválido o faltan product_id/pricing_id.", ['item' => $item, 'item_key' => $itemKeyInAccount]);
+            throw new Exception("Un ítem en el carrito es inválido ({$itemKeyInAccount}). Contacte a soporte.");
         }
 
         $product = Product::find($item['product_id']);
-        $productNameForError = $item['product_name'] ?? "Producto ID: {$item['product_id']}";
-        if (isset($item['domain_name']) && isset($item['tld_extension'])) {
+        $productNameForError = $item['product_name'] ?? "ID Prod:{$item['product_id']}";
+        if (isset($item['domain_name']) && $itemKeyInAccount === 'domain_info') {
             $productNameForError = $item['domain_name'];
         }
 
         if (!$product || $product->status !== 'active') {
-            throw new Exception("El producto '{$productNameForError}' ya no está disponible o fue desactivado.");
+            throw new Exception("El producto '{$productNameForError}' ({$itemKeyInAccount}) ya no está disponible.");
         }
 
         $pricing = ProductPricing::find($item['pricing_id']);
-        if (!$pricing || $pricing->product_id != $product->id) {
-            throw new Exception("La opción de precio seleccionada para '{$productNameForError}' ya no es válida.");
+        if (!$pricing || $pricing->product_id !== $product->id) {
+            throw new Exception("La configuración de precio para '{$productNameForError}' ({$itemKeyInAccount}) es inválida.");
+        }
+        if ($pricing->billing_cycle_id !== $itemBillingCycle->id) {
+             Log::error("Discrepancia de BillingCycle en validateCartItem", [
+                'item_pricing_id' => $pricing->id, 'item_bc_id' => $pricing->billing_cycle_id,
+                'expected_bc_id' => $itemBillingCycle->id, 'item_key' => $itemKeyInAccount
+            ]);
+            throw new Exception("Error de consistencia en el ciclo de facturación para '{$productNameForError}' ({$itemKeyInAccount}).");
         }
 
-        if ($hasOverridePrice) {
-            if (!isset($item['override_price']) || !is_numeric($item['override_price'])) {
-                 throw new Exception("Se esperaba un precio de registro especial para '{$productNameForError}' pero no se encontró o no es válido.");
+        if ($itemKeyInAccount === 'domain_info' && $hasOverridePrice) {
+            if (!isset($item['override_price']) || !is_numeric($item['override_price']) || (float)$item['override_price'] < 0) {
+                throw new Exception("El precio de registro para el dominio {$productNameForError} es inválido.");
             }
         }
 
-        if ($checkConfigOptions && isset($item['configurable_options']) && is_array($item['configurable_options'])) {
-            $productWithOptions = Product::with('configurableOptionGroups.options.pricings')->find($item['product_id']);
-            foreach ($item['configurable_options'] as $groupId => $optionId) {
-                $group = $productWithOptions->configurableOptionGroups->find($groupId);
-                $option = $group ? $group->options->find($optionId) : null;
+        if ($itemKeyInAccount === 'primary_service' && $checkConfigOptions && isset($item['configurable_options']) && is_array($item['configurable_options'])) {
+            $product->loadMissing('configurableOptionGroups.options.pricings');
 
-                if (!$group || !$option) {
-                    throw new Exception("La opción configurable seleccionada (Grupo ID: {$groupId}, Opción ID: {$optionId}) para '{$productNameForError}' ya no es válida.");
+            foreach ($item['configurable_options'] as $groupId => $optionId) {
+                if (empty($groupId) || empty($optionId) || !is_numeric($groupId) || !is_numeric($optionId)) {
+                     throw new Exception("Opción configurable inválida (IDs no numéricos) para '{$productNameForError}'.");
                 }
 
-                $optionPricing = $option->pricings->where('billing_cycle_id', $pricing->billing_cycle_id)->first();
+                $group = $product->configurableOptionGroups->find($groupId);
+                if (!$group) {
+                    throw new Exception("Grupo de opción configurable inválido (ID: {$groupId}) para '{$productNameForError}'.");
+                }
+
+                $option = $group->options->find($optionId);
+                if (!$option) {
+                    throw new Exception("Opción configurable inválida (ID: {$optionId}) para el grupo '{$group->name}' en '{$productNameForError}'.");
+                }
+
+                $optionPricing = $option->pricings->where('billing_cycle_id', $itemBillingCycle->id)->first();
                 if (!$optionPricing) {
-                    throw new Exception("El precio para la opción configurable '{$option->name}' del grupo '{$group->name}' para el ciclo de facturación seleccionado ya no es válido para '{$productNameForError}'.");
+                     Log::debug("No se encontró ConfigurableOptionPricing para la opción {$option->id} ('{$option->name}') y ciclo {$itemBillingCycle->id} en producto '{$productNameForError}'. Se asume precio 0 para esta opción/ciclo.");
                 }
             }
         }
@@ -275,29 +356,82 @@ class PlaceOrderAction
 
     private function determineCurrencyCode(array $cart): string
     {
-        foreach ($cart['accounts'] as $account) {
-            // Priorizar domain_info, luego primary_service, luego el primer additional_service
-            $itemsToCheck = [];
-            if (!empty($account['domain_info'])) $itemsToCheck[] = $account['domain_info'];
-            if (!empty($account['primary_service'])) $itemsToCheck[] = $account['primary_service'];
-            if (!empty($account['additional_services'])) {
-                $itemsToCheck = array_merge($itemsToCheck, $account['additional_services']);
-            }
+        if (isset($cart['accounts']) && count($cart['accounts']) > 0) {
+            foreach ($cart['accounts'] as $account) {
+                $itemsToScan = [];
+                // Recolectar pricing_id de todos los items que lo tengan
+                if (isset($account['domain_info']) && !empty($account['domain_info']['pricing_id'])) {
+                    $itemsToScan[] = $account['domain_info']['pricing_id'];
+                }
+                if (isset($account['primary_service']) && !empty($account['primary_service']['pricing_id'])) {
+                    $itemsToScan[] = $account['primary_service']['pricing_id'];
+                }
+                if (isset($account['additional_services']) && is_array($account['additional_services'])) {
+                    foreach ($account['additional_services'] as $additionalItem) {
+                        if (isset($additionalItem['pricing_id'])) {
+                            $itemsToScan[] = $additionalItem['pricing_id'];
+                        }
+                    }
+                }
 
-            foreach ($itemsToCheck as $item) {
-                if (!empty($item['currency_code']) && is_string($item['currency_code'])) {
-                    return $item['currency_code'];
+                foreach ($itemsToScan as $pricingId) {
+                    $pricing = ProductPricing::find($pricingId); // Consultar solo una vez
+                    if ($pricing && !empty($pricing->currency_code) && is_string($pricing->currency_code)) {
+                        Log::debug('PlaceOrderAction@determineCurrencyCode: Moneda determinada desde el ítem del carrito.', [
+                            'pricing_id_for_currency' => $pricingId,
+                            'currency_code' => $pricing->currency_code
+                        ]);
+                        return $pricing->currency_code;
+                    }
                 }
             }
         }
-        // Si no se encuentra ningún currency_code en el carrito, usar el de la configuración de la app.
+
         $defaultCurrency = config('app.currency_code', 'USD');
         Log::warning('PlaceOrderAction@determineCurrencyCode: No se pudo determinar el código de moneda de los ítems del carrito. Usando por defecto.', [
-            'cart' => $cart, // Loguear el carrito puede ser muy verboso, considerar IDs o resumen.
+            'active_account_id' => $cart['active_account_id'] ?? 'N/A',
+            'num_accounts' => count($cart['accounts'] ?? []),
             'default_currency_used' => $defaultCurrency
         ]);
         return $defaultCurrency;
     }
 
-    private function calculateNextDueDate(BillingCycle $billingCycle): Carbon { /* ... sin cambios ... */ }
+    private function calculateNextDueDate(BillingCycle $billingCycle): Carbon
+    {
+        $startDate = Carbon::today();
+
+        $multiplier = (int) ($billingCycle->cycle_multiplier ?? 1);
+        if ($multiplier < 1) {
+            Log::warning('PlaceOrderAction@calculateNextDueDate: Multiplicador de ciclo inválido o nulo, usando 1 por defecto.', [
+                'billing_cycle_id' => $billingCycle->id,
+                'original_multiplier' => $billingCycle->cycle_multiplier
+            ]);
+            $multiplier = 1;
+        }
+
+        $unitInput = $billingCycle->cycle_unit ?? 'month';
+        $unit = strtolower(trim($unitInput));
+        if (empty($unit)) {
+            Log::warning('PlaceOrderAction@calculateNextDueDate: cycle_unit estaba vacío o solo espacios, usando "month" por defecto.', [
+                'billing_cycle_id' => $billingCycle->id,
+                'original_unit' => $billingCycle->cycle_unit
+            ]);
+            $unit = 'month';
+        }
+
+        switch ($unit) {
+            case 'day': case 'days': return $startDate->addDays($multiplier);
+            case 'week': case 'weeks': return $startDate->addWeeks($multiplier);
+            case 'month': case 'months': return $startDate->addMonthsNoOverflow($multiplier);
+            case 'quarter': case 'quarters': return $startDate->addMonthsNoOverflow($multiplier * 3);
+            case 'year': case 'years': return $startDate->addYearsNoOverflow($multiplier);
+            default:
+                Log::error('PlaceOrderAction@calculateNextDueDate: Unidad de ciclo de facturación desconocida o no manejada.', [
+                    'billing_cycle_id' => $billingCycle->id,
+                    'cycle_unit_received' => $unitInput,
+                    'cycle_multiplier_received' => $billingCycle->cycle_multiplier ?? 'N/A'
+                ]);
+                return $startDate->addMonthsNoOverflow(1);
+        }
+    }
 }
