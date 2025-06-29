@@ -21,6 +21,39 @@ const formAdditionalService = useForm({ product_id: null, pricing_id: null });
 const currentCart = ref(null); // Se inicializará con watchEffect
 const currentSelectedMainProduct = ref(null);
 const selectedConfigurableOptions = ref({});
+
+// Computed para asegurar que selectedConfigurableOptions esté siempre inicializado
+const safeSelectedOptions = computed(() => {
+    const options = selectedConfigurableOptions.value;
+
+    // Asegurar que cada producto tenga su objeto inicializado
+    props.mainServiceProducts.forEach(product => {
+        if (!options[product.id]) {
+            options[product.id] = {};
+        }
+
+        // Inicializar opciones para cada grupo
+        if (product.configurable_option_groups) {
+            product.configurable_option_groups.forEach(group => {
+                // Para radio buttons (grupos)
+                if (!options[product.id][group.id]) {
+                    options[product.id][group.id] = null;
+                }
+
+                // Para checkboxes (opciones individuales)
+                if (group.options) {
+                    group.options.forEach(option => {
+                        if (options[product.id][option.id] === undefined) {
+                            options[product.id][option.id] = false;
+                        }
+                    });
+                }
+            });
+        }
+    });
+
+    return options;
+});
 const activeDomainName = ref(''); // Se actualizará con watchEffect
 
 // Computed para el nombre de la cuenta activa (evita problemas de sintaxis)
@@ -267,23 +300,9 @@ const goToFinalCheckout = () => {
 };
 
 onMounted(() => {
-    // Inicializar selectedConfigurableOptions para cada producto principal que tenga opciones
-    // y asegurar que currentCart y activeDomainName se establezcan inicialmente desde props.
-    // watchEffect se encargará de esto y de futuras actualizaciones.
-    // La llamada inicial a watchEffect ocurrirá después del montaje si props.initialCart está disponible.
-
-    // Si props.initialCart puede no estar disponible inmediatamente (aunque Inertia usualmente lo asegura),
-    // se podría forzar una actualización inicial aquí si es necesario, pero watchEffect es preferible.
-    // currentCart.value = JSON.parse(JSON.stringify(props.initialCart));
-    // (Lógica de activeDomainName también se movería aquí o se dejaría en watchEffect)
-
-    props.mainServiceProducts.forEach(product => {
-        if (product.configurable_option_groups && product.configurable_option_groups.length > 0) {
-            if (!selectedConfigurableOptions.value[product.id]) {
-                selectedConfigurableOptions.value[product.id] = {};
-            }
-        }
-    });
+    console.log('--- onMounted ---');
+    console.log('Props:', props);
+    console.log('safeSelectedOptions:', safeSelectedOptions.value);
 });
 
 </script>
@@ -328,10 +347,10 @@ onMounted(() => {
 
                                             <!-- Características base del producto -->
                                             <div v-if="product.base_resources && Object.keys(product.base_resources).length > 0"
-                                                class="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                                                <h5 class="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">
+                                                class="p-3 mb-4 rounded-lg bg-blue-50 dark:bg-blue-900/20">
+                                                <h5 class="mb-2 text-sm font-medium text-blue-800 dark:text-blue-200">
                                                     Características incluidas:</h5>
-                                                <div class="grid grid-cols-2 md:grid-cols-3 gap-2 text-xs text-blue-700 dark:text-blue-300">
+                                                <div class="grid grid-cols-2 gap-2 text-xs text-blue-700 md:grid-cols-3 dark:text-blue-300">
                                                     <div v-for="(value, key) in product.base_resources" :key="key" v-if="value">
                                                         <span class="font-medium">{{ formatResourceName(key) }}:</span> {{ formatResourceValue(key, value) }}
                                                     </div>
@@ -340,13 +359,13 @@ onMounted(() => {
 
                                             <!-- Ciclos de facturación (ahora arriba) -->
                                             <div class="mb-4">
-                                                <p class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Elige tu ciclo de facturación:</p>
-                                                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                                                <p class="mb-3 text-sm font-medium text-gray-700 dark:text-gray-300">Elige tu ciclo de facturación:</p>
+                                                <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                                                     <button v-for="pricing in product.pricings" :key="pricing.id"
                                                         @click="handleSelectPrimaryService(product.id, pricing.id)"
                                                         :disabled="formPrimaryService.processing"
                                                         class="flex flex-col items-center justify-center p-4 min-h-[120px] text-center border rounded-lg hover:bg-indigo-50 dark:hover:bg-gray-700 dark:border-gray-600 transition-colors duration-200 shadow-sm hover:shadow-md">
-                                                        <span class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">{{ pricing.billing_cycle.name }}</span>
+                                                        <span class="mb-2 text-sm font-semibold text-gray-900 dark:text-gray-100">{{ pricing.billing_cycle.name }}</span>
                                                         <div class="flex flex-col items-center space-y-1">
                                                             <div class="text-center">
                                                                 <!-- Precio con descuento -->
@@ -361,11 +380,11 @@ onMounted(() => {
                                                             </div>
                                                             <!-- Badge de descuento -->
                                                             <span v-if="getDiscountPercentage(product.id, pricing.billing_cycle.id) > 0"
-                                                                  class="text-xs text-green-600 dark:text-green-400 font-medium bg-green-100 dark:bg-green-900/30 px-2 py-1 rounded-full">
+                                                                  class="px-2 py-1 text-xs font-medium text-green-600 bg-green-100 rounded-full dark:text-green-400 dark:bg-green-900/30">
                                                                 -{{ getDiscountPercentage(product.id, pricing.billing_cycle.id) }}% descuento
                                                             </span>
                                                             <span v-if="pricing.setup_fee && pricing.setup_fee > 0"
-                                                                  class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                                                  class="mt-1 text-xs text-gray-500 dark:text-gray-400">
                                                                 Setup: {{ formatCurrency(pricing.setup_fee, pricing.currency_code) }}
                                                             </span>
                                                         </div>
@@ -376,19 +395,19 @@ onMounted(() => {
 
                                         <!-- Sección de configuración (ahora siempre visible si hay opciones) -->
                                         <div v-if="product.configurable_option_groups && product.configurable_option_groups.length > 0"
-                                            class="mt-6 p-4 space-y-4 rounded-lg bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 border border-purple-200 dark:border-purple-700">
-                                            <div class="flex items-center space-x-2 mb-4">
+                                            class="p-4 mt-6 space-y-4 border border-purple-200 rounded-lg bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 dark:border-purple-700">
+                                            <div class="flex items-center mb-4 space-x-2">
                                                 <svg class="w-5 h-5 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
                                                 </svg>
                                                 <h5 class="text-lg font-semibold text-purple-800 dark:text-purple-200">Configura y Potencia tu servicio</h5>
                                             </div>
-                                            <p class="text-sm text-purple-700 dark:text-purple-300 mb-4">
+                                            <p class="mb-4 text-sm text-purple-700 dark:text-purple-300">
                                                 Personaliza tu plan agregando recursos adicionales según tus necesidades.
                                             </p>
 
                                             <div v-for="group in product.configurable_option_groups" :key="group.id"
-                                                class="p-4 border border-purple-200 rounded-lg dark:border-purple-600 bg-white dark:bg-gray-800">
+                                                class="p-4 bg-white border border-purple-200 rounded-lg dark:border-purple-600 dark:bg-gray-800">
                                                 <div class="flex items-center justify-between mb-3">
                                                     <div>
                                                         <label class="text-sm font-medium text-gray-800 dark:text-gray-300">
@@ -396,12 +415,12 @@ onMounted(() => {
                                                             <span v-if="group.is_required" class="text-red-500">*</span>
                                                         </label>
                                                         <!-- Mostrar cantidad base si existe -->
-                                                        <div v-if="group.base_quantity" class="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                                                        <div v-if="group.base_quantity" class="mt-1 text-xs text-blue-600 dark:text-blue-400">
                                                             Incluido: {{ group.base_quantity }} {{ group.name.toLowerCase() }}
                                                         </div>
                                                     </div>
                                                     <span v-if="group.is_required"
-                                                        class="text-xs text-yellow-600 bg-yellow-100 px-2 py-1 rounded">
+                                                        class="px-2 py-1 text-xs text-yellow-600 bg-yellow-100 rounded">
                                                         Obligatorio
                                                     </span>
                                                 </div>
@@ -413,27 +432,27 @@ onMounted(() => {
 
                                                 <div v-if="group.options && group.options.length > 0" class="space-y-3">
                                                     <div v-for="option in group.options" :key="option.id"
-                                                        class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"">
+                                                        class="flex items-center justify-between p-3 transition-colors border border-gray-200 rounded-lg bg-gray-50 dark:bg-gray-700 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600"">
                                                         <div class="flex-1">
                                                             <div class="flex items-center space-x-3">
                                                                 <!-- Checkbox para opciones no obligatorias -->
                                                                 <input
                                                                     v-if="option.option_type === 'checkbox' || !group.is_required"
                                                                     :id="`option_${option.id}`" type="checkbox"
-                                                                    v-model="selectedConfigurableOptions[product.id][option.id]"
-                                                                    class="h-4 w-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500">
+                                                                    v-model="safeSelectedOptions[product.id][option.id]"
+                                                                    class="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500">
 
                                                                 <!-- Radio button para opciones obligatorias -->
                                                                 <input v-else-if="group.is_required"
                                                                     :id="`option_${option.id}`" type="radio"
                                                                     :name="`group_${group.id}`" :value="option.id"
-                                                                    v-model="selectedConfigurableOptions[product.id][group.id]"
-                                                                    class="h-4 w-4 text-purple-600 border-gray-300 focus:ring-purple-500">
+                                                                    v-model="safeSelectedOptions[product.id][group.id]"
+                                                                    class="w-4 h-4 text-purple-600 border-gray-300 focus:ring-purple-500">
 
                                                                 <label :for="`option_${option.id}`"
                                                                     class="flex-1 cursor-pointer">
                                                                     <div
-                                                                        class="font-medium text-sm text-gray-900 dark:text-gray-100">
+                                                                        class="text-sm font-medium text-gray-900 dark:text-gray-100">
                                                                         {{ option.name }}
                                                                     </div>
                                                                     <div v-if="option.description"
@@ -452,7 +471,7 @@ onMounted(() => {
                                                                     </div>
                                                                     <!-- Mostrar precio si existe -->
                                                                     <div v-if="option.pricings && option.pricings.length > 0"
-                                                                        class="text-xs text-green-600 dark:text-green-400 font-medium">
+                                                                        class="text-xs font-medium text-green-600 dark:text-green-400">
                                                                         {{ formatCurrency(option.pricings[0].price,
                                                                         option.pricings[0].currency_code) }}
                                                                         <span
@@ -467,7 +486,7 @@ onMounted(() => {
                                                             <div v-if="option.option_type === 'quantity' && (selectedConfigurableOptions[product.id][option.id] || group.is_required)"
                                                                 class="mt-2 ml-7">
                                                                 <label
-                                                                    class="block text-xs font-medium text-gray-700 mb-1">
+                                                                    class="block mb-1 text-xs font-medium text-gray-700">
                                                                     Cantidad:
                                                                 </label>
                                                                 <input type="number" :min="option.min_value || 1"
@@ -478,7 +497,7 @@ onMounted(() => {
                                                         </div>
 
                                                         <!-- Precio de la opción -->
-                                                        <div class="text-right ml-4">
+                                                        <div class="ml-4 text-right">
                                                             <div v-if="getOptionPricing(option, product)"
                                                                 class="text-sm">
                                                                 <div
@@ -549,7 +568,7 @@ onMounted(() => {
                                                     </span>
                                                 </div>
                                                 <div class="text-right">
-                                                    <span class="font-semibold text-lg">{{ formatCurrency(pricing.price, pricing.currency_code) }}</span>
+                                                    <span class="text-lg font-semibold">{{ formatCurrency(pricing.price, pricing.currency_code) }}</span>
                                                     <div v-if="pricing.setup_fee && pricing.setup_fee > 0"
                                                          class="text-xs text-gray-500">
                                                         Setup: {{ formatCurrency(pricing.setup_fee, pricing.currency_code) }}
@@ -589,7 +608,7 @@ onMounted(() => {
                                                     </span>
                                                 </div>
                                                 <div class="text-right">
-                                                    <span class="font-semibold text-lg">{{ formatCurrency(pricing.price, pricing.currency_code) }}</span>
+                                                    <span class="text-lg font-semibold">{{ formatCurrency(pricing.price, pricing.currency_code) }}</span>
                                                     <div v-if="pricing.setup_fee && pricing.setup_fee > 0"
                                                          class="text-xs text-gray-500">
                                                         Setup: {{ formatCurrency(pricing.setup_fee, pricing.currency_code) }}

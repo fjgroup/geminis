@@ -29,6 +29,15 @@ class ClientCartController extends Controller
 
     public function getCart(Request $request): JsonResponse
     {
+        $cartData = $this->getCartData($request);
+        return response()->json($cartData);
+    }
+
+    /**
+     * Get cart data without JSON wrapper (for internal use)
+     */
+    public function getCartData(Request $request): array
+    {
         $cart = $request->session()->get('cart', $this->initializeCart());
         if (! isset($cart['accounts']) || ! isset($cart['active_account_id'])) {
             $cart = $this->initializeCart();
@@ -110,7 +119,8 @@ class ClientCartController extends Controller
             }
         }
         unset($account);
-        return response()->json(['status' => 'success', 'cart' => $cart]);
+
+        return ['status' => 'success', 'cart' => $cart];
     }
 
     private function findAccount($accountId): ?int

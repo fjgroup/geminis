@@ -32,7 +32,7 @@ class ConfigurableOptionGroup extends Model
     public function products(): BelongsToMany
     {
         return $this->belongsToMany(Product::class, 'product_configurable_option_groups')
-            ->withPivot('display_order', 'base_quantity')
+            ->withPivot('display_order', 'base_quantity', 'is_required')
             ->withTimestamps();
     }
 

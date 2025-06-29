@@ -119,7 +119,7 @@ class ClientCheckoutController extends Controller
         ]);
 
         $cartController = app(ClientCartController::class);
-        $cartData       = $cartController->getCart($request)->getData(true);
+        $cartData       = $cartController->getCartData($request);
         $cart           = $cartData['cart'] ?? null;
 
         if (empty($cart) || empty($cart['accounts']) || empty($cart['active_account_id'])) {
@@ -151,7 +151,15 @@ class ClientCheckoutController extends Controller
 
         $mainServiceProducts = Product::whereIn('product_type_id', $mainServiceTypeIds)
             ->where('status', 'active')
-            ->with(['pricings.billingCycle', 'productType', 'configurableOptionGroups.options.pricings.billingCycle'])
+            ->with([
+                'pricings.billingCycle',
+                'productType',
+                'configurableOptionGroups' => function ($query) {
+                    $query->withPivot('base_quantity', 'display_order', 'is_required')
+                        ->orderBy('product_configurable_option_groups.display_order');
+                },
+                'configurableOptionGroups.options.pricings.billingCycle',
+            ])
             ->orderBy('display_order')
             ->get()
             ->map(function ($product) {
@@ -184,8 +192,9 @@ class ClientCheckoutController extends Controller
                             'id'            => $group->id,
                             'name'          => $group->name,
                             'description'   => $group->description,
-                            'is_required'   => $group->is_required,
-                            'display_order' => $group->display_order,
+                            'is_required'   => $group->pivot ? $group->pivot->is_required : false, // Desde la tabla pivote
+                            'display_order' => $group->pivot ? $group->pivot->display_order : 0,   // Desde la tabla pivote
+                            'base_quantity' => $group->pivot ? $group->pivot->base_quantity : 0,   // Desde la tabla pivote
                             'options'       => $group->options->map(function ($option) {
                                 return [
                                     'id'            => $option->id,
@@ -266,12 +275,31 @@ class ClientCheckoutController extends Controller
                 ];
             });
 
-        return Inertia::render('Client/Checkout/SelectServicesPage', [
-            'initialCart'         => $cart,
-            'mainServiceProducts' => $mainServiceProducts,
-            'sslProducts'         => $sslProducts,
-            'licenseProducts'     => $licenseProducts,
+        // Log para debug de productos cargados
+        Log::debug('ClientCheckoutController@showSelectServicesPage: Productos cargados.', [
+            'mainServiceProducts_count' => count($mainServiceProducts),
+            'sslProducts_count'         => count($sslProducts),
+            'licenseProducts_count'     => count($licenseProducts),
+            'activeAccount'             => $activeAccount,
+            'first_product_sample'      => $mainServiceProducts->first(),
         ]);
+
+        try {
+            return Inertia::render('Client/Checkout/SelectServicesPage', [
+                'initialCart'         => $cart,
+                'mainServiceProducts' => $mainServiceProducts,
+                'sslProducts'         => $sslProducts,
+                'licenseProducts'     => $licenseProducts,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('ClientCheckoutController@showSelectServicesPage: Error al renderizar página.', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return redirect()->route('client.checkout.selectDomain')
+                ->with('error', 'Error al cargar la página de servicios. Por favor, inténtalo de nuevo.');
+        }
     }
 
     public function showConfirmOrderPage(Request $request): InertiaResponse | RedirectResponse

@@ -5,6 +5,7 @@ use App\Models\BillingCycle;
 use App\Models\DiscountPercentage;
 use App\Models\Product;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Str;
 
 class DiscountPercentageSeeder extends Seeder
 {
@@ -23,8 +24,9 @@ class DiscountPercentageSeeder extends Seeder
             6 => 35.00, // Trienal - 35%
         ];
 
-        // Productos ID 1, 2, 3
-        $productIds = [1, 2, 3];
+        // Productos de hosting: ID 2 (Eco), 3 (Pro), 4 (Ultra)
+        // El producto ID 1 es dominio y NO tiene descuentos
+        $productIds = [2, 3, 4];
 
         // Obtener nombres de productos y ciclos para generar nombres descriptivos
         $products      = Product::whereIn('id', $productIds)->get();
@@ -60,6 +62,6 @@ class DiscountPercentageSeeder extends Seeder
             }
         }
 
-        $this->command->info('✅ Descuentos creados correctamente para productos 1, 2, 3 y todos los ciclos');
+        $this->command->info('✅ Descuentos creados correctamente para productos de hosting (2, 3, 4) y todos los ciclos');
     }
 }

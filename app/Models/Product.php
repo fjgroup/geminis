@@ -62,8 +62,9 @@ class Product extends Model
     public function configurableOptionGroups(): BelongsToMany
     {
         return $this->belongsToMany(ConfigurableOptionGroup::class, 'product_configurable_option_groups')
-            ->withPivot('display_order', 'base_quantity')
-            ->withTimestamps();
+            ->withPivot('display_order', 'base_quantity', 'is_required')
+            ->withTimestamps()
+            ->orderBy('product_configurable_option_groups.display_order');
     }
 
     public function pricings(): HasMany
