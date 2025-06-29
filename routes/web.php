@@ -20,40 +20,40 @@
 |
 */
 
-use Illuminate\Foundation\Application;
-use Illuminate\Support\Facades\Route;
-use Inertia\Inertia;
+use App\Http\Controllers\Admin\AdminClientServiceController;
+use App\Http\Controllers\Admin\AdminDashboardController;
+use App\Http\Controllers\Admin\AdminInvoiceController;
 
 // Importaciones de controladores
-use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\Admin\AdminDashboardController;
-use App\Http\Controllers\Admin\AdminProductController;
-use App\Http\Controllers\Admin\UserController as AdminUserController;
-use App\Http\Controllers\Admin\ConfigurableOptionGroupController;
-use App\Http\Controllers\Admin\ConfigurableOptionController;
-use App\Http\Controllers\Admin\SearchController;
-// use App\Http\Controllers\Admin\AdminOrderController; // Removed
-use App\Http\Controllers\Admin\AdminInvoiceController; // Import the admin invoice controller
-use App\Http\Controllers\Admin\AdminTransactionController; // Import the admin transaction controller
-use App\Http\Controllers\Admin\AdminClientServiceController; // Import the admin client service controller
 use App\Http\Controllers\Admin\AdminPaymentMethodController;
+use App\Http\Controllers\Admin\AdminProductController;
+use App\Http\Controllers\Admin\AdminProductTypeController;
+use App\Http\Controllers\Admin\AdminTransactionController;
+use App\Http\Controllers\Admin\ConfigurableOptionController;
+use App\Http\Controllers\Admin\ConfigurableOptionGroupController;
+// use App\Http\Controllers\Admin\AdminOrderController; // Removed
+use App\Http\Controllers\Admin\UserController as AdminUserController;   // Import the admin invoice controller
+use App\Http\Controllers\Api\DomainApiController;                       // Import the admin transaction controller
+use App\Http\Controllers\Api\ProductController as ApiProductController; // Import the admin client service controller
+use App\Http\Controllers\Client\ClientCheckoutController;
 use App\Http\Controllers\Client\ClientDashboardController;
 // use App\Http\Controllers\Client\ClientOrderController; // Removed
-use App\Http\Controllers\Client\ClientCheckoutController; // Added
-use App\Http\Controllers\Client\ClientServiceController; // Import the client service controller
-use App\Http\Controllers\Client\InvoicePaymentController as ClientInvoicePaymentController; // Import the client invoice payment controller and alias it
-use App\Http\Controllers\Client\InvoiceController as ClientInvoiceController; // Import the client invoice controller and alias it
-use App\Http\Controllers\Client\TransactionController as ClientTransactionController; // Import the client transaction controller and alias it
-use App\Http\Controllers\Client\ClientManualPaymentController; // Import the manual payment controller
-use App\Http\Controllers\Client\ClientFundAdditionController; // Import the fund addition controller
-use App\Http\Controllers\Client\PayPalController; // Import the PayPalController
-use App\Http\Controllers\Client\PayPalPaymentController; // Import the new PayPalPaymentController
-use App\Http\Controllers\Admin\AdminProductTypeController; // Import the new ProductTypeController
-use App\Http\Controllers\LandingPageController; // Import the new LandingPageController
-use App\Http\Controllers\Reseller\ResellerClientController;
-use App\Http\Controllers\Reseller\ResellerDashboardController; // Added for reseller dashboard
-use App\Http\Controllers\Api\ProductController as ApiProductController; // Import ApiProductController
-use App\Http\Controllers\Api\DomainApiController; // Import DomainApiController
+use App\Http\Controllers\Client\ClientFundAdditionController;                               // Added
+use App\Http\Controllers\Client\ClientManualPaymentController;                              // Import the client service controller
+use App\Http\Controllers\Client\ClientServiceController;                                    // Import the client invoice payment controller and alias it
+use App\Http\Controllers\Client\InvoiceController as ClientInvoiceController;               // Import the client invoice controller and alias it
+use App\Http\Controllers\Client\InvoicePaymentController as ClientInvoicePaymentController; // Import the client transaction controller and alias it
+use App\Http\Controllers\Client\PayPalController;                                           // Import the manual payment controller
+use App\Http\Controllers\Client\PayPalPaymentController;                                    // Import the fund addition controller
+use App\Http\Controllers\Client\TransactionController as ClientTransactionController;       // Import the PayPalController
+use App\Http\Controllers\LandingPageController;                                             // Import the new PayPalPaymentController
+use App\Http\Controllers\ProfileController;                                                 // Import the new ProductTypeController
+use App\Http\Controllers\Reseller\ResellerClientController;                                 // Import the new LandingPageController
+use App\Http\Controllers\Reseller\ResellerDashboardController;
+use Illuminate\Foundation\Application; // Added for reseller dashboard
+use Illuminate\Support\Facades\Route;  // Import ApiProductController
+use Inertia\Inertia;
+// Import DomainApiController
 
 // Rutas para la administración
 // Aplicamos el middleware 'admin' para proteger estas rutas
@@ -91,7 +91,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'verified', 'admin']
     Route::get('/project-progress', function () {
         // Aquí no necesitas pasar datos porque el componente los tiene o los carga de localStorage
         return Inertia::render('Admin/ProjectProgress');
-    })->middleware(['auth', 'verified', /* tu middleware de admin si es necesario */])->name('project.progress');
+    })->middleware(['auth', 'verified' /* tu middleware de admin si es necesario */])->name('project.progress');
 
     // Route for storing transactions for an invoice
     Route::post('/invoices/{invoice}/transactions', [AdminTransactionController::class, 'store'])->name('invoices.transactions.store');
@@ -109,8 +109,6 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'verified', 'admin']
     Route::resource('product-types', AdminProductTypeController::class);
 });
 
-
-
 // Rutas para el Panel de Revendedor
 Route::middleware(['auth', 'verified', 'role.reseller'])->prefix('reseller-panel')->name('reseller.')->group(function () {
     // Dashboard del revendedor
@@ -123,75 +121,72 @@ Route::middleware(['auth', 'verified', 'role.reseller'])->prefix('reseller-panel
     // Aquí añadirías las rutas para edit, update, show, destroy de clientes por el revendedor
 });
 
-
 // Rutas para el área de cliente
 Route::prefix('client')->name('client.')->middleware(['auth', 'verified'])->group(function () { // Added 'verified' middleware
-  // Ruta para el dashboard de cliente
-  Route::get('/', [ClientDashboardController::class, 'index'])->name('dashboard'); // Route for client dashboard
+                                                                                                    // Ruta para el dashboard de cliente
+    Route::get('/', [ClientDashboardController::class, 'index'])->name('dashboard');                // Route for client dashboard
 
-  // Checkout Route (Legacy or direct product link)
-  Route::get('/checkout/product/{product}', [ClientCheckoutController::class, 'showProductCheckoutPage'])->name('checkout.product');
-  // Route::post('/checkout/product/{product}/submit', [ClientCheckoutController::class, 'submitProductCheckout'])->name('checkout.submit'); // Replaced by new flow submit
+    // Checkout Route (Legacy or direct product link)
+    Route::get('/checkout/product/{product}', [ClientCheckoutController::class, 'showProductCheckoutPage'])->name('checkout.product');
+    // Route::post('/checkout/product/{product}/submit', [ClientCheckoutController::class, 'submitProductCheckout'])->name('checkout.submit'); // Replaced by new flow submit
 
-  // New Checkout Flow Routes
-  Route::post('/checkout/submit', [ClientCheckoutController::class, 'submitCurrentOrder'])->name('checkout.submit'); // New submit for cart-based checkout
-  Route::get('/checkout/select-domain', [ClientCheckoutController::class, 'showSelectDomainPage'])->name('checkout.selectDomain');
-  Route::get('/checkout/select-services', [ClientCheckoutController::class, 'showSelectServicesPage'])->name('checkout.selectServices');
-  Route::get('/checkout/confirm', [ClientCheckoutController::class, 'showConfirmOrderPage'])->name('checkout.confirm');
+                                                                                                                       // New Checkout Flow Routes
+    Route::post('/checkout/submit', [ClientCheckoutController::class, 'submitCurrentOrder'])->name('checkout.submit'); // New submit for cart-based checkout
+    Route::get('/checkout/select-domain', [ClientCheckoutController::class, 'showSelectDomainPage'])->name('checkout.selectDomain');
+    Route::get('/checkout/select-services', [ClientCheckoutController::class, 'showSelectServicesPage'])->name('checkout.selectServices');
+    Route::get('/checkout/confirm', [ClientCheckoutController::class, 'showConfirmOrderPage'])->name('checkout.confirm');
 
+                                                                 // Rutas de Recurso para la gestión de servicios de cliente
+    Route::resource('services', ClientServiceController::class); // Consolidated service routes using resource including index
 
-  // Rutas de Recurso para la gestión de servicios de cliente
-  Route::resource('services', ClientServiceController::class); // Consolidated service routes using resource including index
+                                                                                                                                                       // Rutas para la gestión de facturas de cliente
+    Route::resource('invoices', App\Http\Controllers\Client\ClientInvoiceController::class)->except(['create', 'store', 'edit', 'update', 'destroy']); // Use resource for invoices, exclude non-client actions
+    Route::post('/invoices/{invoice}/pay-with-balance', [App\Http\Controllers\Client\ClientInvoiceController::class, 'payWithBalance'])->name('invoices.payWithBalance');
 
-  // Rutas para la gestión de facturas de cliente
-  Route::resource('invoices', App\Http\Controllers\Client\ClientInvoiceController::class)->except(['create', 'store', 'edit', 'update', 'destroy']); // Use resource for invoices, exclude non-client actions
-  Route::post('/invoices/{invoice}/pay-with-balance', [ App\Http\Controllers\Client\ClientInvoiceController::class, 'payWithBalance'])->name('invoices.payWithBalance');
+    // Manual Payment Routes for Client
+    Route::get('/invoices/{invoice}/manual-payment', [ClientManualPaymentController::class, 'showPaymentForm'])->name('invoices.manualPayment.create');
+    Route::post('/invoices/{invoice}/manual-payment', [ClientManualPaymentController::class, 'processManualPayment'])->name('invoices.manualPayment.store');
+    Route::post('/invoices/{invoice}/cancel-payment-report', [App\Http\Controllers\Client\ClientInvoiceController::class, 'cancelPaymentReport'])->name('invoices.cancelPaymentReport');
 
-  // Manual Payment Routes for Client
-  Route::get('/invoices/{invoice}/manual-payment', [ClientManualPaymentController::class, 'showPaymentForm'])->name('invoices.manualPayment.create');
-  Route::post('/invoices/{invoice}/manual-payment', [ClientManualPaymentController::class, 'processManualPayment'])->name('invoices.manualPayment.store');
-  Route::post('/invoices/{invoice}/cancel-payment-report', [App\Http\Controllers\Client\ClientInvoiceController::class, 'cancelPaymentReport'])->name('invoices.cancelPaymentReport');
+    // Simulated payment route (if you keep it for other gateways)
+    Route::post('/invoices/{invoice}/pay', [ClientInvoicePaymentController::class, 'store'])->name('invoices.payment.store');
 
+    // Old PayPal Routes (Commented out)
+    // Route::get('/paypal/checkout/{invoice}', [PayPalController::class, 'checkout'])->name('paypal.checkout');
+    // Route::get('/paypal/return/{invoice}', [PayPalController::class, 'success'])->name('paypal.success'); // Changed from PayerReturn to success
+    // Route::get('/paypal/cancel/{invoice}', [PayPalController::class, 'cancel'])->name('paypal.cancel');
 
-  // Simulated payment route (if you keep it for other gateways)
-  Route::post('/invoices/{invoice}/pay', [ClientInvoicePaymentController::class, 'store'])->name('invoices.payment.store');
+    // New PayPal Payment Routes
+    Route::get('/paypal/payment/create/{invoice}', [PayPalPaymentController::class, 'createPayment'])->name('paypal.payment.create');
+    Route::get('/paypal/payment/success', [PayPalPaymentController::class, 'handlePaymentSuccess'])->name('paypal.payment.success');
+    Route::get('/paypal/payment/cancel', [PayPalPaymentController::class, 'handlePaymentCancel'])->name('paypal.payment.cancel');
 
-  // Old PayPal Routes (Commented out)
-  // Route::get('/paypal/checkout/{invoice}', [PayPalController::class, 'checkout'])->name('paypal.checkout');
-  // Route::get('/paypal/return/{invoice}', [PayPalController::class, 'success'])->name('paypal.success'); // Changed from PayerReturn to success
-  // Route::get('/paypal/cancel/{invoice}', [PayPalController::class, 'cancel'])->name('paypal.cancel');
+    // Rutas para la gestión de transacciones de cliente
+    Route::get('/transactions', [App\Http\Controllers\Client\ClientTransactionController::class, 'index'])->name('transactions.index');
 
-  // New PayPal Payment Routes
-  Route::get('/paypal/payment/create/{invoice}', [PayPalPaymentController::class, 'createPayment'])->name('paypal.payment.create');
-  Route::get('/paypal/payment/success', [PayPalPaymentController::class, 'handlePaymentSuccess'])->name('paypal.payment.success');
-  Route::get('/paypal/payment/cancel', [PayPalPaymentController::class, 'handlePaymentCancel'])->name('paypal.payment.cancel');
+    // Rutas para Adición de Fondos
+    Route::get('/add-funds', [ClientFundAdditionController::class, 'showAddFundsForm'])->name('funds.create');
+    Route::post('/add-funds', [ClientFundAdditionController::class, 'processFundAddition'])->name('funds.store');
 
-  // Rutas para la gestión de transacciones de cliente
-  Route::get('/transactions', [App\Http\Controllers\Client\ClientTransactionController::class, 'index'])->name('transactions.index');
+    // Client Fund Addition with PayPal
+    Route::post('/funds/paypal/initiate', [ClientFundAdditionController::class, 'initiatePayPalPayment'])
+        ->name('funds.paypal.initiate');
 
-  // Rutas para Adición de Fondos
-  Route::get('/add-funds', [ClientFundAdditionController::class, 'showAddFundsForm'])->name('funds.create');
-  Route::post('/add-funds', [ClientFundAdditionController::class, 'processFundAddition'])->name('funds.store');
+    Route::get('/funds/paypal/success', [ClientFundAdditionController::class, 'handlePayPalSuccess'])
+        ->name('funds.paypal.success');
 
-  // Client Fund Addition with PayPal
-  Route::post('/funds/paypal/initiate', [ClientFundAdditionController::class, 'initiatePayPalPayment'])
-      ->name('funds.paypal.initiate');
+    Route::get('/funds/paypal/cancel', [ClientFundAdditionController::class, 'handlePayPalCancel'])
+        ->name('funds.paypal.cancel');
 
-  Route::get('/funds/paypal/success', [ClientFundAdditionController::class, 'handlePayPalSuccess'])
-      ->name('funds.paypal.success');
+    // Rutas para el listado de productos para clientes (handled by ClientDashboardController)
+    Route::get('/products', [ClientDashboardController::class, 'listProducts'])->name('products.index');
 
-  Route::get('/funds/paypal/cancel', [ClientFundAdditionController::class, 'handlePayPalCancel'])
-      ->name('funds.paypal.cancel');
-
-  // Rutas para el listado de productos para clientes (handled by ClientDashboardController)
-  Route::get('/products', [ClientDashboardController::class, 'listProducts'])->name('products.index');
-
-  // Rutas adicionales para servicios de cliente (no incluidas en resource por defecto)
-  // These routes point to the ClientServiceController methods
-  Route::post('/services/{service}/request-cancellation', [ClientServiceController::class, 'requestCancellation'])->name('services.requestCancellation');
-  Route::get('/services/{service}/upgrade-downgrade-options', [ClientServiceController::class, 'showUpgradeDowngradeOptions'])->name('services.showUpgradeDowngradeOptions');
-  Route::post('/services/{service}/process-upgrade-downgrade', [ClientServiceController::class, 'processUpgradeDowngrade'])->name('services.processUpgradeDowngrade');
-  Route::post('/services/{service}/request-renewal', [ClientServiceController::class, 'requestRenewal'])->name('services.requestRenewal');
+    // Rutas adicionales para servicios de cliente (no incluidas en resource por defecto)
+    // These routes point to the ClientServiceController methods
+    Route::post('/services/{service}/request-cancellation', [ClientServiceController::class, 'requestCancellation'])->name('services.requestCancellation');
+    Route::get('/services/{service}/upgrade-downgrade-options', [ClientServiceController::class, 'showUpgradeDowngradeOptions'])->name('services.showUpgradeDowngradeOptions');
+    Route::post('/services/{service}/process-upgrade-downgrade', [ClientServiceController::class, 'processUpgradeDowngrade'])->name('services.processUpgradeDowngrade');
+    Route::post('/services/{service}/request-renewal', [ClientServiceController::class, 'requestRenewal'])->name('services.requestRenewal');
 
     // Rutas para la gestión de facturas de cliente
     Route::get('/invoices', [App\Http\Controllers\Client\ClientInvoiceController::class, 'index'])->name('invoices.index');
@@ -232,12 +227,12 @@ Route::prefix('client')->name('client.')->middleware(['auth', 'verified'])->grou
     // Ruta para solicitar renovación de servicio
     Route::post('/services/{service}/request-renewal', [ClientServiceController::class, 'requestRenewal'])->name('services.requestRenewal');
 
-  // Ruta para actualizar la contraseña de un servicio
-  Route::post('/services/{service}/update-password', [ClientServiceController::class, 'updatePassword'])->name('services.updatePassword');
+    // Ruta para actualizar la contraseña de un servicio
+    Route::post('/services/{service}/update-password', [ClientServiceController::class, 'updatePassword'])->name('services.updatePassword');
 
-  // Ruta para calcular prorrateo de servicio
-  Route::post('/services/{service}/calculate-proration', [\App\Http\Controllers\Client\ClientServiceController::class, 'calculateProration'])
-      ->name('services.calculateProration');
+    // Ruta para calcular prorrateo de servicio
+    Route::post('/services/{service}/calculate-proration', [\App\Http\Controllers\Client\ClientServiceController::class, 'calculateProration'])
+        ->name('services.calculateProration');
 
     // Ruta para solicitar la cancelación de una nueva orden/factura
     Route::post('/invoices/{invoice}/cancel-new-order', [App\Http\Controllers\Client\ClientInvoiceController::class, 'requestInvoiceCancellation'])->name('invoices.cancelNewOrder');
@@ -250,6 +245,7 @@ Route::prefix('client')->name('client.')->middleware(['auth', 'verified'])->grou
         Route::post('/remove', [\App\Http\Controllers\Client\ClientCartController::class, 'removeItem'])->name('remove');
         Route::post('/clear', [\App\Http\Controllers\Client\ClientCartController::class, 'clearCart'])->name('clear');
         Route::post('/account/set-domain', [\App\Http\Controllers\Client\ClientCartController::class, 'setDomainForAccount'])->name('account.setDomain');
+        Route::post('/account/remove-domain', [\App\Http\Controllers\Client\ClientCartController::class, 'removeDomainFromAccount'])->name('account.removeDomain');
         Route::post('/account/set-primary-service', [\App\Http\Controllers\Client\ClientCartController::class, 'setPrimaryServiceForAccount'])->name('account.setPrimaryService');
     });
 });
@@ -272,7 +268,6 @@ Route::prefix('client')->name('client.')->middleware(['auth', 'verified'])->grou
 Route::get('/', [LandingPageController::class, 'showHome'])->name('landing.home');
 Route::get('/servicios/{categorySlug}', [LandingPageController::class, 'showCategory'])->name('landing.category');
 
-
 // API Routes for fetching products (used by checkout pages)
 Route::prefix('api/products')->name('api.products.')->group(function () {
     Route::get('/main-services', [ApiProductController::class, 'getMainServices'])->name('mainServices');
@@ -289,11 +284,10 @@ Route::prefix('api/domain')->name('api.domain.')->group(function () {
     Route::get('/tld-pricing', [DomainApiController::class, 'getTldPricingInfo'])->name('tldPricingInfo');
 });
 
-
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
-require __DIR__.'/auth.php';
+require __DIR__ . '/auth.php';

@@ -6,20 +6,11 @@ import CartSummary from '@/Components/Client/CartSummary.vue'; // Asegúrate que
 
 const props = defineProps({
     initialCart: Object,
-    // paymentMethods: Array, // Descomentar si se pasan métodos de pago
 });
 
 const form = useForm({
     notes_to_client: '',
-    payment_method_slug: null, // O un valor por defecto si hay métodos de pago
 });
-
-// Si se pasan métodos de pago como prop:
-// onMounted(() => {
-//     if (props.paymentMethods && props.paymentMethods.length > 0) {
-//         form.payment_method_slug = props.paymentMethods[0].slug; // Seleccionar el primero por defecto
-//     }
-// });
 
 const submitOrder = () => {
     form.post(route('client.checkout.submit'), {
@@ -53,18 +44,20 @@ const submitOrder = () => {
 </script>
 
 <template>
+
     <Head title="Confirmar Pedido" />
 
     <AuthenticatedLayout>
         <template #header>
-            <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">Paso 3: Confirmar Pedido</h2>
+            <h2 class="text-xl font-semibold leading-tight text-gray-800 dark:text-gray-200">Paso 3: Confirmar Pedido
+            </h2>
         </template>
 
         <div class="py-12">
             <div class="max-w-4xl mx-auto sm:px-6 lg:px-8">
-                <div class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg">
+                <div class="bg-white shadow-sm dark:bg-gray-800 sm:rounded-lg">
                     <div class="p-6 border-b border-gray-200 dark:border-gray-700">
-                        <h3 class="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-6">Revisa tu Pedido</h3>
+                        <h3 class="mb-6 text-2xl font-semibold text-gray-900 dark:text-gray-100">Revisa tu Pedido</h3>
 
                         <!-- CartSummary: Idealmente, modificar para aceptar initialCart como prop -->
                         <!-- <CartSummary :initial-cart-data="props.initialCart" /> -->
@@ -75,36 +68,44 @@ const submitOrder = () => {
                     <form @submit.prevent="submitOrder">
                         <div class="p-6 space-y-6">
                             <div>
-                                <label for="notes_to_client" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                <label for="notes_to_client"
+                                    class="block text-sm font-medium text-gray-700 dark:text-gray-300">
                                     Notas Adicionales (Opcional)
                                 </label>
                                 <textarea v-model="form.notes_to_client" id="notes_to_client" rows="3"
-                                          class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 rounded-md focus:ring-indigo-500 focus:border-indigo-500"></textarea>
-                                <p v-if="form.errors.notes_to_client" class="mt-1 text-sm text-red-500">{{ form.errors.notes_to_client }}</p>
+                                    class="block w-full mt-1 border-gray-300 rounded-md shadow-sm sm:text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 focus:ring-indigo-500 focus:border-indigo-500"></textarea>
+                                <p v-if="form.errors.notes_to_client" class="mt-1 text-sm text-red-500">{{
+                                    form.errors.notes_to_client }}</p>
                             </div>
 
-                            <!-- Sección de Métodos de Pago (Simplificado) -->
-                            <div>
-                                <label for="payment_method_slug" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                    Método de Pago (Provisional)
-                                </label>
-                                <select v-model="form.payment_method_slug" id="payment_method_slug"
-                                        class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 rounded-md focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-                                    <option :value="null">Seleccionar método de pago (opcional por ahora)</option>
-                                    <option value="bank_transfer">Transferencia Bancaria</option>
-                                    <option value="paypal">PayPal</option>
-                                    <!-- <option v-for="method in props.paymentMethods" :key="method.slug" :value="method.slug">
-                                        {{ method.name }}
-                                    </option> -->
-                                </select>
-                                <p v-if="form.errors.payment_method_slug" class="mt-1 text-sm text-red-500">{{ form.errors.payment_method_slug }}</p>
+                            <!-- Información sobre el proceso de pago -->
+                            <div
+                                class="p-4 bg-blue-50 border border-blue-200 rounded-md dark:bg-blue-900/20 dark:border-blue-800">
+                                <div class="flex items-center">
+                                    <span class="text-blue-600 dark:text-blue-400 mr-2">ℹ️</span>
+                                    <div>
+                                        <h4 class="text-sm font-medium text-blue-800 dark:text-blue-200">Proceso de Pago
+                                        </h4>
+                                        <p class="text-sm text-blue-700 dark:text-blue-300 mt-1">
+                                            Después de confirmar tu pedido, se generará una factura con las opciones de
+                                            pago
+                                            disponibles
+                                            (PayPal, transferencia bancaria, etc.).
+                                        </p>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
-                        <div class="px-6 py-4 bg-gray-50 dark:bg-gray-750 text-right sm:rounded-b-lg">
-                            <button type="submit"
-                                    :disabled="form.processing"
-                                    class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50">
+                        <div
+                            class="flex items-center justify-between px-6 py-4 bg-gray-50 dark:bg-gray-750 sm:rounded-b-lg">
+                            <button type="button" @click="$inertia.visit(route('client.checkout.selectServices'))"
+                                :disabled="form.processing"
+                                class="inline-flex justify-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-600">
+                                ← Regresar a Servicios
+                            </button>
+                            <button type="submit" :disabled="form.processing"
+                                class="inline-flex justify-center px-4 py-2 text-sm font-medium text-white bg-green-600 border border-transparent rounded-md shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50">
                                 <span v-if="form.processing">Procesando...</span>
                                 <span v-else>Realizar Pedido y Pagar</span>
                             </button>

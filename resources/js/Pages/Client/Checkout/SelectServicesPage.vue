@@ -42,8 +42,8 @@ watchEffect(() => {
             console.log('SelectServicesPage: watchEffect - Cuenta activa sin nombre de dominio.');
         }
     } else {
-         activeDomainName.value = 'N/A (Carrito no disponible o sin cuenta activa)';
-         console.log('SelectServicesPage: watchEffect - Carrito no disponible o sin cuenta activa.');
+        activeDomainName.value = 'N/A (Carrito no disponible o sin cuenta activa)';
+        console.log('SelectServicesPage: watchEffect - Carrito no disponible o sin cuenta activa.');
     }
 });
 
@@ -113,8 +113,8 @@ const handleSelectPrimaryService = (productId, pricingId) => {
     formPrimaryService.post(route('client.cart.account.setPrimaryService'), {
         preserveScroll: true, // Inertia intentará mantener el scroll
         preserveState: false, // Permitir que las props se recarguen y actualicen la página. True puede prevenirlo.
-                              // Con redirect back(), preserveState: false o no ponerlo es usualmente lo que se quiere
-                              // para que las props (como initialCart y mensajes flash) se actualicen.
+        // Con redirect back(), preserveState: false o no ponerlo es usualmente lo que se quiere
+        // para que las props (como initialCart y mensajes flash) se actualicen.
         onSuccess: (page) => {
             console.log('POST a setPrimaryService ÉXITO.');
             // Ya no es necesario actualizar currentCart.value desde page.props aquí,
@@ -159,7 +159,7 @@ const handleAddAdditionalService = (productId, pricingId) => {
         },
         onError: (errors) => {
             console.error('POST a addItem (adicional) FALLÓ:', errors);
-             let errorMessages = 'Ocurrió un error.';
+            let errorMessages = 'Ocurrió un error.';
             if (errors && typeof errors === 'object') {
                 errorMessages = Object.values(errors).join(' ');
             } else if (typeof errors === 'string') {
@@ -167,7 +167,7 @@ const handleAddAdditionalService = (productId, pricingId) => {
             }
             alert(`Error al añadir servicio adicional: ${errorMessages}`);
         },
-         onFinish: () => {
+        onFinish: () => {
             console.log('POST a addItem (adicional) FINALIZADO.');
         }
     });
@@ -192,7 +192,7 @@ onMounted(() => {
     props.mainServiceProducts.forEach(product => {
         if (product.configurable_option_groups && product.configurable_option_groups.length > 0) {
             if (!selectedConfigurableOptions.value[product.id]) {
-                 selectedConfigurableOptions.value[product.id] = {};
+                selectedConfigurableOptions.value[product.id] = {};
             }
         }
     });
@@ -201,118 +201,175 @@ onMounted(() => {
 </script>
 
 <template>
+
     <Head title="Seleccionar Servicios" />
 
     <AuthenticatedLayout>
         <template #header>
-            <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">Paso 2: Selecciona tus Servicios</h2>
+            <h2 class="text-xl font-semibold leading-tight text-gray-800 dark:text-gray-200">Paso 2: Selecciona tus
+                Servicios</h2>
         </template>
 
         <div class="py-12">
-            <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-                    <div class="md:col-span-2 bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg p-6 space-y-8">
+            <div class="mx-auto max-w-7xl sm:px-6 lg:px-8">
+                <div class="grid grid-cols-1 gap-8 md:grid-cols-3">
+                    <div class="p-6 space-y-8 bg-white shadow-sm md:col-span-2 dark:bg-gray-800 sm:rounded-lg">
 
                         <div>
                             <p class="mb-4 text-lg text-gray-700 dark:text-gray-300">
-                                Añadiendo servicios para: <strong class="text-indigo-600">{{ activeDomainName || 'Cuenta Activa' }}</strong>
+                                Añadiendo servicios para: <strong class="text-indigo-600">{{ activeDomainName || 'Cuenta Activa'
+                                    }}</strong>
                             </p>
 
                             <section>
-                                <h3 class="text-xl font-medium text-gray-900 dark:text-gray-100 mb-3">Servicios Principales (Elige uno)</h3>
+                                <h3 class="mb-3 text-xl font-medium text-gray-900 dark:text-gray-100">Servicios
+                                    Principales
+                                    (Elige uno)</h3>
                                 <div class="space-y-4">
                                     <div v-for="product in props.mainServiceProducts" :key="product.id"
-                                         class="p-4 border rounded-lg dark:border-gray-700"
-                                         :class="{'ring-2 ring-indigo-500': currentSelectedMainProduct && currentSelectedMainProduct.id === product.id}">
+                                        class="p-4 border rounded-lg dark:border-gray-700"
+                                        :class="{ 'ring-2 ring-indigo-500': currentSelectedMainProduct && currentSelectedMainProduct.id === product.id }">
 
                                         <div @click="selectMainProductForConfiguration(product)" class="cursor-pointer">
-                                            <h4 class="text-lg font-semibold text-gray-800 dark:text-gray-200">{{ product.name }}</h4>
-                                            <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">{{ product.description }}</p>
+                                            <h4 class="text-lg font-semibold text-gray-800 dark:text-gray-200">{{
+                                                product.name
+                                                }}</h4>
+                                            <p class="mb-2 text-sm text-gray-600 dark:text-gray-400">{{
+                                                product.description }}
+                                            </p>
                                         </div>
 
-                                        <div v-if="currentSelectedMainProduct && currentSelectedMainProduct.id === product.id && product.configurable_option_groups && product.configurable_option_groups.length > 0" class="my-4 p-3 bg-gray-50 dark:bg-gray-700 rounded-md space-y-3">
-                                            <h5 class="text-md font-semibold text-gray-700 dark:text-gray-200">Configura tu servicio:</h5>
-                                            <div v-for="group in product.configurable_option_groups" :key="group.id" class="py-2">
-                                                <label :for="'group_'+product.id+'_'+group.id" class="text-sm font-medium text-gray-800 dark:text-gray-300">{{ group.name }}:</label>
-                                                <p v-if="group.description" class="text-xs text-gray-500 dark:text-gray-400 mb-1">{{group.description}}</p>
+                                        <div v-if="currentSelectedMainProduct && currentSelectedMainProduct.id === product.id && product.configurable_option_groups && product.configurable_option_groups.length > 0"
+                                            class="p-3 my-4 space-y-3 rounded-md bg-gray-50 dark:bg-gray-700">
+                                            <h5 class="font-semibold text-gray-700 text-md dark:text-gray-200">Configura
+                                                tu
+                                                servicio:</h5>
+                                            <div v-for="group in product.configurable_option_groups" :key="group.id"
+                                                class="py-2">
+                                                <label :for="'group_' + product.id + '_' + group.id"
+                                                    class="text-sm font-medium text-gray-800 dark:text-gray-300">{{
+                                                        group.name
+                                                    }}:</label>
+                                                <p v-if="group.description"
+                                                    class="mb-1 text-xs text-gray-500 dark:text-gray-400">
+                                                    {{ group.description }}
+                                                </p>
                                                 <select v-if="group.options && group.options.length > 0"
-                                                        :id="'group_'+product.id+'_'+group.id"
-                                                        v-model="selectedConfigurableOptions[product.id][group.id]"
-                                                        class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
-                                                    <option :value="undefined">-- Selecciona {{ group.name.toLowerCase() }} --</option>
-                                                    <option v-for="option in group.options" :key="option.id" :value="option.id">
+                                                    :id="'group_' + product.id + '_' + group.id"
+                                                    v-model="selectedConfigurableOptions[product.id][group.id]"
+                                                    class="block w-full py-2 pl-3 pr-10 mt-1 text-base border-gray-300 rounded-md dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                                                    <option :value="undefined">-- Selecciona {{ group.name.toLowerCase()
+                                                        }} --
+                                                    </option>
+                                                    <option v-for="option in group.options" :key="option.id"
+                                                        :value="option.id">
                                                         {{ option.name }}
                                                     </option>
                                                 </select>
-                                                <div v-else class="text-xs text-gray-400 italic">No hay opciones disponibles para este grupo.</div>
+                                                <div v-else class="text-xs italic text-gray-400">No hay opciones
+                                                    disponibles
+                                                    para este grupo.</div>
                                             </div>
                                         </div>
 
-                                        <div class="space-y-2 mt-3">
-                                            <p class="text-sm font-medium text-gray-700 dark:text-gray-300">Elige un ciclo de facturación:</p>
+                                        <div class="mt-3 space-y-2">
+                                            <p class="text-sm font-medium text-gray-700 dark:text-gray-300">Elige un
+                                                ciclo de
+                                                facturación:</p>
                                             <button v-for="pricing in product.pricings" :key="pricing.id"
-                                                    @click="console.log(`Clic en ciclo: ProdID=${product.id}, PricingID=${pricing.id}`); handleSelectPrimaryService(product.id, pricing.id)"
-                                                    :disabled="formPrimaryService.processing"
-                                                    class="w-full text-left p-3 rounded-md hover:bg-indigo-50 dark:hover:bg-gray-700 border dark:border-gray-600 flex justify-between items-center">
+                                                @click="console.log(`Clic en ciclo: ProdID=${product.id}, PricingID=${pricing.id}`); handleSelectPrimaryService(product.id, pricing.id)"
+                                                :disabled="formPrimaryService.processing"
+                                                class="flex items-center justify-between w-full p-3 text-left border rounded-md hover:bg-indigo-50 dark:hover:bg-gray-700 dark:border-gray-600">
                                                 <span>{{ pricing.billing_cycle.name }}</span>
-                                                <span class="font-semibold">{{ formatCurrency(pricing.price, pricing.currency_code ) }}</span>
+                                                <span class="font-semibold">{{ formatCurrency(pricing.price,
+                                                    pricing.currency_code) }}</span>
                                             </button>
                                         </div>
                                     </div>
-                                    <p v-if="formPrimaryService.errors.product_id" class="text-sm text-red-500">{{formPrimaryService.errors.product_id}}</p>
-                                    <p v-if="formPrimaryService.errors.pricing_id" class="text-sm text-red-500">{{formPrimaryService.errors.pricing_id}}</p>
-                                     <p v-if="formPrimaryService.errors.configurable_options" class="text-sm text-red-500">{{formPrimaryService.errors.configurable_options}}</p>
-                                     <p v-if="formPrimaryService.errors.general_error" class="text-sm text-red-500">{{formPrimaryService.errors.general_error}}</p>
+                                    <p v-if="formPrimaryService.errors.product_id" class="text-sm text-red-500">
+                                        {{ formPrimaryService.errors.product_id }}</p>
+                                    <p v-if="formPrimaryService.errors.pricing_id" class="text-sm text-red-500">
+                                        {{ formPrimaryService.errors.pricing_id }}</p>
+                                    <p v-if="formPrimaryService.errors.configurable_options"
+                                        class="text-sm text-red-500">
+                                        {{ formPrimaryService.errors.configurable_options }}</p>
+                                    <p v-if="formPrimaryService.errors.general_error" class="text-sm text-red-500">
+                                        {{ formPrimaryService.errors.general_error }}</p>
                                 </div>
                             </section>
 
                             <section>
-                                <h3 class="text-xl font-medium text-gray-900 dark:text-gray-100 mb-3 mt-6">Certificados SSL (Opcional)</h3>
-                                 <div class="space-y-4">
-                                    <div v-for="product in props.sslProducts" :key="product.id" class="p-4 border rounded-lg dark:border-gray-700">
-                                        <h4 class="text-lg font-semibold text-gray-800 dark:text-gray-200">{{ product.name }}</h4>
-                                        <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">{{ product.description }}</p>
+                                <h3 class="mt-6 mb-3 text-xl font-medium text-gray-900 dark:text-gray-100">Certificados
+                                    SSL
+                                    (Opcional)</h3>
+                                <div class="space-y-4">
+                                    <div v-for="product in props.sslProducts" :key="product.id"
+                                        class="p-4 border rounded-lg dark:border-gray-700">
+                                        <h4 class="text-lg font-semibold text-gray-800 dark:text-gray-200">{{
+                                            product.name }}
+                                        </h4>
+                                        <p class="mb-2 text-sm text-gray-600 dark:text-gray-400">{{ product.description
+                                            }}</p>
                                         <div class="space-y-2">
-                                             <button v-for="pricing in product.pricings" :key="pricing.id"
-                                                    @click="console.log(`Clic en SSL: ProdID=${product.id}, PricingID=${pricing.id}`); handleAddAdditionalService(product.id, pricing.id)"
-                                                    :disabled="formAdditionalService.processing"
-                                                    class="w-full text-left p-3 rounded-md hover:bg-green-50 dark:hover:bg-gray-700 border dark:border-gray-600 flex justify-between items-center">
+                                            <button v-for="pricing in product.pricings" :key="pricing.id"
+                                                @click="console.log(`Clic en SSL: ProdID=${product.id}, PricingID=${pricing.id}`); handleAddAdditionalService(product.id, pricing.id)"
+                                                :disabled="formAdditionalService.processing"
+                                                class="flex items-center justify-between w-full p-3 text-left border rounded-md hover:bg-green-50 dark:hover:bg-gray-700 dark:border-gray-600">
                                                 <span>{{ pricing.billing_cycle.name }}</span>
-                                                <span class="font-semibold">{{ formatCurrency(pricing.price, pricing.currency_code) }}</span>
+                                                <span class="font-semibold">{{ formatCurrency(pricing.price,
+                                                    pricing.currency_code) }}</span>
                                             </button>
                                         </div>
                                     </div>
-                                     <p v-if="formAdditionalService.errors.general_error_ssl" class="text-sm text-red-500">{{formAdditionalService.errors.general_error_ssl}}</p>
+                                    <p v-if="formAdditionalService.errors.general_error_ssl"
+                                        class="text-sm text-red-500">
+                                        {{ formAdditionalService.errors.general_error_ssl }}</p>
                                 </div>
                             </section>
 
-                             <section>
-                                <h3 class="text-xl font-medium text-gray-900 dark:text-gray-100 mb-3 mt-6">Licencias Adicionales (Opcional)</h3>
-                                 <div class="space-y-4">
-                                    <div v-for="product in props.licenseProducts" :key="product.id" class="p-4 border rounded-lg dark:border-gray-700">
-                                        <h4 class="text-lg font-semibold text-gray-800 dark:text-gray-200">{{ product.name }}</h4>
-                                        <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">{{ product.description }}</p>
+                            <section>
+                                <h3 class="mt-6 mb-3 text-xl font-medium text-gray-900 dark:text-gray-100">Licencias
+                                    Adicionales
+                                    (Opcional)</h3>
+                                <div class="space-y-4">
+                                    <div v-for="product in props.licenseProducts" :key="product.id"
+                                        class="p-4 border rounded-lg dark:border-gray-700">
+                                        <h4 class="text-lg font-semibold text-gray-800 dark:text-gray-200">{{
+                                            product.name }}
+                                        </h4>
+                                        <p class="mb-2 text-sm text-gray-600 dark:text-gray-400">{{ product.description
+                                            }}</p>
                                         <div class="space-y-2">
-                                             <button v-for="pricing in product.pricings" :key="pricing.id"
-                                                    @click="console.log(`Clic en Licencia: ProdID=${product.id}, PricingID=${pricing.id}`); handleAddAdditionalService(product.id, pricing.id)"
-                                                    :disabled="formAdditionalService.processing"
-                                                    class="w-full text-left p-3 rounded-md hover:bg-yellow-50 dark:hover:bg-gray-700 border dark:border-gray-600 flex justify-between items-center">
+                                            <button v-for="pricing in product.pricings" :key="pricing.id"
+                                                @click="console.log(`Clic en Licencia: ProdID=${product.id}, PricingID=${pricing.id}`); handleAddAdditionalService(product.id, pricing.id)"
+                                                :disabled="formAdditionalService.processing"
+                                                class="flex items-center justify-between w-full p-3 text-left border rounded-md hover:bg-yellow-50 dark:hover:bg-gray-700 dark:border-gray-600">
                                                 <span>{{ pricing.billing_cycle.name }}</span>
-                                                <span class="font-semibold">{{ formatCurrency(pricing.price, pricing.currency_code) }}</span>
+                                                <span class="font-semibold">{{ formatCurrency(pricing.price,
+                                                    pricing.currency_code) }}</span>
                                             </button>
                                         </div>
                                     </div>
-                                     <p v-if="formAdditionalService.errors.product_id" class="text-sm text-red-500">{{formAdditionalService.errors.product_id}}</p>
-                                     <p v-if="formAdditionalService.errors.pricing_id" class="text-sm text-red-500">{{formAdditionalService.errors.pricing_id}}</p>
-                                     <p v-if="formAdditionalService.errors.general_error_license" class="text-sm text-red-500">{{formAdditionalService.errors.general_error_license}}</p>
+                                    <p v-if="formAdditionalService.errors.product_id" class="text-sm text-red-500">
+                                        {{ formAdditionalService.errors.product_id }}</p>
+                                    <p v-if="formAdditionalService.errors.pricing_id" class="text-sm text-red-500">
+                                        {{ formAdditionalService.errors.pricing_id }}</p>
+                                    <p v-if="formAdditionalService.errors.general_error_license"
+                                        class="text-sm text-red-500">
+                                        {{ formAdditionalService.errors.general_error_license }}</p>
                                 </div>
                             </section>
                         </div>
 
-                        <div class="mt-8 flex justify-end">
+                        <div class="flex justify-between mt-8">
+                            <button @click="router.visit(route('client.checkout.selectDomain'))"
+                                :disabled="formPrimaryService.processing || formAdditionalService.processing"
+                                class="px-6 py-3 text-base font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-600">
+                                ← Regresar a Dominios
+                            </button>
                             <button @click="goToFinalCheckout"
-                                    :disabled="formPrimaryService.processing || formAdditionalService.processing"
-                                    class="px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                                :disabled="formPrimaryService.processing || formAdditionalService.processing"
+                                class="px-6 py-3 text-base font-medium text-white bg-green-600 border border-transparent rounded-md shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
                                 Continuar al Pago
                             </button>
                         </div>

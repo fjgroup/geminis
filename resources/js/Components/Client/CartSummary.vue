@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'; // Añadir onUnmounted
 import axios from 'axios';
+import { router } from '@inertiajs/vue3';
 
 const cartData = ref(null);
 const isLoading = ref(true);
@@ -53,6 +54,25 @@ onMounted(() => {
 onUnmounted(() => {
     window.removeEventListener('cart-updated', handleCartUpdate);
 });
+
+const removeDomain = (accountId) => {
+    if (!confirm('¿Estás seguro de que deseas eliminar este dominio del carrito?')) {
+        return;
+    }
+
+    router.post(route('client.cart.account.removeDomain'), {
+        account_id: accountId
+    }, {
+        preserveScroll: true,
+        onSuccess: () => {
+            window.dispatchEvent(new CustomEvent('cart-updated'));
+        },
+        onError: (errors) => {
+            console.error('Error al eliminar dominio:', errors);
+            alert('Error al eliminar el dominio del carrito.');
+        }
+    });
+};
 
 const accounts = computed(() => cartData.value?.accounts || []);
 const activeAccountId = computed(() => cartData.value?.active_account_id);
@@ -107,69 +127,88 @@ const cartCurrency = computed(() => {
 </script>
 
 <template>
-    <div class="p-4 border rounded-lg shadow-sm bg-white">
-        <h2 class="text-xl font-semibold mb-3 text-gray-700">Resumen del Pedido</h2>
+    <div class="p-4 bg-white border rounded-lg shadow-sm">
+        <h2 class="mb-3 text-xl font-semibold text-gray-700">Resumen del Pedido</h2>
 
         <div v-if="isLoading" class="text-center text-gray-500">
             <p>Cargando resumen del pedido...</p>
             <!-- Puedes añadir un spinner aquí -->
         </div>
 
-        <div v-else-if="error" class="text-center text-red-500 p-3 border border-red-300 bg-red-50 rounded">
+        <div v-else-if="error" class="p-3 text-center text-red-500 border border-red-300 rounded bg-red-50">
             <p><strong>Error:</strong> {{ error }}</p>
         </div>
 
         <div v-else-if="cartData && accounts.length > 0">
-            <div v-for="(account, index) in accounts" :key="account.account_id || index" class="mb-6 pb-4 border-b last:border-b-0 last:pb-0 last:mb-0">
-                <h3 class="text-lg font-medium text-gray-800 mb-2">
+            <div v-for="(account, index) in accounts" :key="account.account_id || index"
+                class="pb-4 mb-6 border-b last:border-b-0 last:pb-0 last:mb-0">
+                <h3 class="mb-2 text-lg font-medium text-gray-800">
                     Cuenta #{{ index + 1 }}
-                    <span v-if="account.account_id === activeAccountId" class="text-sm text-blue-500 font-normal">(Activa)</span>
+                    <span v-if="account.account_id === activeAccountId"
+                        class="text-sm font-normal text-blue-500">(Activa)</span>
                 </h3>
 
-                <div v-if="account.domain_info && account.domain_info.domain_name" class="ml-2 mb-2 p-2 bg-gray-50 rounded">
-                    <p class="font-semibold text-gray-700">Dominio: {{ account.domain_info.domain_name }}</p>
-                    <div v-if="account.domain_info.product_id && account.domain_info.product_name" class="text-sm text-gray-600 ml-3">
-                        <span>{{ account.domain_info.product_name }}</span>
-                        <span v-if="typeof account.domain_info.price === 'number'" class="float-right font-medium">
-                            {{ formatCurrency(account.domain_info.price, account.domain_info.currency_code || cartCurrency) }}
-                        </span>
-                    </div>
-                     <div v-else-if="!account.domain_info.product_id" class="text-sm text-gray-500 ml-3">
-                        (Solo registro de nombre de dominio)
+                <div v-if="account.domain_info && account.domain_info.domain_name"
+                    class="p-2 mb-2 ml-2 rounded bg-gray-50">
+                    <div class="flex justify-between items-start">
+                        <div class="flex-1">
+                            <p class="font-semibold text-gray-700">Dominio: {{ account.domain_info.domain_name }}</p>
+                            <div v-if="account.domain_info.product_id && account.domain_info.product_name"
+                                class="ml-3 text-sm text-gray-600">
+                                <span>{{ account.domain_info.product_name }}</span>
+                                <span v-if="typeof account.domain_info.price === 'number'"
+                                    class="float-right font-medium">
+                                    {{ formatCurrency(account.domain_info.price, account.domain_info.currency_code ||
+                                        cartCurrency) }}
+                                </span>
+                            </div>
+                            <div v-else-if="!account.domain_info.product_id" class="ml-3 text-sm text-gray-500">
+                                (Solo registro de nombre de dominio)
+                            </div>
+                        </div>
+                        <button @click="removeDomain(account.account_id)"
+                            class="ml-2 text-red-600 hover:text-red-800 text-sm font-medium">
+                            ✕
+                        </button>
                     </div>
                 </div>
 
-                <div v-if="account.primary_service && account.primary_service.product_name" class="ml-2 mb-2 p-2 bg-gray-50 rounded">
+                <div v-if="account.primary_service && account.primary_service.product_name"
+                    class="p-2 mb-2 ml-2 rounded bg-gray-50">
                     <p class="font-semibold text-gray-700">Servicio Principal:</p>
-                    <div class="text-sm text-gray-600 ml-3">
+                    <div class="ml-3 text-sm text-gray-600">
                         <span>{{ account.primary_service.product_name }}</span>
                         <span v-if="typeof account.primary_service.price === 'number'" class="float-right font-medium">
-                            {{ formatCurrency(account.primary_service.price, account.primary_service.currency_code || cartCurrency) }}
+                            {{ formatCurrency(account.primary_service.price, account.primary_service.currency_code ||
+                                cartCurrency) }}
                         </span>
                     </div>
                     <!-- Mostrar Opciones Configurables Seleccionadas (Básico) -->
                     <div v-if="account.primary_service.configurable_options && Object.keys(account.primary_service.configurable_options).length > 0"
-                         class="ml-6 mt-1 text-xs text-gray-500">
+                        class="mt-1 ml-6 text-xs text-gray-500">
                         <p class="font-medium">Opciones Config.:</p>
                         <ul class="list-disc list-inside">
                             <li v-if="account.primary_service.configurable_options_details"
-                                v-for="detail in account.primary_service.configurable_options_details" :key="detail.group_id + '_' + detail.option_id">
+                                v-for="detail in account.primary_service.configurable_options_details"
+                                :key="detail.group_id + '_' + detail.option_id">
                                 {{ detail.group_name }}: {{ detail.option_name }}
                             </li>
                             <!-- Fallback si solo están los IDs crudos (configurable_options pero no details) -->
-                            <li v-else v-for="(optionValue, groupKey) in account.primary_service.configurable_options" :key="groupKey">
+                            <li v-else v-for="(optionValue, groupKey) in account.primary_service.configurable_options"
+                                :key="groupKey">
                                 Grupo ID {{ groupKey }}: Opción ID {{ optionValue }}
                             </li>
                         </ul>
                     </div>
                 </div>
 
-                <div v-if="account.additional_services && account.additional_services.length > 0" class="ml-2 mb-1 p-2 bg-gray-50 rounded">
-                     <p class="font-semibold text-gray-700 mb-1">Servicios Adicionales:</p>
-                    <ul class="list-disc pl-5 text-sm text-gray-600">
+                <div v-if="account.additional_services && account.additional_services.length > 0"
+                    class="p-2 mb-1 ml-2 rounded bg-gray-50">
+                    <p class="mb-1 font-semibold text-gray-700">Servicios Adicionales:</p>
+                    <ul class="pl-5 text-sm text-gray-600 list-disc">
                         <li v-for="service in account.additional_services" :key="service.cart_item_id" class="mb-1">
                             <span>{{ service.product_name }}</span>
-                            <span v-if="typeof service.price === 'number'" class="float-right font-medium pr-2">
+                            <span v-if="typeof service.price === 'number'" class="float-right pr-2 font-medium">
                                 {{ formatCurrency(service.price, service.currency_code || cartCurrency) }}
                             </span>
                         </li>
@@ -177,14 +216,14 @@ const cartCurrency = computed(() => {
                 </div>
             </div>
 
-            <div class="mt-6 pt-4 border-t">
+            <div class="pt-4 mt-6 border-t">
                 <p class="text-xl font-bold text-right text-gray-800">
                     Total General: {{ formatCurrency(totalGeneral, cartCurrency) }}
                 </p>
             </div>
         </div>
 
-        <div v-else class="text-center text-gray-500 py-5">
+        <div v-else class="py-5 text-center text-gray-500">
             <p>Tu carrito está vacío.</p>
         </div>
     </div>
