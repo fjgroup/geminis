@@ -2,6 +2,8 @@
 namespace App\Http\Controllers\Client;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Client\CartOperationRequest;
+use App\Http\Traits\ClientSecurityTrait;
 use App\Models\ConfigurableOption;
 use App\Models\ConfigurableOptionGroup;
 use App\Models\ConfigurableOptionPricing;
@@ -11,10 +13,13 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class ClientCartController extends Controller
 {
+    use ClientSecurityTrait;
     private function initializeCart()
     {
         return [
@@ -36,7 +41,7 @@ class ClientCartController extends Controller
                 $pricing = ProductPricing::find($account['domain_info']['pricing_id']);
                 if ($product && $pricing && $pricing->product_id == $product->id) {
                     $productName = $product->name;
-                    if (isset($account['domain_info']['tld_extension']) && $product->product_type_id == 3) {
+                    if (isset($account['domain_info']['tld_extension']) && $product->productType && $product->productType->name === 'Domain') {
                     }
                     $account['domain_info']['product_name']  = $productName;
                     $account['domain_info']['price']         = isset($account['domain_info']['override_price']) ? (float) $account['domain_info']['override_price'] : (float) $pricing->price;
@@ -160,23 +165,30 @@ class ClientCartController extends Controller
     private function findItemInAccount( ? array &$account, string $cartItemId): ?array
     { /* ... sin cambios ... */}
 
-    public function setDomainForAccount(Request $request): RedirectResponse
+    public function setDomainForAccount(CartOperationRequest $request): RedirectResponse
     {
-        $validatedData = $request->validate([
-            'domain_name'    => 'required|string|max:255',
-            'override_price' => 'nullable|numeric|min:0',
-            'tld_extension'  => 'required|string|max:10',
-            'product_id'     => 'required|integer|exists:products,id',
-            'pricing_id'     => 'required|integer|exists:product_pricings,id',
-        ]);
-        $cart         = session('cart', $this->initializeCart()); // Uso session()
-        $activeIndex  = $this->getActiveAccountIndex();           // Sin $request
+        // Aplicar rate limiting
+        $this->applyRateLimit('set_domain', 20, 1);
+
+        // Verificar que el usuario puede realizar la acción
+        $this->ensureUserCanPerformAction();
+
+        $validatedData = $request->validated();
+        $cart          = session('cart', $this->initializeCart()); // Uso session()
+
+        // Validar integridad del carrito
+        if (! $this->validateCartPriceIntegrity($cart)) {
+            $this->logUserActivity('cart_integrity_violation', ['action' => 'set_domain']);
+            return back()->withErrors(['error' => 'Se detectó una inconsistencia en el carrito. Por favor, inténtalo de nuevo.']);
+        }
+
+        $activeIndex  = $this->getActiveAccountIndex(); // Sin $request
         $newAccountId = null;
 
         $genericProduct = Product::find($validatedData['product_id']);
         $genericPricing = ProductPricing::find($validatedData['pricing_id']);
 
-        if (! $genericProduct || $genericProduct->product_type_id != 3) {
+        if (! $genericProduct || ! $genericProduct->productType || $genericProduct->productType->name !== 'Domain') {
             return back()->withInput()->withErrors(['product_id' => 'El producto de dominio genérico configurado no es válido.']);
         }
         if (! $genericPricing || $genericPricing->product_id != $genericProduct->id) {
@@ -218,18 +230,17 @@ class ClientCartController extends Controller
         return redirect()->route('client.checkout.selectServices')->with('success', 'Dominio configurado en el carrito.');
     }
 
-    public function setPrimaryServiceForAccount(Request $request): RedirectResponse
+    public function setPrimaryServiceForAccount(CartOperationRequest $request): RedirectResponse
     {
+        // Aplicar rate limiting
+        $this->applyRateLimit('set_service', 15, 1);
+
+        // Verificar que el usuario puede realizar la acción
+        $this->ensureUserCanPerformAction();
+
         Log::info('ClientCartController@setPrimaryServiceForAccount: MÉTODO INVOCADO.');
 
-        $validatedData = $request->validate([
-            'product_id'           => 'required|integer|exists:products,id',
-            'pricing_id'           => 'required|integer|exists:product_pricings,id',
-            'configurable_options' => 'nullable|array',
-            // Se podrían añadir reglas más específicas para el contenido de configurable_options aquí,
-            // por ejemplo, 'configurable_options.*' => 'integer|exists:configurable_options,id'
-            // si se espera que los valores sean IDs de opciones existentes.
-        ]);
+        $validatedData = $request->validated();
 
         Log::debug('ClientCartController@setPrimaryServiceForAccount: Iniciando.', [
             'session_cart_initial' => session('cart', 'No cart in session'), // Usar session()
@@ -264,8 +275,14 @@ class ClientCartController extends Controller
         if (empty($account['domain_info'])) {
             return back()->withInput()->withErrors(['general_error' => 'La cuenta activa debe tener información de dominio configurada.']);
         }
+        // Si ya existe un servicio principal, lo reemplazamos
         if (! empty($account['primary_service'])) {
-            return back()->withInput()->withErrors(['general_error' => 'La cuenta activa ya tiene un servicio principal.']);
+            Log::info('Reemplazando servicio principal existente', [
+                'user_id'        => Auth::id(),
+                'account_id'     => $activeAccountId,
+                'old_product_id' => $account['primary_service']['product_id'] ?? null,
+                'new_product_id' => $validatedData['product_id'],
+            ]);
         }
         $product = Product::with('configurableOptionGroups.options')->find($validatedData['product_id']);
         $pricing = ProductPricing::find($validatedData['pricing_id']);
@@ -305,11 +322,15 @@ class ClientCartController extends Controller
         return back()->with('success', 'Servicio principal añadido al carrito.');
     }
 
-    public function removeDomainFromAccount(Request $request): RedirectResponse
+    public function removeDomainFromAccount(CartOperationRequest $request): RedirectResponse
     {
-        $validatedData = $request->validate([
-            'account_id' => 'required|string',
-        ]);
+        // Aplicar rate limiting
+        $this->applyRateLimit('remove_domain', 10, 1);
+
+        // Verificar que el usuario puede realizar la acción
+        $this->ensureUserCanPerformAction();
+
+        $validatedData = $request->validated();
 
         $cart = session('cart', $this->initializeCart());
 
@@ -346,6 +367,41 @@ class ClientCartController extends Controller
         session(['cart' => $cart]);
 
         return back()->with('success', 'Dominio eliminado del carrito.');
+    }
+
+    public function removePrimaryServiceFromAccount(CartOperationRequest $request): RedirectResponse
+    {
+        // Aplicar rate limiting
+        $this->applyRateLimit('remove_service', 10, 1);
+
+        // Verificar que el usuario puede realizar la acción
+        $this->ensureUserCanPerformAction();
+
+        $validatedData = $request->validated();
+
+        $cart = session('cart', $this->initializeCart());
+
+        // Buscar la cuenta por account_id
+        $accountIndex = null;
+        foreach ($cart['accounts'] as $index => $account) {
+            if ($account['account_id'] === $validatedData['account_id']) {
+                $accountIndex = $index;
+                break;
+            }
+        }
+
+        if ($accountIndex === null) {
+            return back()->withErrors(['account_id' => 'Cuenta no encontrada en el carrito.']);
+        }
+
+        // Eliminar el servicio principal
+        if (isset($cart['accounts'][$accountIndex]['primary_service'])) {
+            unset($cart['accounts'][$accountIndex]['primary_service']);
+        }
+
+        session(['cart' => $cart]);
+
+        return back()->with('success', 'Servicio principal eliminado del carrito.');
     }
 
     public function addItem(Request $request): RedirectResponse

@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -10,10 +9,22 @@ class ConfigurableOptionPricing extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['configurable_option_id', 'product_pricing_id', 'price', 'setup_fee'];
+    protected $fillable = [
+        'configurable_option_id',
+        'billing_cycle_id',
+        'price',
+        'setup_fee',
+        'currency_code',
+        'is_active',
+        'metadata',
+    ];
 
-    // Si el nombre de la tabla no sigue la convención plural (configurable_option_pricings), descomenta:
-    // protected $table = 'configurable_option_pricing';
+    protected $casts = [
+        'price'     => 'decimal:2',
+        'setup_fee' => 'decimal:2',
+        'is_active' => 'boolean',
+        'metadata'  => 'array',
+    ];
 
     /**
      * Get the configurable option that this pricing belongs to.
@@ -24,10 +35,26 @@ class ConfigurableOptionPricing extends Model
     }
 
     /**
-     * Get the product pricing that this option pricing is linked to.
+     * Get the billing cycle that this option pricing is linked to.
      */
-    public function productPricing(): BelongsTo
+    public function billingCycle(): BelongsTo
     {
-        return $this->belongsTo(ProductPricing::class, 'product_pricing_id');
+        return $this->belongsTo(BillingCycle::class, 'billing_cycle_id');
+    }
+
+    /**
+     * Scope for active pricings
+     */
+    public function scopeActive($query)
+    {
+        return $query->where('is_active', true);
+    }
+
+    /**
+     * Scope for specific currency
+     */
+    public function scopeCurrency($query, $currency)
+    {
+        return $query->where('currency_code', $currency);
     }
 }

@@ -18,8 +18,12 @@ return new class extends Migration
             // o considera añadir la constraint en una migración posterior si 'products' se crea después.
             $table->foreignId('product_id')->nullable()->constrained('products')->onDelete('cascade');
             $table->string('name');
-            $table->string('description')->nullable();
+            $table->string('slug')->unique();
+            $table->text('description')->nullable();
             $table->integer('display_order')->default(0);
+            $table->boolean('is_active')->default(true);
+            $table->boolean('is_required')->default(false);
+            $table->json('metadata')->nullable(); // Para datos adicionales futuros
             $table->timestamps();
         });
     }

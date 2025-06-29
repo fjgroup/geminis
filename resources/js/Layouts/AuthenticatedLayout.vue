@@ -65,8 +65,8 @@ const isActiveDashboard = computed(() => {
                                         :active="route().current('client.transactions.index')">
                                         Transacciones
                                     </NavLink>
-                                    <NavLink :href="route('client.products.index')"
-                                        :active="route().current('client.products.index')">
+                                    <NavLink :href="route('client.checkout.selectDomain')"
+                                        :active="route().current('client.checkout.selectDomain')">
                                         Tienda
                                     </NavLink>
                                     <NavLink :href="route('client.funds.create')"
@@ -185,8 +185,8 @@ const isActiveDashboard = computed(() => {
                                 :active="route().current('client.transactions.index')">
                                 Transacciones
                             </ResponsiveNavLink>
-                            <ResponsiveNavLink :href="route('client.products.index')"
-                                :active="route().current('client.products.index')">
+                            <ResponsiveNavLink :href="route('client.checkout.selectDomain')"
+                                :active="route().current('client.checkout.selectDomain')">
                                 Tienda
                             </ResponsiveNavLink>
                             <ResponsiveNavLink :href="route('client.funds.create')"

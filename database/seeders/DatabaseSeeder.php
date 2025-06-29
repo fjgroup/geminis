@@ -1,8 +1,6 @@
 <?php
-
 namespace Database\Seeders;
 
-use App\Models\User;
 // use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
@@ -15,15 +13,32 @@ class DatabaseSeeder extends Seeder
     {
         // User::factory(10)->create();
 
-     /*   User::factory()->create([
+        /*   User::factory()->create([
             'name' => 'Test User',
             'email' => 'test@example.com',
         ]);*/
-        
+
         $this->call([
+            // Primero los descuentos (necesarios para billing cycles)
+            DiscountPercentageSeeder::class,
+
+            // Luego los ciclos de facturación (con descuentos)
             BillingCycleSeeder::class,
-            ProductTypeSeeder::class, // Added ProductTypeSeeder
-            PaymentMethodSeeder::class, // Se añade PaymentMethodSeeder
+
+            // Tipos de productos
+            ProductTypeSeeder::class,
+
+            // Métodos de pago
+            PaymentMethodSeeder::class,
+
+            // Producto de dominio genérico
+            GenericDomainProductSeeder::class,
+
+            // Opciones configurables (después de productos)
+            ConfigurableOptionsSeeder::class,
+
+            // Productos de hosting (después de opciones configurables)
+            HostingProductsSeeder::class,
         ]);
     }
 }

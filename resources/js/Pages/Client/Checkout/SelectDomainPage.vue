@@ -301,18 +301,12 @@ const canConfirmDomain = computed(() => {
                                     <optgroup v-if="promotionalTlds.length > 0" label="🔥 Ofertas Especiales">
                                         <option v-for="tldOpt in promotionalTlds" :key="'promo-' + tldOpt.tld"
                                             :value="tldOpt">
-                                            {{ tldOpt.name }} -
-                                            <span class="font-bold text-red-600">
-                                                {{ formatCurrency(tldOpt.name_silo_info.registration,
-                                                tldOpt.name_silo_info.currency || 'USD') }}
-                                            </span>
-                                            <span class="text-gray-500 line-through">
-                                                {{ formatCurrency(tldOpt.name_silo_info.renewal,
-                                                tldOpt.name_silo_info.currency
-                                                || 'USD') }}
-                                            </span>
-                                            (¡Ahorra {{ Math.round((1 - tldOpt.name_silo_info.registration /
-                                            tldOpt.name_silo_info.renewal) * 100) }}%!)
+                                            {{ tldOpt.name }} {{ formatCurrency(tldOpt.name_silo_info.registration,
+                                            tldOpt.name_silo_info.currency || 'USD') }} (¡Ahorra {{ Math.round((1 -
+                                                tldOpt.name_silo_info.registration / tldOpt.name_silo_info.renewal) * 100)
+                                            }}%!)
+                                            renovación {{ formatCurrency(tldOpt.name_silo_info.renewal,
+                                            tldOpt.name_silo_info.currency || 'USD') }}
                                         </option>
                                     </optgroup>
 
@@ -324,7 +318,7 @@ const canConfirmDomain = computed(() => {
                                             <span
                                                 v-if="tldOpt.name_silo_info && typeof tldOpt.name_silo_info.registration === 'number'">
                                                 ({{ formatCurrency(tldOpt.name_silo_info.registration,
-                                                tldOpt.name_silo_info.currency || 'USD') }})
+                                                    tldOpt.name_silo_info.currency || 'USD') }})
                                             </span>
                                         </option>
                                     </optgroup>
@@ -371,7 +365,7 @@ const canConfirmDomain = computed(() => {
                                     class="mt-1 text-sm">
                                     Precio de Registro para <strong class="font-semibold">{{
                                         availabilityResult.domain_name
-                                    }}</strong>:
+                                        }}</strong>:
                                     {{ formatCurrency(nameSiloRegistrationPrice, availabilityResult.currency_code ||
                                         'USD')
                                     }}

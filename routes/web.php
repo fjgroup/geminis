@@ -53,6 +53,7 @@ use App\Http\Controllers\Reseller\ResellerDashboardController;
 use Illuminate\Foundation\Application; // Added for reseller dashboard
 use Illuminate\Support\Facades\Route;  // Import ApiProductController
 use Inertia\Inertia;
+
 // Import DomainApiController
 
 // Rutas para la administración
@@ -178,8 +179,8 @@ Route::prefix('client')->name('client.')->middleware(['auth', 'verified'])->grou
     Route::get('/funds/paypal/cancel', [ClientFundAdditionController::class, 'handlePayPalCancel'])
         ->name('funds.paypal.cancel');
 
-    // Rutas para el listado de productos para clientes (handled by ClientDashboardController)
-    Route::get('/products', [ClientDashboardController::class, 'listProducts'])->name('products.index');
+    // Rutas para el listado de productos para clientes (DESHABILITADO - usar checkout en su lugar)
+    // Route::get('/products', [ClientDashboardController::class, 'listProducts'])->name('products.index');
 
     // Rutas adicionales para servicios de cliente (no incluidas en resource por defecto)
     // These routes point to the ClientServiceController methods
@@ -212,8 +213,8 @@ Route::prefix('client')->name('client.')->middleware(['auth', 'verified'])->grou
     // Route::get('/add-funds', [ClientFundAdditionController::class, 'showAddFundsForm'])->name('client.funds.create');
     // Route::post('/add-funds', [ClientFundAdditionController::class, 'processFundAddition'])->name('client.funds.store');
 
-    // Rutas para el listado de productos para clientes
-    Route::get('/products', [ClientDashboardController::class, 'listProducts'])->name('products.index');
+    // Rutas para el listado de productos para clientes (DESHABILITADO - usar checkout en su lugar)
+    // Route::get('/products', [ClientDashboardController::class, 'listProducts'])->name('products.index');
 
     // Ruta para solicitar cancelación de servicio
     Route::post('/services/{service}/request-cancellation', [ClientServiceController::class, 'requestCancellation'])->name('services.requestCancellation');
@@ -238,7 +239,8 @@ Route::prefix('client')->name('client.')->middleware(['auth', 'verified'])->grou
     Route::post('/invoices/{invoice}/cancel-new-order', [App\Http\Controllers\Client\ClientInvoiceController::class, 'requestInvoiceCancellation'])->name('invoices.cancelNewOrder');
 
     // Rutas para el Carrito de Compras
-    Route::prefix('cart')->name('cart.')->group(function () {
+    // Cart routes with rate limiting
+    Route::prefix('cart')->name('cart.')->middleware(['cart.ratelimit:20,1'])->group(function () {
         Route::get('/', [\App\Http\Controllers\Client\ClientCartController::class, 'getCart'])->name('get');
         Route::post('/add', [\App\Http\Controllers\Client\ClientCartController::class, 'addItem'])->name('add');
         Route::post('/update', [\App\Http\Controllers\Client\ClientCartController::class, 'updateItem'])->name('update');
@@ -247,6 +249,7 @@ Route::prefix('client')->name('client.')->middleware(['auth', 'verified'])->grou
         Route::post('/account/set-domain', [\App\Http\Controllers\Client\ClientCartController::class, 'setDomainForAccount'])->name('account.setDomain');
         Route::post('/account/remove-domain', [\App\Http\Controllers\Client\ClientCartController::class, 'removeDomainFromAccount'])->name('account.removeDomain');
         Route::post('/account/set-primary-service', [\App\Http\Controllers\Client\ClientCartController::class, 'setPrimaryServiceForAccount'])->name('account.setPrimaryService');
+        Route::post('/account/remove-primary-service', [\App\Http\Controllers\Client\ClientCartController::class, 'removePrimaryServiceFromAccount'])->name('account.removePrimaryService');
     });
 });
 

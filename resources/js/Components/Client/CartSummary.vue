@@ -74,6 +74,36 @@ const removeDomain = (accountId) => {
     });
 };
 
+const removePrimaryService = (accountId) => {
+    if (!confirm('¿Estás seguro de que deseas eliminar este servicio del carrito?')) {
+        return;
+    }
+
+    router.post(route('client.cart.account.removePrimaryService'), {
+        account_id: accountId
+    }, {
+        preserveScroll: true,
+        onSuccess: () => {
+            window.dispatchEvent(new CustomEvent('cart-updated'));
+        },
+        onError: (errors) => {
+            console.error('Error al eliminar servicio:', errors);
+            alert('Error al eliminar el servicio del carrito.');
+        }
+    });
+};
+
+const changeBillingCycle = (accountId, currentService) => {
+    // Redirigir a la página de selección de servicios con el contexto de cambio
+    router.visit(route('client.checkout.selectServices'), {
+        data: {
+            change_service: true,
+            account_id: accountId,
+            current_product_id: currentService.product_id
+        }
+    });
+};
+
 const accounts = computed(() => cartData.value?.accounts || []);
 const activeAccountId = computed(() => cartData.value?.active_account_id);
 
@@ -175,13 +205,30 @@ const cartCurrency = computed(() => {
 
                 <div v-if="account.primary_service && account.primary_service.product_name"
                     class="p-2 mb-2 ml-2 rounded bg-gray-50">
-                    <p class="font-semibold text-gray-700">Servicio Principal:</p>
-                    <div class="ml-3 text-sm text-gray-600">
-                        <span>{{ account.primary_service.product_name }}</span>
-                        <span v-if="typeof account.primary_service.price === 'number'" class="float-right font-medium">
-                            {{ formatCurrency(account.primary_service.price, account.primary_service.currency_code ||
-                                cartCurrency) }}
-                        </span>
+                    <div class="flex justify-between items-start">
+                        <div class="flex-1">
+                            <p class="font-semibold text-gray-700">Servicio Principal:</p>
+                            <div class="ml-3 text-sm text-gray-600">
+                                <span>{{ account.primary_service.product_name }}</span>
+                                <span v-if="typeof account.primary_service.price === 'number'"
+                                    class="float-right font-medium">
+                                    {{ formatCurrency(account.primary_service.price,
+                                        account.primary_service.currency_code ||
+                                        cartCurrency) }}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="ml-2 flex space-x-1">
+                            <button @click="changeBillingCycle(account.account_id, account.primary_service)"
+                                class="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                                title="Cambiar ciclo de facturación">
+                                🔄
+                            </button>
+                            <button @click="removePrimaryService(account.account_id)"
+                                class="text-red-600 hover:text-red-800 text-sm font-medium" title="Eliminar servicio">
+                                ✕
+                            </button>
+                        </div>
                     </div>
                     <!-- Mostrar Opciones Configurables Seleccionadas (Básico) -->
                     <div v-if="account.primary_service.configurable_options && Object.keys(account.primary_service.configurable_options).length > 0"

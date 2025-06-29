@@ -11,6 +11,13 @@ import { EyeIcon, PencilSquareIcon, TrashIcon } from '@heroicons/vue/24/outline'
 const isServiceModalOpen = ref(false);
 const selectedService = ref(null);
 
+// Sorting state
+const sortField = ref('domain_name'); // Default sort by domain
+const sortDirection = ref('asc');
+
+// Grouping state
+const expandedDomains = ref(new Set());
+
 const props = defineProps({
     clientServices: {
         type: Array,
@@ -98,9 +105,116 @@ const closeServiceModal = () => {
     selectedService.value = null;
 };
 
+// Sorting functions
+const sortBy = (field) => {
+    if (sortField.value === field) {
+        sortDirection.value = sortDirection.value === 'asc' ? 'desc' : 'asc';
+    } else {
+        sortField.value = field;
+        sortDirection.value = 'asc';
+    }
+};
+
+const getSortIcon = (field) => {
+    if (sortField.value !== field) return '↕️';
+    return sortDirection.value === 'asc' ? '↑' : '↓';
+};
+
+// Computed property for sorted services
+const sortedServices = computed(() => {
+    if (!props.clientServices || props.clientServices.length === 0) {
+        return [];
+    }
+
+    const services = [...props.clientServices];
+
+    return services.sort((a, b) => {
+        let aValue, bValue;
+
+        switch (sortField.value) {
+            case 'domain_name':
+                aValue = a.domain_name || '';
+                bValue = b.domain_name || '';
+                break;
+            case 'product_name':
+                aValue = a.product?.name || '';
+                bValue = b.product?.name || '';
+                break;
+            case 'next_due_date':
+                aValue = new Date(a.next_due_date || 0);
+                bValue = new Date(b.next_due_date || 0);
+                break;
+            case 'status':
+                aValue = a.status || '';
+                bValue = b.status || '';
+                break;
+            case 'price':
+                aValue = parseFloat(a.price || 0);
+                bValue = parseFloat(b.price || 0);
+                break;
+            default:
+                return 0;
+        }
+
+        if (aValue < bValue) {
+            return sortDirection.value === 'asc' ? -1 : 1;
+        }
+        if (aValue > bValue) {
+            return sortDirection.value === 'asc' ? 1 : -1;
+        }
+        return 0;
+    });
+});
+
+// Group services by domain
+const groupedServices = computed(() => {
+    const groups = {};
+
+    sortedServices.value.forEach(service => {
+        const domain = service.domain_name || 'Sin dominio';
+        if (!groups[domain]) {
+            groups[domain] = [];
+        }
+        groups[domain].push(service);
+    });
+
+    return groups;
+});
+
+// Toggle domain expansion
+const toggleDomain = (domain) => {
+    if (expandedDomains.value.has(domain)) {
+        expandedDomains.value.delete(domain);
+    } else {
+        expandedDomains.value.add(domain);
+    }
+};
+
+// Check if domain is expanded
+const isDomainExpanded = (domain) => {
+    return expandedDomains.value.has(domain);
+};
+
+// Get domain summary info
+const getDomainSummary = (services) => {
+    const totalPrice = services.reduce((sum, service) => sum + parseFloat(service.price || 0), 0);
+    const nextDueDate = services.reduce((earliest, service) => {
+        const serviceDate = new Date(service.next_due_date);
+        return !earliest || serviceDate < earliest ? serviceDate : earliest;
+    }, null);
+
+    return {
+        totalPrice,
+        nextDueDate,
+        serviceCount: services.length,
+        statuses: [...new Set(services.map(s => s.status))]
+    };
+};
+
 </script>
 
 <template>
+
     <Head title="Mis Servicios" />
 
     <AuthenticatedLayout>
@@ -109,11 +223,7 @@ const closeServiceModal = () => {
         </template>
 
         <!-- Service Details Modal -->
-        <ServiceDetailsModal
-            :show="isServiceModalOpen"
-            :service="selectedService"
-            @close="closeServiceModal"
-        />
+        <ServiceDetailsModal :show="isServiceModalOpen" :service="selectedService" @close="closeServiceModal" />
 
         <div class="py-12">
             <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
@@ -123,102 +233,156 @@ const closeServiceModal = () => {
                         <!-- Service List Section -->
                         <div>
                             <h3 class="text-lg font-medium text-gray-900 mb-4">Lista de Servicios</h3>
-                            <div class="overflow-x-auto">
-                                <table class="min-w-full divide-y divide-gray-200" v-if="clientServices && clientServices.length > 0">
-                                    <thead class="bg-gray-50">
-                                        <tr>
-                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Nombre del producto</th>
-                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Dominio</th>
-                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Próxima Fecha de Vencimiento</th>
-                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Estado</th>
-                                            <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Precio</th>
-                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Acciones</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody class="bg-white divide-y divide-gray-200">
-                                        <tr v-for="service in clientServices" :key="service.id">
-                                            <td class="px-6 py-4 whitespace-nowrap">
-                                                <div class="text-sm font-medium text-gray-900">
-                                                    {{ service.product?.name || 'N/A' }}
-                                                </div>
-                                                 <div v-if="service.billingCycle" class="text-xs text-gray-500">
-                                                    ({{ service.billingCycle.name }})
-                                                </div>
-                                            </td>
-                                            <td class="px-6 py-4 whitespace-nowrap">
-                                                <div class="text-sm text-gray-500">{{ service.domain_name || 'N/A' }}</div>
-                                            </td>
-                                             <td class="px-6 py-4 whitespace-nowrap">
-                                                <div class="text-sm text-gray-500">
-                                                    {{ service.next_due_date ? formatDate(service.next_due_date, 'dd/MM/yyyy') : 'N/A' }}
-                                                </div>
-                                            </td>
-                                            <td class="px-6 py-4 whitespace-nowrap">
-                                                <span :class="{
-                                                    'px-2 inline-flex text-xs leading-5 font-semibold rounded-full': true,
-                                                    'bg-green-100 text-green-800': service.status && service.status.toLowerCase() === 'active',
-                                                    'bg-yellow-100 text-yellow-800': service.status && (service.status.toLowerCase() === 'pending' || service.status.toLowerCase() === 'pending_cancellation'),
-                                                    'bg-blue-100 text-blue-800': service.status && service.status.toLowerCase() === 'pending_configuration',
-                                                    'bg-orange-100 text-orange-800': service.status && service.status.toLowerCase() === 'suspended',
-                                                    'bg-red-100 text-red-800': service.status && (service.status.toLowerCase() === 'terminated' || service.status.toLowerCase() === 'cancelled'),
-                                                    'bg-gray-100 text-gray-800': service.status && !['active', 'pending', 'pending_configuration', 'suspended', 'terminated', 'cancelled', 'pending_cancellation'].includes(service.status.toLowerCase())
-                                                }">
-                                                    {{ getFriendlyServiceStatusText(service.status) }}
-                                                </span>
-                                            </td>
-                                             <td class="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-500">
-                                                 {{ formatCurrency(service.billing_amount, service.productPricing?.currency_code || 'USD') }}
-                                            </td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                                <div class="flex items-center space-x-2">
-                                                    <button @click="showServiceDetails(service)"
-                                                            class="text-gray-500 hover:text-blue-700 p-1"
-                                                            aria-label="Ver detalles del servicio"
-                                                            title="Ver detalles">
-                                                        <EyeIcon class="h-5 w-5" />
-                                                    </button>
+                            <div class="space-y-4" v-if="clientServices && clientServices.length > 0">
+                                <!-- Grouped Services by Domain -->
+                                <div v-for="(services, domain) in groupedServices" :key="domain"
+                                    class="border border-gray-200 rounded-lg overflow-hidden">
 
-                                                    <template v-if="service.status && service.status.toLowerCase() === 'active'">
-                                                        <Link :href="route('client.services.showUpgradeDowngradeOptions', { service: service.id })"
-                                                              class="text-gray-500 hover:text-indigo-700 p-1"
-                                                              aria-label="Actualizar plan"
-                                                              title="Actualizar plan">
-                                                            <PencilSquareIcon class="h-5 w-5" />
-                                                        </Link>
-                                                        <button type="button"
-                                                                @click="confirmRequestCancellation(service.id)"
-                                                                class="text-gray-500 hover:text-red-700 p-1"
-                                                                aria-label="Solicitar cancelación"
-                                                                title="Solicitar cancelación">
-                                                            <TrashIcon class="h-5 w-5" />
-                                                        </button>
-                                                    </template>
-
-                                                    <span v-if="service.status && service.status.toLowerCase() === 'pending_cancellation'" class="text-xs text-yellow-700 font-semibold">
-                                                        Cancelación Pendiente
-                                                    </span>
-
-                                                    <!-- Fallback for other states where no specific actions are available -->
-                                                    <span v-else-if="service.status && !['active', 'suspended'].includes(service.status.toLowerCase()) && service.status.toLowerCase() !== 'pending_cancellation'" class="text-xs text-gray-400">
-                                                        ---
-                                                    </span>
+                                    <!-- Domain Header (Clickable) -->
+                                    <div class="bg-gray-50 px-6 py-4 cursor-pointer hover:bg-gray-100 transition-colors"
+                                        @click="toggleDomain(domain)">
+                                        <div class="flex items-center justify-between">
+                                            <div class="flex items-center space-x-3">
+                                                <span class="text-lg">{{ isDomainExpanded(domain) ? '▼' : '▶' }}</span>
+                                                <div>
+                                                    <h4 class="text-lg font-semibold text-gray-900">{{ domain }}</h4>
+                                                    <p class="text-sm text-gray-600">
+                                                        {{ getDomainSummary(services).serviceCount }} servicio(s) •
+                                                        Próximo vencimiento: {{ getDomainSummary(services).nextDueDate ?
+                                                            formatDate(getDomainSummary(services).nextDueDate, 'dd/MM/yyyy')
+                                                            : 'N/A'
+                                                        }}
+                                                    </p>
                                                 </div>
-                                            </td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                                <div v-else class="py-6 text-center text-gray-500">
+                                            </div>
+                                            <div class="text-right">
+                                                <div class="text-lg font-semibold text-gray-900">
+                                                    {{ formatCurrency(getDomainSummary(services).totalPrice) }}
+                                                </div>
+                                                <div class="text-sm text-gray-600">
+                                                    {{ getDomainSummary(services).statuses.join(', ') }}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Services Table (Expandable) -->
+                                    <div v-if="isDomainExpanded(domain)" class="bg-white">
+                                        <table class="min-w-full divide-y divide-gray-200">
+                                            <thead class="bg-gray-50">
+                                                <tr>
+                                                    <th scope="col"
+                                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                        Servicio
+                                                    </th>
+                                                    <th scope="col"
+                                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                        Fecha de Vencimiento
+                                                    </th>
+                                                    <th scope="col"
+                                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                        Estado
+                                                    </th>
+                                                    <th scope="col"
+                                                        class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                        Precio
+                                                    </th>
+                                                    <th scope="col"
+                                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                        Acciones
+                                                    </th>
+                                                </tr>
+                                            </thead>
+                                            <tbody class="bg-white divide-y divide-gray-200">
+                                                <tr v-for="service in services" :key="service.id">
+                                                    <td class="px-6 py-4 whitespace-nowrap">
+                                                        <div class="text-sm font-medium text-gray-900">
+                                                            {{ service.product?.name || 'N/A' }}
+                                                        </div>
+                                                        <div v-if="service.billingCycle" class="text-xs text-gray-500">
+                                                            ({{ service.billingCycle.name }})
+                                                        </div>
+                                                    </td>
+                                                    <td class="px-6 py-4 whitespace-nowrap">
+                                                        <div class="text-sm text-gray-500">
+                                                            {{ service.next_due_date ? formatDate(service.next_due_date,
+                                                                'dd/MM/yyyy') :
+                                                                'N/A' }}
+                                                        </div>
+                                                    </td>
+                                                    <td class="px-6 py-4 whitespace-nowrap">
+                                                        <span :class="{
+                                                            'px-2 inline-flex text-xs leading-5 font-semibold rounded-full': true,
+                                                            'bg-green-100 text-green-800': service.status && service.status.toLowerCase() === 'active',
+                                                            'bg-yellow-100 text-yellow-800': service.status && (service.status.toLowerCase() === 'pending' || service.status.toLowerCase() === 'pending_cancellation'),
+                                                            'bg-blue-100 text-blue-800': service.status && service.status.toLowerCase() === 'pending_configuration',
+                                                            'bg-orange-100 text-orange-800': service.status && service.status.toLowerCase() === 'suspended',
+                                                            'bg-red-100 text-red-800': service.status && (service.status.toLowerCase() === 'terminated' || service.status.toLowerCase() === 'cancelled'),
+                                                            'bg-gray-100 text-gray-800': service.status && !['active', 'pending', 'pending_configuration', 'suspended', 'terminated', 'cancelled', 'pending_cancellation'].includes(service.status.toLowerCase())
+                                                        }">
+                                                            {{ getFriendlyServiceStatusText(service.status) }}
+                                                        </span>
+                                                    </td>
+                                                    <td
+                                                        class="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-500">
+                                                        {{ formatCurrency(service.billing_amount,
+                                                            service.productPricing?.currency_code
+                                                            || 'USD') }}
+                                                    </td>
+                                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                                        <div class="flex items-center space-x-2">
+                                                            <button @click="showServiceDetails(service)"
+                                                                class="text-gray-500 hover:text-blue-700 p-1"
+                                                                aria-label="Ver detalles del servicio"
+                                                                title="Ver detalles">
+                                                                <EyeIcon class="h-5 w-5" />
+                                                            </button>
+
+                                                            <template
+                                                                v-if="service.status && service.status.toLowerCase() === 'active'">
+                                                                <Link
+                                                                    :href="route('client.services.showUpgradeDowngradeOptions', { service: service.id })"
+                                                                    class="text-gray-500 hover:text-indigo-700 p-1"
+                                                                    aria-label="Actualizar plan"
+                                                                    title="Actualizar plan">
+                                                                <PencilSquareIcon class="h-5 w-5" />
+                                                                </Link>
+                                                                <button type="button"
+                                                                    @click="confirmRequestCancellation(service.id)"
+                                                                    class="text-gray-500 hover:text-red-700 p-1"
+                                                                    aria-label="Solicitar cancelación"
+                                                                    title="Solicitar cancelación">
+                                                                    <TrashIcon class="h-5 w-5" />
+                                                                </button>
+                                                            </template>
+
+                                                            <span
+                                                                v-if="service.status && service.status.toLowerCase() === 'pending_cancellation'"
+                                                                class="text-xs text-yellow-700 font-semibold">
+                                                                Cancelación Pendiente
+                                                            </span>
+
+                                                            <!-- Fallback for other states where no specific actions are available -->
+                                                            <span
+                                                                v-else-if="service.status && !['active', 'suspended'].includes(service.status.toLowerCase()) && service.status.toLowerCase() !== 'pending_cancellation'"
+                                                                class="text-xs text-gray-400">
+                                                                ---
+                                                            </span>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                <!-- No services message -->
+                                <div v-if="Object.keys(groupedServices).length === 0"
+                                    class="py-6 text-center text-gray-500">
                                     <p>No tienes servicios activos en este momento.</p>
                                 </div>
                             </div>
                         </div>
-
                     </div>
                 </div>
             </div>
