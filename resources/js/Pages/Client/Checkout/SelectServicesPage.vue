@@ -323,7 +323,7 @@ onMounted(() => {
                         <div>
                             <p class="mb-4 text-lg text-gray-700 dark:text-gray-300">
                                 Añadiendo servicios para: <strong class="text-indigo-600">{{ displayAccountName
-                                }}</strong>
+                                    }}</strong>
                             </p>
 
                             <section>
@@ -338,7 +338,7 @@ onMounted(() => {
                                         <div>
                                             <h4 class="text-lg font-semibold text-gray-800 dark:text-gray-200">{{
                                                 product.name
-                                            }}</h4>
+                                                }}</h4>
                                             <p class="mb-3 text-sm text-gray-600 dark:text-gray-400">{{
                                                 product.description }}
                                             </p>
@@ -354,7 +354,7 @@ onMounted(() => {
                                                         v-if="value">
                                                         <span class="font-medium">{{ formatResourceName(key) }}:</span>
                                                         {{
-                                                        formatResourceValue(key, value) }}
+                                                            formatResourceValue(key, value) }}
                                                     </div>
                                                 </div>
                                             </div>
@@ -371,7 +371,7 @@ onMounted(() => {
                                                         class="flex flex-col items-center justify-center p-4 min-h-[120px] text-center border rounded-lg hover:bg-indigo-50 dark:hover:bg-gray-700 dark:border-gray-600 transition-colors duration-200 shadow-sm hover:shadow-md">
                                                         <span
                                                             class="mb-2 text-sm font-semibold text-gray-900 dark:text-gray-100">{{
-                                                            pricing.billing_cycle.name }}</span>
+                                                                pricing.billing_cycle.name }}</span>
                                                         <div class="flex flex-col items-center space-y-1">
                                                             <div class="text-center">
                                                                 <!-- Precio con descuento -->
@@ -379,14 +379,14 @@ onMounted(() => {
                                                                     class="text-xl font-bold text-indigo-600 dark:text-indigo-400">
                                                                     {{
                                                                         formatCurrency(calculatePriceWithDiscount(pricing.price,
-                                                                    product.id, pricing.billing_cycle.id),
-                                                                    pricing.currency_code) }}
+                                                                            product.id, pricing.billing_cycle.id),
+                                                                            pricing.currency_code) }}
                                                                 </span>
                                                                 <!-- Precio original tachado si hay descuento -->
                                                                 <div v-if="getDiscountPercentage(product.id, pricing.billing_cycle.id) > 0"
                                                                     class="text-sm text-gray-500 line-through">
                                                                     {{ formatCurrency(pricing.price,
-                                                                    pricing.currency_code) }}
+                                                                        pricing.currency_code) }}
                                                                 </div>
                                                             </div>
                                                             <!-- Badge de descuento -->
@@ -394,13 +394,13 @@ onMounted(() => {
                                                                 v-if="getDiscountPercentage(product.id, pricing.billing_cycle.id) > 0"
                                                                 class="px-2 py-1 text-xs font-medium text-green-600 bg-green-100 rounded-full dark:text-green-400 dark:bg-green-900/30">
                                                                 -{{ getDiscountPercentage(product.id,
-                                                                pricing.billing_cycle.id)
+                                                                    pricing.billing_cycle.id)
                                                                 }}% descuento
                                                             </span>
                                                             <span v-if="pricing.setup_fee && pricing.setup_fee > 0"
                                                                 class="mt-1 text-xs text-gray-500 dark:text-gray-400">
                                                                 Setup: {{ formatCurrency(pricing.setup_fee,
-                                                                pricing.currency_code) }}
+                                                                    pricing.currency_code) }}
                                                             </span>
                                                         </div>
                                                     </button>
@@ -439,7 +439,7 @@ onMounted(() => {
                                                         <div v-if="group.base_quantity"
                                                             class="mt-1 text-xs text-blue-600 dark:text-blue-400">
                                                             Incluido: {{ group.base_quantity }} {{
-                                                            group.name.toLowerCase() }}
+                                                                group.name.toLowerCase() }}
                                                         </div>
                                                     </div>
                                                     <span v-if="group.is_required"
@@ -455,220 +455,229 @@ onMounted(() => {
 
                                                 <div v-if="group.options && group.options.length > 0" class="space-y-3">
                                                     <div v-for="option in group.options" :key="option.id"
-                                                        class="flex items-center justify-between p-3 transition-colors border border-gray-200 rounded-lg bg-gray-50 dark:bg-gray-700 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600"">
-                                                        <div class=" flex-1">
-                                                        <div class="flex items-center space-x-3">
-                                                            <!-- Checkbox para opciones no obligatorias -->
-                                                            <input
-                                                                v-if="option.option_type === 'checkbox' || !group.is_required"
-                                                                :id="`option_${option.id}`" type="checkbox"
-                                                                v-model="safeSelectedOptions[product.id][option.id]"
-                                                                class="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500">
+                                                        class="flex items-center justify-between p-3 transition-colors border border-gray-200 rounded-lg bg-gray-50 dark:bg-gray-700 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600">
+                                                        <div class="flex-1">
+                                                            <div class="flex items-center space-x-3">
+                                                                <!-- Checkbox para opciones no obligatorias -->
+                                                                <input
+                                                                    v-if="option.option_type === 'checkbox' || !group.is_required"
+                                                                    :id="`option_${option.id}`" type="checkbox"
+                                                                    v-model="safeSelectedOptions[product.id][option.id]"
+                                                                    class="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500">
 
-                                                            <!-- Radio button para opciones obligatorias -->
-                                                            <input v-else-if="group.is_required"
-                                                                :id="`option_${option.id}`" type="radio"
-                                                                :name="`group_${group.id}`" :value="option.id"
-                                                                v-model="safeSelectedOptions[product.id][group.id]"
-                                                                class="w-4 h-4 text-purple-600 border-gray-300 focus:ring-purple-500">
+                                                                <!-- Radio button para opciones obligatorias -->
+                                                                <input v-else-if="group.is_required"
+                                                                    :id="`option_${option.id}`" type="radio"
+                                                                    :name="`group_${group.id}`" :value="option.id"
+                                                                    v-model="safeSelectedOptions[product.id][group.id]"
+                                                                    class="w-4 h-4 text-purple-600 border-gray-300 focus:ring-purple-500">
 
-                                                            <label :for="`option_${option.id}`"
-                                                                class="flex-1 cursor-pointer">
+                                                                <label :for="`option_${option.id}`"
+                                                                    class="flex-1 cursor-pointer">
+                                                                    <div
+                                                                        class="text-sm font-medium text-gray-900 dark:text-gray-100">
+                                                                        {{ option.name }}
+                                                                    </div>
+                                                                    <div v-if="option.description"
+                                                                        class="text-xs text-gray-500">
+                                                                        {{ option.description }}
+                                                                    </div>
+                                                                    <div class="text-xs text-gray-400">
+                                                                        Tipo: {{ getOptionTypeLabel(option.option_type)
+                                                                        }}
+                                                                        <span
+                                                                            v-if="option.min_value || option.max_value">
+                                                                            ({{ option.min_value || 0 }} - {{
+                                                                                option.max_value
+                                                                                || '∞' }})
+                                                                        </span>
+                                                                    </div>
+                                                                    <!-- Mostrar precio si existe -->
+                                                                    <div v-if="option.pricings && option.pricings.length > 0"
+                                                                        class="text-xs font-medium text-green-600 dark:text-green-400">
+                                                                        {{ formatCurrency(option.pricings[0].price,
+                                                                            option.pricings[0].currency_code) }}
+                                                                        <span
+                                                                            v-if="option.option_type === 'quantity'">por
+                                                                            unidad</span>
+                                                                        / {{ option.pricings[0].billing_cycle.name }}
+                                                                    </div>
+                                                                </label>
+                                                            </div>
+
+                                                            <!-- Input de cantidad para opciones de tipo quantity -->
+                                                            <div v-if="option.option_type === 'quantity' && (selectedConfigurableOptions[product.id][option.id] || group.is_required)"
+                                                                class="mt-2 ml-7">
+                                                                <label
+                                                                    class="block mb-1 text-xs font-medium text-gray-700">
+                                                                    Cantidad:
+                                                                </label>
+                                                                <input type="number" :min="option.min_value || 1"
+                                                                    :max="option.max_value || 999"
+                                                                    v-model="selectedConfigurableOptions[product.id][`${option.id}_quantity`]"
+                                                                    class="w-24 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-purple-500 focus:border-purple-500">
+                                                            </div>
+                                                        </div>
+
+                                                        <!-- Precio de la opción -->
+                                                        <div class="ml-4 text-right">
+                                                            <div v-if="getOptionPricing(option, product)"
+                                                                class="text-sm">
                                                                 <div
-                                                                    class="text-sm font-medium text-gray-900 dark:text-gray-100">
-                                                                    {{ option.name }}
-                                                                </div>
-                                                                <div v-if="option.description"
-                                                                    class="text-xs text-gray-500">
-                                                                    {{ option.description }}
-                                                                </div>
-                                                                <div class="text-xs text-gray-400">
-                                                                    Tipo: {{ getOptionTypeLabel(option.option_type)
+                                                                    class="font-medium text-gray-900 dark:text-gray-100">
+                                                                    {{ formatCurrency(getOptionPricing(option,
+                                                                        product).price)
                                                                     }}
-                                                                    <span v-if="option.min_value || option.max_value">
-                                                                        ({{ option.min_value || 0 }} - {{
-                                                                            option.max_value
-                                                                            || '∞' }})
-                                                                    </span>
                                                                 </div>
-                                                                <!-- Mostrar precio si existe -->
-                                                                <div v-if="option.pricings && option.pricings.length > 0"
-                                                                    class="text-xs font-medium text-green-600 dark:text-green-400">
-                                                                    {{ formatCurrency(option.pricings[0].price,
-                                                                        option.pricings[0].currency_code) }}
-                                                                    <span v-if="option.option_type === 'quantity'">por
-                                                                        unidad</span>
-                                                                    / {{ option.pricings[0].billing_cycle.name }}
+                                                                <div class="text-xs text-gray-500">
+                                                                    {{ option.option_type === 'quantity' ? '/ unidad' :
+                                                                        '' }}
                                                                 </div>
-                                                            </label>
-                                                        </div>
-
-                                                        <!-- Input de cantidad para opciones de tipo quantity -->
-                                                        <div v-if="option.option_type === 'quantity' && (selectedConfigurableOptions[product.id][option.id] || group.is_required)"
-                                                            class="mt-2 ml-7">
-                                                            <label class="block mb-1 text-xs font-medium text-gray-700">
-                                                                Cantidad:
-                                                            </label>
-                                                            <input type="number" :min="option.min_value || 1"
-                                                                :max="option.max_value || 999"
-                                                                v-model="selectedConfigurableOptions[product.id][`${option.id}_quantity`]"
-                                                                class="w-24 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-purple-500 focus:border-purple-500">
-                                                        </div>
-                                                    </div>
-
-                                                    <!-- Precio de la opción -->
-                                                    <div class="ml-4 text-right">
-                                                        <div v-if="getOptionPricing(option, product)" class="text-sm">
-                                                            <div class="font-medium text-gray-900 dark:text-gray-100">
-                                                                {{ formatCurrency(getOptionPricing(option,
-                                                                    product).price)
-                                                                }}
+                                                                <div v-if="getOptionPricing(option, product).setup_fee > 0"
+                                                                    class="text-xs text-gray-400">
+                                                                    Setup: {{ formatCurrency(getOptionPricing(option,
+                                                                        product).setup_fee) }}
+                                                                </div>
                                                             </div>
-                                                            <div class="text-xs text-gray-500">
-                                                                {{ option.option_type === 'quantity' ? '/ unidad' :
-                                                                    '' }}
+                                                            <div v-else class="text-xs text-gray-400">
+                                                                Sin precio
                                                             </div>
-                                                            <div v-if="getOptionPricing(option, product).setup_fee > 0"
-                                                                class="text-xs text-gray-400">
-                                                                Setup: {{ formatCurrency(getOptionPricing(option,
-                                                                    product).setup_fee) }}
-                                                            </div>
-                                                        </div>
-                                                        <div v-else class="text-xs text-gray-400">
-                                                            Sin precio
                                                         </div>
                                                     </div>
                                                 </div>
-                                            </div>
 
-                                            <div v-else class="text-xs italic text-gray-400">
-                                                No hay opciones disponibles para este grupo.
+                                                <div v-else class="text-xs italic text-gray-400">
+                                                    No hay opciones disponibles para este grupo.
+                                                </div>
                                             </div>
                                         </div>
+
+
                                     </div>
-
-
+                                    <p v-if="formPrimaryService.errors.product_id" class="text-sm text-red-500">
+                                        {{ formPrimaryService.errors.product_id }}</p>
+                                    <p v-if="formPrimaryService.errors.pricing_id" class="text-sm text-red-500">
+                                        {{ formPrimaryService.errors.pricing_id }}</p>
+                                    <p v-if="formPrimaryService.errors.configurable_options"
+                                        class="text-sm text-red-500">
+                                        {{ formPrimaryService.errors.configurable_options }}</p>
+                                    <p v-if="formPrimaryService.errors.general_error" class="text-sm text-red-500">
+                                        {{ formPrimaryService.errors.general_error }}</p>
                                 </div>
-                                <p v-if="formPrimaryService.errors.product_id" class="text-sm text-red-500">
-                                    {{ formPrimaryService.errors.product_id }}</p>
-                                <p v-if="formPrimaryService.errors.pricing_id" class="text-sm text-red-500">
-                                    {{ formPrimaryService.errors.pricing_id }}</p>
-                                <p v-if="formPrimaryService.errors.configurable_options" class="text-sm text-red-500">
-                                    {{ formPrimaryService.errors.configurable_options }}</p>
-                                <p v-if="formPrimaryService.errors.general_error" class="text-sm text-red-500">
-                                    {{ formPrimaryService.errors.general_error }}</p>
+                            </section>
+
+                            <section>
+                                <h3 class="mt-6 mb-3 text-xl font-medium text-gray-900 dark:text-gray-100">Certificados
+                                    SSL
+                                    (Opcional)</h3>
+                                <div class="space-y-4">
+                                    <div v-for="product in props.sslProducts" :key="product.id"
+                                        class="p-4 border rounded-lg dark:border-gray-700">
+                                        <h4 class="text-lg font-semibold text-gray-800 dark:text-gray-200">{{
+                                            product.name }}
+                                        </h4>
+                                        <p class="mb-2 text-sm text-gray-600 dark:text-gray-400">{{ product.description
+                                            }}</p>
+                                        <div class="space-y-2">
+                                            <button v-for="pricing in product.pricings" :key="pricing.id"
+                                                @click="console.log(`Clic en SSL: ProdID=${product.id}, PricingID=${pricing.id}`); handleAddAdditionalService(product.id, pricing.id)"
+                                                :disabled="formAdditionalService.processing"
+                                                class="flex items-center justify-between w-full p-3 text-left border rounded-md hover:bg-green-50 dark:hover:bg-gray-700 dark:border-gray-600">
+                                                <div class="flex flex-col">
+                                                    <span class="font-medium">{{ pricing.billing_cycle.name }}</span>
+                                                    <span v-if="pricing.billing_cycle.discount_percentage > 0"
+                                                        class="text-xs text-green-600 dark:text-green-400">
+                                                        -{{ pricing.billing_cycle.discount_percentage }}% descuento
+                                                    </span>
+                                                </div>
+                                                <div class="text-right">
+                                                    <span class="text-lg font-semibold">{{ formatCurrency(pricing.price,
+                                                        pricing.currency_code) }}</span>
+                                                    <div v-if="pricing.setup_fee && pricing.setup_fee > 0"
+                                                        class="text-xs text-gray-500">
+                                                        Setup: {{ formatCurrency(pricing.setup_fee,
+                                                            pricing.currency_code)
+                                                        }}
+                                                    </div>
+                                                </div>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <p v-if="formAdditionalService.errors.general_error_ssl"
+                                        class="text-sm text-red-500">
+                                        {{ formAdditionalService.errors.general_error_ssl }}</p>
+                                </div>
+                            </section>
+
+                            <section>
+                                <h3 class="mt-6 mb-3 text-xl font-medium text-gray-900 dark:text-gray-100">Licencias
+                                    Adicionales
+                                    (Opcional)</h3>
+                                <div class="space-y-4">
+                                    <div v-for="product in props.licenseProducts" :key="product.id"
+                                        class="p-4 border rounded-lg dark:border-gray-700">
+                                        <h4 class="text-lg font-semibold text-gray-800 dark:text-gray-200">{{
+                                            product.name }}
+                                        </h4>
+                                        <p class="mb-2 text-sm text-gray-600 dark:text-gray-400">{{ product.description
+                                            }}</p>
+                                        <div class="space-y-2">
+                                            <button v-for="pricing in product.pricings" :key="pricing.id"
+                                                @click="console.log(`Clic en Licencia: ProdID=${product.id}, PricingID=${pricing.id}`); handleAddAdditionalService(product.id, pricing.id)"
+                                                :disabled="formAdditionalService.processing"
+                                                class="flex items-center justify-between w-full p-3 text-left border rounded-md hover:bg-yellow-50 dark:hover:bg-gray-700 dark:border-gray-600">
+                                                <div class="flex flex-col">
+                                                    <span class="font-medium">{{ pricing.billing_cycle.name }}</span>
+                                                    <span v-if="pricing.billing_cycle.discount_percentage > 0"
+                                                        class="text-xs text-green-600 dark:text-green-400">
+                                                        -{{ pricing.billing_cycle.discount_percentage }}% descuento
+                                                    </span>
+                                                </div>
+                                                <div class="text-right">
+                                                    <span class="text-lg font-semibold">{{ formatCurrency(pricing.price,
+                                                        pricing.currency_code) }}</span>
+                                                    <div v-if="pricing.setup_fee && pricing.setup_fee > 0"
+                                                        class="text-xs text-gray-500">
+                                                        Setup: {{ formatCurrency(pricing.setup_fee,
+                                                            pricing.currency_code)
+                                                        }}
+                                                    </div>
+                                                </div>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <p v-if="formAdditionalService.errors.product_id" class="text-sm text-red-500">
+                                        {{ formAdditionalService.errors.product_id }}</p>
+                                    <p v-if="formAdditionalService.errors.pricing_id" class="text-sm text-red-500">
+                                        {{ formAdditionalService.errors.pricing_id }}</p>
+                                    <p v-if="formAdditionalService.errors.general_error_license"
+                                        class="text-sm text-red-500">
+                                        {{ formAdditionalService.errors.general_error_license }}</p>
+                                </div>
+                            </section>
                         </div>
-                        </section>
 
-                        <section>
-                            <h3 class="mt-6 mb-3 text-xl font-medium text-gray-900 dark:text-gray-100">Certificados
-                                SSL
-                                (Opcional)</h3>
-                            <div class="space-y-4">
-                                <div v-for="product in props.sslProducts" :key="product.id"
-                                    class="p-4 border rounded-lg dark:border-gray-700">
-                                    <h4 class="text-lg font-semibold text-gray-800 dark:text-gray-200">{{
-                                        product.name }}
-                                    </h4>
-                                    <p class="mb-2 text-sm text-gray-600 dark:text-gray-400">{{ product.description
-                                    }}</p>
-                                    <div class="space-y-2">
-                                        <button v-for="pricing in product.pricings" :key="pricing.id"
-                                            @click="console.log(`Clic en SSL: ProdID=${product.id}, PricingID=${pricing.id}`); handleAddAdditionalService(product.id, pricing.id)"
-                                            :disabled="formAdditionalService.processing"
-                                            class="flex items-center justify-between w-full p-3 text-left border rounded-md hover:bg-green-50 dark:hover:bg-gray-700 dark:border-gray-600">
-                                            <div class="flex flex-col">
-                                                <span class="font-medium">{{ pricing.billing_cycle.name }}</span>
-                                                <span v-if="pricing.billing_cycle.discount_percentage > 0"
-                                                    class="text-xs text-green-600 dark:text-green-400">
-                                                    -{{ pricing.billing_cycle.discount_percentage }}% descuento
-                                                </span>
-                                            </div>
-                                            <div class="text-right">
-                                                <span class="text-lg font-semibold">{{ formatCurrency(pricing.price,
-                                                    pricing.currency_code) }}</span>
-                                                <div v-if="pricing.setup_fee && pricing.setup_fee > 0"
-                                                    class="text-xs text-gray-500">
-                                                    Setup: {{ formatCurrency(pricing.setup_fee, pricing.currency_code)
-                                                    }}
-                                                </div>
-                                            </div>
-                                        </button>
-                                    </div>
-                                </div>
-                                <p v-if="formAdditionalService.errors.general_error_ssl" class="text-sm text-red-500">
-                                    {{ formAdditionalService.errors.general_error_ssl }}</p>
-                            </div>
-                        </section>
-
-                        <section>
-                            <h3 class="mt-6 mb-3 text-xl font-medium text-gray-900 dark:text-gray-100">Licencias
-                                Adicionales
-                                (Opcional)</h3>
-                            <div class="space-y-4">
-                                <div v-for="product in props.licenseProducts" :key="product.id"
-                                    class="p-4 border rounded-lg dark:border-gray-700">
-                                    <h4 class="text-lg font-semibold text-gray-800 dark:text-gray-200">{{
-                                        product.name }}
-                                    </h4>
-                                    <p class="mb-2 text-sm text-gray-600 dark:text-gray-400">{{ product.description
-                                    }}</p>
-                                    <div class="space-y-2">
-                                        <button v-for="pricing in product.pricings" :key="pricing.id"
-                                            @click="console.log(`Clic en Licencia: ProdID=${product.id}, PricingID=${pricing.id}`); handleAddAdditionalService(product.id, pricing.id)"
-                                            :disabled="formAdditionalService.processing"
-                                            class="flex items-center justify-between w-full p-3 text-left border rounded-md hover:bg-yellow-50 dark:hover:bg-gray-700 dark:border-gray-600">
-                                            <div class="flex flex-col">
-                                                <span class="font-medium">{{ pricing.billing_cycle.name }}</span>
-                                                <span v-if="pricing.billing_cycle.discount_percentage > 0"
-                                                    class="text-xs text-green-600 dark:text-green-400">
-                                                    -{{ pricing.billing_cycle.discount_percentage }}% descuento
-                                                </span>
-                                            </div>
-                                            <div class="text-right">
-                                                <span class="text-lg font-semibold">{{ formatCurrency(pricing.price,
-                                                    pricing.currency_code) }}</span>
-                                                <div v-if="pricing.setup_fee && pricing.setup_fee > 0"
-                                                    class="text-xs text-gray-500">
-                                                    Setup: {{ formatCurrency(pricing.setup_fee, pricing.currency_code)
-                                                    }}
-                                                </div>
-                                            </div>
-                                        </button>
-                                    </div>
-                                </div>
-                                <p v-if="formAdditionalService.errors.product_id" class="text-sm text-red-500">
-                                    {{ formAdditionalService.errors.product_id }}</p>
-                                <p v-if="formAdditionalService.errors.pricing_id" class="text-sm text-red-500">
-                                    {{ formAdditionalService.errors.pricing_id }}</p>
-                                <p v-if="formAdditionalService.errors.general_error_license"
-                                    class="text-sm text-red-500">
-                                    {{ formAdditionalService.errors.general_error_license }}</p>
-                            </div>
-                        </section>
+                        <div class="flex justify-between mt-8">
+                            <button @click="router.visit(route('client.checkout.selectDomain'))"
+                                :disabled="formPrimaryService.processing || formAdditionalService.processing"
+                                class="px-6 py-3 text-base font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-600">
+                                ← Regresar a Dominios
+                            </button>
+                            <button @click="goToFinalCheckout"
+                                :disabled="formPrimaryService.processing || formAdditionalService.processing"
+                                class="px-6 py-3 text-base font-medium text-white bg-green-600 border border-transparent rounded-md shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                                Continuar al Pago
+                            </button>
+                        </div>
                     </div>
 
-                    <div class="flex justify-between mt-8">
-                        <button @click="router.visit(route('client.checkout.selectDomain'))"
-                            :disabled="formPrimaryService.processing || formAdditionalService.processing"
-                            class="px-6 py-3 text-base font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-600">
-                            ← Regresar a Dominios
-                        </button>
-                        <button @click="goToFinalCheckout"
-                            :disabled="formPrimaryService.processing || formAdditionalService.processing"
-                            class="px-6 py-3 text-base font-medium text-white bg-green-600 border border-transparent rounded-md shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
-                            Continuar al Pago
-                        </button>
-                    </div>
-                </div>
-
-                <div class="md:col-span-1">
-                    <div class="sticky top-6">
-                        <CartSummary ref="cartSummaryComp" />
+                    <div class="md:col-span-1">
+                        <div class="sticky top-6">
+                            <CartSummary ref="cartSummaryComp" />
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
         </div>
     </AuthenticatedLayout>
 </template>
