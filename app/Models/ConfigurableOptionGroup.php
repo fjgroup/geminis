@@ -3,7 +3,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
@@ -12,7 +11,6 @@ class ConfigurableOptionGroup extends Model
     use HasFactory;
 
     protected $fillable = [
-        'product_id',
         'name',
         'slug',
         'description',
@@ -29,20 +27,12 @@ class ConfigurableOptionGroup extends Model
     ];
 
     /**
-     * Get the product that this group is specifically assigned to (if any).
-     */
-    public function productOwner(): BelongsTo// Nombre de relación más descriptivo
-    {
-        return $this->belongsTo(Product::class, 'product_id');
-    }
-
-    /**
      * The products that belong to the configurable option group.
      */
     public function products(): BelongsToMany
     {
         return $this->belongsToMany(Product::class, 'product_configurable_option_groups')
-            ->withPivot('display_order')
+            ->withPivot('display_order', 'base_quantity')
             ->withTimestamps();
     }
 

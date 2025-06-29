@@ -16,7 +16,7 @@ return new class extends Migration
             $table->string('name')->unique();
             $table->string('slug')->unique();
             $table->integer('days');
-            $table->foreignId('discount_percentage_id')->nullable()->constrained('discount_percentages')->onDelete('set null');
+
             $table->timestamps();
         });
     }

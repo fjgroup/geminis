@@ -162,8 +162,8 @@ const cartCurrency = computed(() => {
 </script>
 
 <template>
-    <div class="p-4 bg-white border rounded-lg shadow-sm">
-        <h2 class="mb-3 text-xl font-semibold text-gray-700">Resumen del Pedido</h2>
+    <div class="p-6 bg-white border rounded-lg shadow-sm min-h-[400px]">
+        <h2 class="mb-4 text-xl font-semibold text-gray-700">Resumen del Pedido</h2>
 
         <div v-if="isLoading" class="text-center text-gray-500">
             <p>Cargando resumen del pedido...</p>
@@ -184,20 +184,40 @@ const cartCurrency = computed(() => {
                 </h3>
 
                 <div v-if="account.domain_info && account.domain_info.domain_name"
-                    class="p-2 mb-2 ml-2 rounded bg-gray-50">
+                    class="p-3 mb-3 ml-2 rounded bg-gray-50 border border-gray-200">
                     <div class="flex justify-between items-start">
                         <div class="flex-1">
                             <p class="font-semibold text-gray-700">Dominio: {{ account.domain_info.domain_name }}</p>
                             <div v-if="account.domain_info.product_id && account.domain_info.product_name"
                                 class="ml-3 text-sm text-gray-600">
-                                <span>{{ account.domain_info.product_name }}</span>
-                                <span class="float-right font-medium">
-                                    {{ formatCurrency(account.domain_info.override_price || account.domain_info.price ||
-                                        0, account.domain_info.currency_code || cartCurrency) }}
-                                </span>
+                                <div class="flex justify-between items-start">
+                                    <div>
+                                        <span class="font-medium">{{ account.domain_info.product_name }}</span>
+                                        <span v-if="account.domain_info.billing_cycle_name"
+                                              class="ml-2 px-2 py-1 text-xs font-semibold text-purple-800 bg-purple-100 rounded-full">
+                                            {{ account.domain_info.billing_cycle_name.toUpperCase() }}
+                                        </span>
+                                    </div>
+                                    <span class="font-medium text-lg">
+                                        {{ formatCurrency(account.domain_info.override_price || account.domain_info.price ||
+                                            0, account.domain_info.currency_code || cartCurrency) }}
+                                    </span>
+                                </div>
                             </div>
                             <div v-else-if="!account.domain_info.product_id" class="ml-3 text-sm text-gray-500">
-                                (Solo registro de nombre de dominio)
+                                <div class="flex justify-between items-start">
+                                    <div>
+                                        <span>(Solo registro de nombre de dominio)</span>
+                                        <span v-if="account.domain_info.billing_cycle_name"
+                                              class="ml-2 px-2 py-1 text-xs font-semibold text-purple-800 bg-purple-100 rounded-full">
+                                            {{ account.domain_info.billing_cycle_name.toUpperCase() }}
+                                        </span>
+                                    </div>
+                                    <span v-if="account.domain_info.price" class="font-medium text-lg">
+                                        {{ formatCurrency(account.domain_info.override_price || account.domain_info.price ||
+                                            0, account.domain_info.currency_code || cartCurrency) }}
+                                    </span>
+                                </div>
                             </div>
                         </div>
                         <button @click="removeDomain(account.account_id)"
@@ -208,18 +228,26 @@ const cartCurrency = computed(() => {
                 </div>
 
                 <div v-if="account.primary_service && account.primary_service.product_name"
-                    class="p-2 mb-2 ml-2 rounded bg-gray-50">
+                    class="p-3 mb-3 ml-2 rounded bg-gray-50 border border-gray-200">
                     <div class="flex justify-between items-start">
                         <div class="flex-1">
                             <p class="font-semibold text-gray-700">Servicio Principal:</p>
                             <div class="ml-3 text-sm text-gray-600">
-                                <span>{{ account.primary_service.product_name }}</span>
-                                <span v-if="typeof account.primary_service.price === 'number'"
-                                    class="float-right font-medium">
-                                    {{ formatCurrency(account.primary_service.price,
-                                        account.primary_service.currency_code ||
-                                        cartCurrency) }}
-                                </span>
+                                <div class="flex justify-between items-start">
+                                    <div>
+                                        <span class="font-medium">{{ account.primary_service.product_name }}</span>
+                                        <span v-if="account.primary_service.billing_cycle_name"
+                                              class="ml-2 px-2 py-1 text-xs font-semibold text-blue-800 bg-blue-100 rounded-full">
+                                            {{ account.primary_service.billing_cycle_name.toUpperCase() }}
+                                        </span>
+                                    </div>
+                                    <span v-if="typeof account.primary_service.price === 'number'"
+                                        class="font-medium text-lg">
+                                        {{ formatCurrency(account.primary_service.price,
+                                            account.primary_service.currency_code ||
+                                            cartCurrency) }}
+                                    </span>
+                                </div>
                             </div>
                         </div>
                         <div class="ml-2 flex space-x-1">
@@ -254,21 +282,29 @@ const cartCurrency = computed(() => {
                 </div>
 
                 <div v-if="account.additional_services && account.additional_services.length > 0"
-                    class="p-2 mb-1 ml-2 rounded bg-gray-50">
+                    class="p-3 mb-3 ml-2 rounded bg-gray-50 border border-gray-200">
                     <p class="mb-1 font-semibold text-gray-700">Servicios Adicionales:</p>
-                    <ul class="pl-5 text-sm text-gray-600 list-disc">
+                    <ul class="pl-5 text-sm text-gray-600 list-none space-y-2">
                         <li v-for="service in account.additional_services" :key="service.cart_item_id" class="mb-1">
-                            <span>{{ service.product_name }}</span>
-                            <span v-if="typeof service.price === 'number'" class="float-right pr-2 font-medium">
-                                {{ formatCurrency(service.price, service.currency_code || cartCurrency) }}
-                            </span>
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <span class="font-medium">{{ service.product_name }}</span>
+                                    <span v-if="service.billing_cycle_name"
+                                          class="ml-2 px-2 py-1 text-xs font-semibold text-green-800 bg-green-100 rounded-full">
+                                        {{ service.billing_cycle_name.toUpperCase() }}
+                                    </span>
+                                </div>
+                                <span v-if="typeof service.price === 'number'" class="font-medium text-lg">
+                                    {{ formatCurrency(service.price, service.currency_code || cartCurrency) }}
+                                </span>
+                            </div>
                         </li>
                     </ul>
                 </div>
             </div>
 
-            <div class="pt-4 mt-6 border-t">
-                <p class="text-xl font-bold text-right text-gray-800">
+            <div class="pt-6 mt-6 border-t-2 border-gray-300">
+                <p class="text-2xl font-bold text-right text-gray-800 bg-gray-100 p-4 rounded-lg">
                     Total General: {{ formatCurrency(totalGeneral, cartCurrency) }}
                 </p>
             </div>

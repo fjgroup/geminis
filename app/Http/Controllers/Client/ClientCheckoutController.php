@@ -172,10 +172,10 @@ class ClientCheckoutController extends Controller
                             'setup_fee'     => $pricing->setup_fee,
                             'currency_code' => $pricing->currency_code,
                             'billing_cycle' => [
-                                'id'                  => $pricing->billingCycle->id,
-                                'name'                => $pricing->billingCycle->name,
-                                'days'                => $pricing->billingCycle->days,
-                                'discount_percentage' => $pricing->billingCycle->discount_percentage,
+                                'id'   => $pricing->billingCycle->id,
+                                'name' => $pricing->billingCycle->name,
+                                'days' => $pricing->billingCycle->days,
+                                // 'discount_percentage' => $pricing->billingCycle->discount_percentage, // TODO: Implementar descuentos
                             ],
                         ];
                     }),
@@ -207,6 +207,7 @@ class ClientCheckoutController extends Controller
                                                 'id'   => $pricing->billingCycle->id,
                                                 'name' => $pricing->billingCycle->name,
                                                 'days' => $pricing->billingCycle->days,
+                                                // 'discount_percentage' => $pricing->billingCycle->discount_percentage, // TODO: Implementar descuentos
                                             ],
                                         ];
                                     }),
@@ -218,10 +219,52 @@ class ClientCheckoutController extends Controller
             });
 
         $sslProducts = Product::whereIn('product_type_id', $sslTypeIds)
-            ->where('status', 'active')->with(['pricings.billingCycle', 'productType'])->orderBy('display_order')->get();
+            ->where('status', 'active')->with(['pricings.billingCycle', 'productType'])->orderBy('display_order')->get()
+            ->map(function ($product) {
+                return [
+                    'id'          => $product->id,
+                    'name'        => $product->name,
+                    'description' => $product->description,
+                    'pricings'    => $product->pricings->map(function ($pricing) {
+                        return [
+                            'id'            => $pricing->id,
+                            'price'         => $pricing->price,
+                            'setup_fee'     => $pricing->setup_fee,
+                            'currency_code' => $pricing->currency_code,
+                            'billing_cycle' => [
+                                'id'   => $pricing->billingCycle->id,
+                                'name' => $pricing->billingCycle->name,
+                                'days' => $pricing->billingCycle->days,
+                                // 'discount_percentage' => $pricing->billingCycle->discount_percentage, // TODO: Implementar descuentos
+                            ],
+                        ];
+                    }),
+                ];
+            });
 
         $licenseProducts = Product::whereIn('product_type_id', $licenseTypeIds)
-            ->where('status', 'active')->with(['pricings.billingCycle', 'productType'])->orderBy('display_order')->get();
+            ->where('status', 'active')->with(['pricings.billingCycle', 'productType'])->orderBy('display_order')->get()
+            ->map(function ($product) {
+                return [
+                    'id'          => $product->id,
+                    'name'        => $product->name,
+                    'description' => $product->description,
+                    'pricings'    => $product->pricings->map(function ($pricing) {
+                        return [
+                            'id'            => $pricing->id,
+                            'price'         => $pricing->price,
+                            'setup_fee'     => $pricing->setup_fee,
+                            'currency_code' => $pricing->currency_code,
+                            'billing_cycle' => [
+                                'id'   => $pricing->billingCycle->id,
+                                'name' => $pricing->billingCycle->name,
+                                'days' => $pricing->billingCycle->days,
+                                // 'discount_percentage' => $pricing->billingCycle->discount_percentage, // TODO: Implementar descuentos
+                            ],
+                        ];
+                    }),
+                ];
+            });
 
         return Inertia::render('Client/Checkout/SelectServicesPage', [
             'initialCart'         => $cart,

@@ -260,29 +260,30 @@ class ProductController extends Controller
     public function update(Request $request, Product $product)
     {
         $validated = $request->validate([
-            'name'                        => 'required|string|max:255',
-            'slug'                        => 'nullable|string|max:255|unique:products,slug,' . $product->id,
-            'description'                 => 'nullable|string|max:2000',
-            'product_type_id'             => 'required|exists:product_types,id',
-            'module_name'                 => 'nullable|string|max:255',
-            'status'                      => 'required|in:active,inactive,hidden',
-            'is_publicly_available'       => 'boolean',
-            'is_resellable_by_default'    => 'boolean',
-            'auto_setup'                  => 'boolean',
-            'requires_approval'           => 'boolean',
-            'setup_fee'                   => 'nullable|numeric|min:0',
-            'track_stock'                 => 'boolean',
-            'stock_quantity'              => 'nullable|integer|min:0',
-            'display_order'               => 'integer|min:0',
-            'pricings'                    => 'required|array|min:1',
-            'pricings.*.billing_cycle_id' => 'required|exists:billing_cycles,id',
-            'pricings.*.price'            => 'required|numeric|min:0',
-            'pricings.*.setup_fee'        => 'nullable|numeric|min:0',
-            'configurable_groups'         => 'array',
-            'configurable_groups.*'       => 'exists:configurable_option_groups,id',
+            'name'                                => 'required|string|max:255',
+            'slug'                                => 'nullable|string|max:255|unique:products,slug,' . $product->id,
+            'description'                         => 'nullable|string|max:2000',
+            'product_type_id'                     => 'required|exists:product_types,id',
+            'module_name'                         => 'nullable|string|max:255',
+            'status'                              => 'required|in:active,inactive,hidden',
+            'is_publicly_available'               => 'boolean',
+            'is_resellable_by_default'            => 'boolean',
+            'auto_setup'                          => 'boolean',
+            'requires_approval'                   => 'boolean',
+            'setup_fee'                           => 'nullable|numeric|min:0',
+            'track_stock'                         => 'boolean',
+            'stock_quantity'                      => 'nullable|integer|min:0',
+            'display_order'                       => 'integer|min:0',
+            'pricings'                            => 'required|array|min:1',
+            'pricings.*.billing_cycle_id'         => 'required|exists:billing_cycles,id',
+            'pricings.*.price'                    => 'required|numeric|min:0',
+            'pricings.*.setup_fee'                => 'nullable|numeric|min:0',
+            'configurable_groups'                 => 'array',
+            'configurable_groups.*.display_order' => 'nullable|integer|min:0',
+            'configurable_groups.*.base_quantity' => 'nullable|numeric|min:0',
             // Recursos base dinámicos
-            'base_resources'              => 'nullable|array',
-            'base_resources.*'            => 'nullable|numeric|min:0',
+            'base_resources'                      => 'nullable|array',
+            'base_resources.*'                    => 'nullable|numeric|min:0',
         ]);
 
         // Auto-generate slug if not provided
@@ -297,14 +298,19 @@ class ProductController extends Controller
         // Preparar datos para la tabla pivot con base_quantity
         $pivotData = [];
         foreach ($configurableGroups as $groupId => $groupData) {
-            $pivotData[$groupId] = [
-                'display_order' => $groupData['display_order'] ?? 0,
-                'base_quantity' => $groupData['base_quantity'] ?? 0,
-            ];
+            // Verificar que el grupo existe
+            if (ConfigurableOptionGroup::where('id', $groupId)->exists()) {
+                $pivotData[$groupId] = [
+                    'display_order' => $groupData['display_order'] ?? 0,
+                    'base_quantity' => $groupData['base_quantity'] ?? 0,
+                ];
+            }
         }
 
         // Debug: Log los datos que se van a actualizar
         Log::info('Updating product with data:', $validated);
+        Log::info('Configurable groups data:', $configurableGroups);
+        Log::info('Pivot data prepared:', $pivotData);
 
         $product->update($validated);
 

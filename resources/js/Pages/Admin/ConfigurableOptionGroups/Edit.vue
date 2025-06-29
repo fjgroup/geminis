@@ -31,7 +31,7 @@ const form = useForm({
     _method: 'PUT', // This is correct
     name: props.group.name,
     description: props.group.description || '',
-    product_id: props.group.product_id || null,
+    product_ids: props.group.selected_products || [],
     display_order: props.group.display_order || 0
 });
 

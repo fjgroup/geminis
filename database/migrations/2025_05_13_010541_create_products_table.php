@@ -40,14 +40,14 @@ return new class extends Migration
             $table->boolean('track_stock')->default(false);       // Si debe rastrear inventario
 
                                                                      // Recursos base incluidos en el producto
-            $table->decimal('base_disk_space_gb', 8, 2)->nullable(); // Espacio en disco base (GB)
-            $table->integer('base_vcpu_cores')->nullable();          // vCPU cores base
-            $table->decimal('base_ram_gb', 8, 2)->nullable();        // RAM base (GB)
-            $table->integer('base_bandwidth_gb')->nullable();        // Ancho de banda base (GB)
-            $table->integer('base_email_accounts')->nullable();      // Cuentas de email base
-            $table->integer('base_databases')->nullable();           // Bases de datos base
-            $table->integer('base_domains')->nullable();             // Dominios adicionales base
-            $table->integer('base_subdomains')->nullable();          // Subdominios base
+       //     $table->decimal('base_disk_space_gb', 8, 2)->nullable(); // Espacio en disco base (GB)
+        //    $table->integer('base_vcpu_cores')->nullable();          // vCPU cores base
+        //    $table->decimal('base_ram_gb', 8, 2)->nullable();        // RAM base (GB)
+        //    $table->integer('base_bandwidth_gb')->nullable();        // Ancho de banda base (GB)
+        //    $table->integer('base_email_accounts')->nullable();      // Cuentas de email base
+        //    $table->integer('base_databases')->nullable();           // Bases de datos base
+       //     $table->integer('base_domains')->nullable();             // Dominios adicionales base
+       //     $table->integer('base_subdomains')->nullable();          // Subdominios base
 
                                                                              // Landing page y marketing
             $table->string('landing_page_slug')->nullable()->unique();       // Slug para landing page pública

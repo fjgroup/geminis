@@ -24,7 +24,20 @@ const submitForm = () => {
     emit('submit');
 };
 
-const productOptions = [{ value: null, label: 'Global (ningún producto específico)' }, ...props.products.map(p => ({ value: p.id, label: p.name }))];
+// Inicializar product_ids si no existe
+if (!props.form.product_ids) {
+    props.form.product_ids = [];
+}
+
+// Función para manejar la selección/deselección de productos
+const toggleProduct = (productId) => {
+    const index = props.form.product_ids.indexOf(productId);
+    if (index > -1) {
+        props.form.product_ids.splice(index, 1);
+    } else {
+        props.form.product_ids.push(productId);
+    }
+};
 
 
 // Propiedad computada para manejar display_order como string para TextInput
@@ -47,10 +60,9 @@ const displayOrderModel = computed({
             </div>
 
             <div>
-                <InputLabel for="product_id" value="Asociar a Producto (Opcional)" />
-                <SelectInput id="product_id" class="block w-full mt-1" v-model="form.product_id"
-                    :options="productOptions" />
-                <InputError class="mt-2" :message="form.errors.product_id" />
+                <InputLabel for="display_order" value="Prioridad" />
+                <TextInput id="display_order" type="number" class="block w-full mt-1" v-model="displayOrderModel" />
+                <InputError class="mt-2" :message="form.errors.display_order" />
             </div>
         </div>
 
@@ -60,10 +72,32 @@ const displayOrderModel = computed({
             <InputError class="mt-2" :message="form.errors.description" />
         </div>
 
-        <div class="mt-4">
-            <InputLabel for="display_order" value="Prioridad" />
-            <TextInput id="display_order" type="number" class="block w-full mt-1" v-model="displayOrderModel" />
-            <InputError class="mt-2" :message="form.errors.display_order" />
+        <!-- Sección de selección de productos -->
+        <div class="mt-6">
+            <InputLabel value="Productos Asociados" />
+            <p class="text-sm text-gray-600 mb-3">Selecciona los productos a los que se aplicará este grupo de opciones. Si no seleccionas ninguno, será un grupo global.</p>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 max-h-60 overflow-y-auto border border-gray-200 rounded-lg p-4">
+                <div v-for="product in products" :key="product.id" class="flex items-center">
+                    <input
+                        :id="`product_${product.id}`"
+                        type="checkbox"
+                        :value="product.id"
+                        :checked="form.product_ids.includes(product.id)"
+                        @change="toggleProduct(product.id)"
+                        class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                    />
+                    <label :for="`product_${product.id}`" class="ml-2 text-sm text-gray-700 cursor-pointer">
+                        {{ product.name }}
+                    </label>
+                </div>
+            </div>
+
+            <div v-if="products.length === 0" class="text-center py-4 text-gray-500">
+                No hay productos disponibles
+            </div>
+
+            <InputError class="mt-2" :message="form.errors.product_ids" />
         </div>
 
         <div class="flex items-center justify-end mt-6">

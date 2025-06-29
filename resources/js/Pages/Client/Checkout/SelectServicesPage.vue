@@ -99,6 +99,48 @@ const getOptionPricing = (option, product) => {
     return option.pricings.find(pricing => pricing.is_active) || option.pricings[0] || null;
 };
 
+// Función para formatear nombres de recursos
+const formatResourceName = (key) => {
+    const resourceNames = {
+        'disk_space': 'Espacio en Disco',
+        'vcpu_cores': 'vCPU',
+        'ram_memory': 'Memoria RAM',
+        'bandwidth': 'Transferencia',
+        'email_accounts': 'Cuentas Email',
+        'databases': 'Bases de Datos',
+        'domains': 'Dominios',
+        'subdomains': 'Subdominios',
+        'ssl_certificates': 'Certificados SSL',
+        'backups': 'Copias de Seguridad'
+    };
+    return resourceNames[key] || key.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
+};
+
+// Función para formatear valores de recursos
+const formatResourceValue = (key, value) => {
+    if (key.includes('disk_space') || key.includes('ram') || key.includes('bandwidth')) {
+        return `${value} GB`;
+    }
+    if (key.includes('vcpu')) {
+        return `${value} cores`;
+    }
+    return value;
+};
+
+// Función para calcular precio con descuento
+const calculatePriceWithDiscount = (basePrice, productId, billingCycleId) => {
+    // TODO: Implementar lógica de descuentos cuando esté lista
+    // const discount = getDiscountForProductAndCycle(productId, billingCycleId);
+    // return basePrice * (1 - discount / 100);
+    return basePrice;
+};
+
+// Función para obtener el descuento para un producto y ciclo específico
+const getDiscountPercentage = (productId, billingCycleId) => {
+    // TODO: Implementar cuando el sistema de descuentos esté listo
+    return 0;
+};
+
 const selectMainProductForConfiguration = (product) => {
     console.log('--- selectMainProductForConfiguration ---');
     console.log('Producto seleccionado para configurar:', product.id, product.name);
@@ -276,73 +318,88 @@ onMounted(() => {
                                         class="p-4 border rounded-lg dark:border-gray-700"
                                         :class="{ 'ring-2 ring-indigo-500': currentSelectedMainProduct && currentSelectedMainProduct.id === product.id }">
 
-                                        <div @click="selectMainProductForConfiguration(product)" class="cursor-pointer">
+                                        <div>
                                             <h4 class="text-lg font-semibold text-gray-800 dark:text-gray-200">{{
                                                 product.name
                                                 }}</h4>
-                                            <p class="mb-2 text-sm text-gray-600 dark:text-gray-400">{{
+                                            <p class="mb-3 text-sm text-gray-600 dark:text-gray-400">{{
                                                 product.description }}
                                             </p>
 
-                                            <!-- Recursos base incluidos -->
-                                            <div v-if="product.base_disk_space_gb || product.base_vcpu_cores || product.base_ram_gb"
-                                                class="mb-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                                            <!-- Características base del producto -->
+                                            <div v-if="product.base_resources && Object.keys(product.base_resources).length > 0"
+                                                class="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
                                                 <h5 class="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">
-                                                    Recursos
-                                                    incluidos:</h5>
-                                                <div
-                                                    class="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs text-blue-700 dark:text-blue-300">
-                                                    <div v-if="product.base_disk_space_gb">
-                                                        <span class="font-medium">Disco:</span> {{
-                                                            product.base_disk_space_gb
-                                                        }}GB
+                                                    Características incluidas:</h5>
+                                                <div class="grid grid-cols-2 md:grid-cols-3 gap-2 text-xs text-blue-700 dark:text-blue-300">
+                                                    <div v-for="(value, key) in product.base_resources" :key="key" v-if="value">
+                                                        <span class="font-medium">{{ formatResourceName(key) }}:</span> {{ formatResourceValue(key, value) }}
                                                     </div>
-                                                    <div v-if="product.base_vcpu_cores">
-                                                        <span class="font-medium">vCPU:</span> {{
-                                                            product.base_vcpu_cores }}
-                                                        cores
-                                                    </div>
-                                                    <div v-if="product.base_ram_gb">
-                                                        <span class="font-medium">RAM:</span> {{ product.base_ram_gb
-                                                        }}GB
-                                                    </div>
-                                                    <div v-if="product.base_bandwidth_gb">
-                                                        <span class="font-medium">Transferencia:</span> {{
-                                                            product.base_bandwidth_gb }}GB
-                                                    </div>
-                                                    <div v-if="product.base_email_accounts">
-                                                        <span class="font-medium">Emails:</span> {{
-                                                            product.base_email_accounts
-                                                        }}
-                                                    </div>
-                                                    <div v-if="product.base_databases">
-                                                        <span class="font-medium">BD:</span> {{ product.base_databases
-                                                        }}
-                                                    </div>
-                                                    <div v-if="product.base_domains">
-                                                        <span class="font-medium">Dominios:</span> {{
-                                                            product.base_domains }}
-                                                    </div>
-                                                    <div v-if="product.base_subdomains">
-                                                        <span class="font-medium">Subdominios:</span> {{
-                                                            product.base_subdomains
-                                                        }}
-                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Ciclos de facturación (ahora arriba) -->
+                                            <div class="mb-4">
+                                                <p class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Elige tu ciclo de facturación:</p>
+                                                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                                                    <button v-for="pricing in product.pricings" :key="pricing.id"
+                                                        @click="handleSelectPrimaryService(product.id, pricing.id)"
+                                                        :disabled="formPrimaryService.processing"
+                                                        class="flex flex-col items-center justify-center p-4 min-h-[120px] text-center border rounded-lg hover:bg-indigo-50 dark:hover:bg-gray-700 dark:border-gray-600 transition-colors duration-200 shadow-sm hover:shadow-md">
+                                                        <span class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">{{ pricing.billing_cycle.name }}</span>
+                                                        <div class="flex flex-col items-center space-y-1">
+                                                            <div class="text-center">
+                                                                <!-- Precio con descuento -->
+                                                                <span class="text-xl font-bold text-indigo-600 dark:text-indigo-400">
+                                                                    {{ formatCurrency(calculatePriceWithDiscount(pricing.price, product.id, pricing.billing_cycle.id), pricing.currency_code) }}
+                                                                </span>
+                                                                <!-- Precio original tachado si hay descuento -->
+                                                                <div v-if="getDiscountPercentage(product.id, pricing.billing_cycle.id) > 0"
+                                                                     class="text-sm text-gray-500 line-through">
+                                                                    {{ formatCurrency(pricing.price, pricing.currency_code) }}
+                                                                </div>
+                                                            </div>
+                                                            <!-- Badge de descuento -->
+                                                            <span v-if="getDiscountPercentage(product.id, pricing.billing_cycle.id) > 0"
+                                                                  class="text-xs text-green-600 dark:text-green-400 font-medium bg-green-100 dark:bg-green-900/30 px-2 py-1 rounded-full">
+                                                                -{{ getDiscountPercentage(product.id, pricing.billing_cycle.id) }}% descuento
+                                                            </span>
+                                                            <span v-if="pricing.setup_fee && pricing.setup_fee > 0"
+                                                                  class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                                                Setup: {{ formatCurrency(pricing.setup_fee, pricing.currency_code) }}
+                                                            </span>
+                                                        </div>
+                                                    </button>
                                                 </div>
                                             </div>
                                         </div>
 
-                                        <div v-if="currentSelectedMainProduct && currentSelectedMainProduct.id === product.id && product.configurable_option_groups && product.configurable_option_groups.length > 0"
-                                            class="p-4 my-4 space-y-4 rounded-md bg-gray-50 dark:bg-gray-700">
-                                            <h5 class="font-semibold text-gray-700 text-md dark:text-gray-200">Configura tu servicio:</h5>
+                                        <!-- Sección de configuración (ahora siempre visible si hay opciones) -->
+                                        <div v-if="product.configurable_option_groups && product.configurable_option_groups.length > 0"
+                                            class="mt-6 p-4 space-y-4 rounded-lg bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 border border-purple-200 dark:border-purple-700">
+                                            <div class="flex items-center space-x-2 mb-4">
+                                                <svg class="w-5 h-5 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                                                </svg>
+                                                <h5 class="text-lg font-semibold text-purple-800 dark:text-purple-200">Configura y Potencia tu servicio</h5>
+                                            </div>
+                                            <p class="text-sm text-purple-700 dark:text-purple-300 mb-4">
+                                                Personaliza tu plan agregando recursos adicionales según tus necesidades.
+                                            </p>
 
                                             <div v-for="group in product.configurable_option_groups" :key="group.id"
-                                                class="p-3 border border-gray-200 rounded-lg dark:border-gray-600">
-                                                <div class="flex items-center justify-between mb-2">
-                                                    <label class="text-sm font-medium text-gray-800 dark:text-gray-300">
-                                                        {{ group.name }}
-                                                        <span v-if="group.is_required" class="text-red-500">*</span>
-                                                    </label>
+                                                class="p-4 border border-purple-200 rounded-lg dark:border-purple-600 bg-white dark:bg-gray-800">
+                                                <div class="flex items-center justify-between mb-3">
+                                                    <div>
+                                                        <label class="text-sm font-medium text-gray-800 dark:text-gray-300">
+                                                            {{ group.name }}
+                                                            <span v-if="group.is_required" class="text-red-500">*</span>
+                                                        </label>
+                                                        <!-- Mostrar cantidad base si existe -->
+                                                        <div v-if="group.base_quantity" class="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                                                            Incluido: {{ group.base_quantity }} {{ group.name.toLowerCase() }}
+                                                        </div>
+                                                    </div>
                                                     <span v-if="group.is_required"
                                                         class="text-xs text-yellow-600 bg-yellow-100 px-2 py-1 rounded">
                                                         Obligatorio
@@ -356,7 +413,7 @@ onMounted(() => {
 
                                                 <div v-if="group.options && group.options.length > 0" class="space-y-3">
                                                     <div v-for="option in group.options" :key="option.id"
-                                                        class="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded border">
+                                                        class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"">
                                                         <div class="flex-1">
                                                             <div class="flex items-center space-x-3">
                                                                 <!-- Checkbox para opciones no obligatorias -->
@@ -364,14 +421,14 @@ onMounted(() => {
                                                                     v-if="option.option_type === 'checkbox' || !group.is_required"
                                                                     :id="`option_${option.id}`" type="checkbox"
                                                                     v-model="selectedConfigurableOptions[product.id][option.id]"
-                                                                    class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                                                                    class="h-4 w-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500">
 
                                                                 <!-- Radio button para opciones obligatorias -->
                                                                 <input v-else-if="group.is_required"
                                                                     :id="`option_${option.id}`" type="radio"
                                                                     :name="`group_${group.id}`" :value="option.id"
                                                                     v-model="selectedConfigurableOptions[product.id][group.id]"
-                                                                    class="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500">
+                                                                    class="h-4 w-4 text-purple-600 border-gray-300 focus:ring-purple-500">
 
                                                                 <label :for="`option_${option.id}`"
                                                                     class="flex-1 cursor-pointer">
@@ -416,7 +473,7 @@ onMounted(() => {
                                                                 <input type="number" :min="option.min_value || 1"
                                                                     :max="option.max_value || 999"
                                                                     v-model="selectedConfigurableOptions[product.id][`${option.id}_quantity`]"
-                                                                    class="w-24 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500">
+                                                                    class="w-24 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-purple-500 focus:border-purple-500">
                                                             </div>
                                                         </div>
 
@@ -453,29 +510,7 @@ onMounted(() => {
                                             </div>
                                         </div>
 
-                                        <div class="mt-3">
-                                            <p class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Elige un ciclo de facturación:</p>
-                                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                                                <button v-for="pricing in product.pricings" :key="pricing.id"
-                                                    @click="console.log(`Clic en ciclo: ProdID=${product.id}, PricingID=${pricing.id}`); handleSelectPrimaryService(product.id, pricing.id)"
-                                                    :disabled="formPrimaryService.processing"
-                                                    class="flex flex-col items-center justify-center p-3 text-center border rounded-md hover:bg-indigo-50 dark:hover:bg-gray-700 dark:border-gray-600 transition-colors duration-200">
-                                                    <span class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ pricing.billing_cycle.name }}</span>
-                                                    <div class="flex flex-col items-center mt-1">
-                                                        <span class="text-lg font-bold text-indigo-600 dark:text-indigo-400">
-                                                            {{ formatCurrency(pricing.price, pricing.currency_code) }}
-                                                        </span>
-                                                        <span v-if="pricing.billing_cycle.discount_percentage > 0"
-                                                              class="text-xs text-green-600 dark:text-green-400 font-medium bg-green-100 dark:bg-green-900/30 px-2 py-1 rounded-full">
-                                                            -{{ pricing.billing_cycle.discount_percentage }}% descuento
-                                                        </span>
-                                                        <span v-else class="text-xs text-gray-400">
-                                                            Precio regular
-                                                        </span>
-                                                    </div>
-                                                </button>
-                                            </div>
-                                        </div>
+
                                     </div>
                                     <p v-if="formPrimaryService.errors.product_id" class="text-sm text-red-500">
                                         {{ formPrimaryService.errors.product_id }}</p>
@@ -506,9 +541,20 @@ onMounted(() => {
                                                 @click="console.log(`Clic en SSL: ProdID=${product.id}, PricingID=${pricing.id}`); handleAddAdditionalService(product.id, pricing.id)"
                                                 :disabled="formAdditionalService.processing"
                                                 class="flex items-center justify-between w-full p-3 text-left border rounded-md hover:bg-green-50 dark:hover:bg-gray-700 dark:border-gray-600">
-                                                <span>{{ pricing.billing_cycle.name }}</span>
-                                                <span class="font-semibold">{{ formatCurrency(pricing.price,
-                                                    pricing.currency_code) }}</span>
+                                                <div class="flex flex-col">
+                                                    <span class="font-medium">{{ pricing.billing_cycle.name }}</span>
+                                                    <span v-if="pricing.billing_cycle.discount_percentage > 0"
+                                                          class="text-xs text-green-600 dark:text-green-400">
+                                                        -{{ pricing.billing_cycle.discount_percentage }}% descuento
+                                                    </span>
+                                                </div>
+                                                <div class="text-right">
+                                                    <span class="font-semibold text-lg">{{ formatCurrency(pricing.price, pricing.currency_code) }}</span>
+                                                    <div v-if="pricing.setup_fee && pricing.setup_fee > 0"
+                                                         class="text-xs text-gray-500">
+                                                        Setup: {{ formatCurrency(pricing.setup_fee, pricing.currency_code) }}
+                                                    </div>
+                                                </div>
                                             </button>
                                         </div>
                                     </div>
@@ -535,9 +581,20 @@ onMounted(() => {
                                                 @click="console.log(`Clic en Licencia: ProdID=${product.id}, PricingID=${pricing.id}`); handleAddAdditionalService(product.id, pricing.id)"
                                                 :disabled="formAdditionalService.processing"
                                                 class="flex items-center justify-between w-full p-3 text-left border rounded-md hover:bg-yellow-50 dark:hover:bg-gray-700 dark:border-gray-600">
-                                                <span>{{ pricing.billing_cycle.name }}</span>
-                                                <span class="font-semibold">{{ formatCurrency(pricing.price,
-                                                    pricing.currency_code) }}</span>
+                                                <div class="flex flex-col">
+                                                    <span class="font-medium">{{ pricing.billing_cycle.name }}</span>
+                                                    <span v-if="pricing.billing_cycle.discount_percentage > 0"
+                                                          class="text-xs text-green-600 dark:text-green-400">
+                                                        -{{ pricing.billing_cycle.discount_percentage }}% descuento
+                                                    </span>
+                                                </div>
+                                                <div class="text-right">
+                                                    <span class="font-semibold text-lg">{{ formatCurrency(pricing.price, pricing.currency_code) }}</span>
+                                                    <div v-if="pricing.setup_fee && pricing.setup_fee > 0"
+                                                         class="text-xs text-gray-500">
+                                                        Setup: {{ formatCurrency(pricing.setup_fee, pricing.currency_code) }}
+                                                    </div>
+                                                </div>
                                             </button>
                                         </div>
                                     </div>

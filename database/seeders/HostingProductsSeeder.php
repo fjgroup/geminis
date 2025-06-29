@@ -28,6 +28,10 @@ class HostingProductsSeeder extends Seeder
         $trimestral = BillingCycle::where('slug', 'quarterly')->first();
         $semestral  = BillingCycle::where('slug', 'semi_annually')->first();
         $anual      = BillingCycle::where('slug', 'annually')->first();
+        $bienal      = BillingCycle::where('slug', 'biennially')->first();
+        $trienal      = BillingCycle::where('slug', 'triennially')->first();
+
+
 
         // Obtener grupos de opciones configurables
         $espacioGroup = ConfigurableOptionGroup::where('slug', 'espacio-disco')->first();
@@ -45,17 +49,8 @@ class HostingProductsSeeder extends Seeder
                 'status'                   => 'active',
                 'is_publicly_available'    => true,
                 'is_resellable_by_default' => true,
-                'display_order'            => 2,
+                'display_order'            => 1,
                 'product_type_id'          => $hostingType->id,
-                // Recursos base
-                'base_disk_space_gb'       => 5.0,
-                'base_vcpu_cores'          => 1,
-                'base_ram_gb'              => 1.0,
-                'base_bandwidth_gb'        => 100,
-                'base_email_accounts'      => 10,
-                'base_databases'           => 5,
-                'base_domains'             => 1,
-                'base_subdomains'          => 10,
                 // Landing page
                 'landing_page_slug'        => 'hosting-eco',
                 'landing_page_description' => 'Perfecto para sitios web pequeños y blogs personales',
@@ -78,10 +73,14 @@ class HostingProductsSeeder extends Seeder
         );
 
         // Precios para Hosting Eco (precio base: $5/mes)
-        $this->createProductPricing($hostingEco, $mensual, 5.00);
-        $this->createProductPricing($hostingEco, $trimestral, 5.00); // Se aplicará descuento 5%
-        $this->createProductPricing($hostingEco, $semestral, 5.00);  // Se aplicará descuento 11%
-        $this->createProductPricing($hostingEco, $anual, 5.00);      // Se aplicará descuento 18%
+        $this->createProductPricing($hostingEco, $mensual, 1.50);
+        $this->createProductPricing($hostingEco, $trimestral, 4.50); // Se aplicará descuento 5%
+        $this->createProductPricing($hostingEco, $semestral, 9.00);  // Se aplicará descuento 11%
+        $this->createProductPricing($hostingEco, $anual, 13.50);     // Se aplicará descuento 18%
+        $this->createProductPricing($hostingEco, $bienal, 27.00);    // Se aplicará descuento 26%
+        $this->createProductPricing($hostingEco, $trienal, 40.50);   // Se aplicará descuento 35%
+
+
 
         // 2. Hosting Web Pro (antes Plus)
         $hostingPlus = Product::updateOrCreate(
@@ -94,17 +93,8 @@ class HostingProductsSeeder extends Seeder
                 'status'                   => 'active',
                 'is_publicly_available'    => true,
                 'is_resellable_by_default' => true,
-                'display_order'            => 3,
+                'display_order'            => 2,
                 'product_type_id'          => $hostingType->id,
-                // Recursos base
-                'base_disk_space_gb'       => 15.0,
-                'base_vcpu_cores'          => 2,
-                'base_ram_gb'              => 2.0,
-                'base_bandwidth_gb'        => 300,
-                'base_email_accounts'      => 25,
-                'base_databases'           => 15,
-                'base_domains'             => 5,
-                'base_subdomains'          => 25,
                 // Landing page
                 'landing_page_slug'        => 'hosting-pro',
                 'landing_page_description' => 'Ideal para sitios web en crecimiento y pequeñas empresas',
@@ -129,10 +119,12 @@ class HostingProductsSeeder extends Seeder
         );
 
         // Precios para Hosting Pro (precio base: $12/mes)
-        $this->createProductPricing($hostingPlus, $mensual, 12.00);
-        $this->createProductPricing($hostingPlus, $trimestral, 12.00);
-        $this->createProductPricing($hostingPlus, $semestral, 12.00);
-        $this->createProductPricing($hostingPlus, $anual, 12.00);
+        $this->createProductPricing($hostingPlus, $mensual, 1,5.00);
+        $this->createProductPricing($hostingPlus, $trimestral, 4.50);
+        $this->createProductPricing($hostingPlus, $semestral, 9.00);
+        $this->createProductPricing($hostingPlus, $anual, 13.50);
+        $this->createProductPricing($hostingPlus, $bienal, 27.00);
+        $this->createProductPricing($hostingPlus, $trienal, 40.50);
 
         // 3. Hosting Web Ultra
         $hostingUltra = Product::updateOrCreate(
@@ -145,7 +137,7 @@ class HostingProductsSeeder extends Seeder
                 'status'                   => 'active',
                 'is_publicly_available'    => true,
                 'is_resellable_by_default' => true,
-                'display_order'            => 4,
+                'display_order'            => 3,
                 'product_type_id'          => $hostingType->id,
                 'auto_setup'               => true,
                 'requires_approval'        => false,
@@ -155,10 +147,12 @@ class HostingProductsSeeder extends Seeder
         );
 
         // Precios para Hosting Ultra (precio base: $25/mes)
-        $this->createProductPricing($hostingUltra, $mensual, 25.00);
-        $this->createProductPricing($hostingUltra, $trimestral, 25.00);
-        $this->createProductPricing($hostingUltra, $semestral, 25.00);
-        $this->createProductPricing($hostingUltra, $anual, 25.00);
+        $this->createProductPricing($hostingUltra, $mensual, 1.50);
+        $this->createProductPricing($hostingUltra, $trimestral, 4.50);
+        $this->createProductPricing($hostingUltra, $semestral, 9.00);
+        $this->createProductPricing($hostingUltra, $anual, 13.50);
+        $this->createProductPricing($hostingUltra, $bienal, 27.00);
+        $this->createProductPricing($hostingUltra, $trienal, 40.50);
 
         // Asociar opciones configurables con todos los productos de hosting
         if ($espacioGroup && $vcpuGroup && $spamGroup) {
@@ -170,10 +164,7 @@ class HostingProductsSeeder extends Seeder
         }
 
         $this->command->info('✅ Productos de hosting creados correctamente:');
-        $this->command->info('   - Hosting Web Eco: $5.00/mes (con descuentos por ciclo)');
-        $this->command->info('   - Hosting Web Pro: $12.00/mes (con descuentos por ciclo)');
-        $this->command->info('   - Hosting Web Ultra: $25.00/mes (con descuentos por ciclo)');
-        $this->command->info('   - Opciones configurables asociadas: Espacio, vCPU, SpamExperts');
+        
     }
 
     /**

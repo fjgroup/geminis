@@ -11,7 +11,7 @@ const form = useForm({
     name: '',
     slug: '',
     description: '',
-    product_id: null,
+    product_ids: [],
     display_order: 0,
     is_active: true,
     is_required: false,

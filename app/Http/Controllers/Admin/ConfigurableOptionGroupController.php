@@ -23,22 +23,22 @@ class ConfigurableOptionGroupController extends Controller
     {
         // TODO: Add authorization check, e.g., $this->authorize('viewAny', ConfigurableOptionGroup::class);
 
-        $groups = ConfigurableOptionGroup::with(['productOwner:id,name', 'options'])
+        $groups = ConfigurableOptionGroup::with(['products:id,name', 'options'])
             ->orderBy('display_order')
             ->orderBy('name')
             ->paginate(15)
             ->through(fn($group) => [
-                'id'            => $group->id,
-                'name'          => $group->name,
-                'slug'          => $group->slug,
-                'description'   => $group->description,
-                'product_name'  => $group->productOwner ? $group->productOwner->name : 'Global',
-                'product_id'    => $group->product_id,
-                'display_order' => $group->display_order,
-                'is_active'     => $group->is_active,
-                'is_required'   => $group->is_required,
-                'options_count' => $group->options->count(),
-                'created_at'    => $group->created_at,
+                'id'             => $group->id,
+                'name'           => $group->name,
+                'slug'           => $group->slug,
+                'description'    => $group->description,
+                'products_names' => $group->products->pluck('name')->join(', ') ?: 'Global',
+                'products_count' => $group->products->count(),
+                'display_order'  => $group->display_order,
+                'is_active'      => $group->is_active,
+                'is_required'    => $group->is_required,
+                'options_count'  => $group->options->count(),
+                'created_at'     => $group->created_at,
             ]);
 
         return Inertia::render('Admin/ConfigurableOptionGroups/Index', [
@@ -72,12 +72,16 @@ class ConfigurableOptionGroupController extends Controller
             $validated['slug'] = Str::slug($validated['name']);
         }
 
-        // Ensure product_id is null for global groups
-        if (empty($validated['product_id'])) {
-            $validated['product_id'] = null;
-        }
+        // Remove any product_ids from validated data since we'll handle products separately
+        $productIds = $validated['product_ids'] ?? [];
+        unset($validated['product_ids']);
 
-        ConfigurableOptionGroup::create($validated);
+        $group = ConfigurableOptionGroup::create($validated);
+
+        // Attach selected products if any
+        if (! empty($productIds)) {
+            $group->products()->attach($productIds);
+        }
         return redirect()->route('admin.configurable-option-groups.index')
             ->with('success', 'Grupo de opciones configurable creado exitosamente.');
     }
@@ -91,7 +95,6 @@ class ConfigurableOptionGroupController extends Controller
 
         $group = $configurableOptionGroup->load([
             'options.pricings.billingCycle',
-            'productOwner',
             'products',
         ]);
 
@@ -104,13 +107,11 @@ class ConfigurableOptionGroupController extends Controller
                 'name'          => $group->name,
                 'slug'          => $group->slug,
                 'description'   => $group->description,
-                'product_id'    => $group->product_id,
                 'display_order' => $group->display_order,
                 'is_active'     => $group->is_active,
                 'is_required'   => $group->is_required,
                 'created_at'    => $group->created_at,
                 'updated_at'    => $group->updated_at,
-                'product_owner' => $group->productOwner,
                 'products'      => $group->products,
                 'options'       => $group->options->map(fn($option) => [
                     'id'            => $option->id,
@@ -149,7 +150,7 @@ class ConfigurableOptionGroupController extends Controller
 
         $configurableOptionGroup->load([
             'options.pricings.billingCycle',
-            'productOwner',
+            'products',
         ]);
 
         $products      = Product::orderBy('name')->get(['id', 'name']);
@@ -157,15 +158,15 @@ class ConfigurableOptionGroupController extends Controller
 
         return Inertia::render('Admin/ConfigurableOptionGroups/Edit', [
             'group'         => [
-                'id'            => $configurableOptionGroup->id,
-                'name'          => $configurableOptionGroup->name,
-                'slug'          => $configurableOptionGroup->slug,
-                'description'   => $configurableOptionGroup->description,
-                'product_id'    => $configurableOptionGroup->product_id,
-                'display_order' => $configurableOptionGroup->display_order,
-                'is_active'     => $configurableOptionGroup->is_active,
-                'is_required'   => $configurableOptionGroup->is_required,
-                'options'       => $configurableOptionGroup->options->map(fn($option) => [
+                'id'                => $configurableOptionGroup->id,
+                'name'              => $configurableOptionGroup->name,
+                'slug'              => $configurableOptionGroup->slug,
+                'description'       => $configurableOptionGroup->description,
+                'display_order'     => $configurableOptionGroup->display_order,
+                'is_active'         => $configurableOptionGroup->is_active,
+                'is_required'       => $configurableOptionGroup->is_required,
+                'selected_products' => $configurableOptionGroup->products->pluck('id')->toArray(),
+                'options'           => $configurableOptionGroup->options->map(fn($option) => [
                     'id'            => $option->id,
                     'name'          => $option->name,
                     'slug'          => $option->slug,
@@ -199,7 +200,17 @@ class ConfigurableOptionGroupController extends Controller
     public function update(UpdateConfigurableOptionGroupRequest $request, ConfigurableOptionGroup $configurableOptionGroup): RedirectResponse
     {
         // Authorization is handled by UpdateConfigurableOptionGroupRequest
-        $configurableOptionGroup->update($request->validated());
+        $validated = $request->validated();
+
+        // Handle products separately
+        $productIds = $validated['product_ids'] ?? [];
+        unset($validated['product_ids']);
+
+        $configurableOptionGroup->update($validated);
+
+        // Sync products
+        $configurableOptionGroup->products()->sync($productIds);
+
         return redirect()->route('admin.configurable-option-groups.index')
             ->with('success', 'Grupo de opciones configurable actualizado exitosamente.');
     }

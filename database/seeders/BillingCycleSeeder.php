@@ -25,43 +25,43 @@ class BillingCycleSeeder extends Seeder
                 'name'                   => 'Mensual',
                 'slug'                   => 'monthly',
                 'days'                   => 30,
-                'discount_percentage_id' => $sinDescuento?->id,
+
             ],
             [
                 'name'                   => 'Trimestral',
                 'slug'                   => 'quarterly',
                 'days'                   => 91,
-                'discount_percentage_id' => $descuentoBasico?->id,
+
             ],
             [
                 'name'                   => 'Semestral',
                 'slug'                   => 'semi_annually',
                 'days'                   => 182,
-                'discount_percentage_id' => $descuentoIntermedio?->id,
+
             ],
             [
                 'name'                   => 'Anual',
                 'slug'                   => 'annually',
                 'days'                   => 365,
-                'discount_percentage_id' => $descuentoPremium?->id,
+
             ],
             [
                 'name'                   => 'Bienal',
                 'slug'                   => 'biennially',
                 'days'                   => 730,
-                'discount_percentage_id' => $descuentoBianual?->id,
+
             ],
             [
                 'name'                   => 'Trienal',
                 'slug'                   => 'triennially',
                 'days'                   => 1095,
-                'discount_percentage_id' => $descuentoTrianual?->id,
+
             ],
             [
                 'name'                   => 'Única vez',
                 'slug'                   => 'one_time',
                 'days'                   => 0,
-                'discount_percentage_id' => $sinDescuento?->id,
+
             ],
         ];
 

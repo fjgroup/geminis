@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Http\Requests\Admin;
 
 use Illuminate\Foundation\Http\FormRequest;
@@ -24,9 +23,10 @@ class UpdateConfigurableOptionGroupRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string', 'max:255'],
-            'product_id' => ['nullable', 'integer', Rule::exists('products', 'id')],
+            'name'          => ['required', 'string', 'max:255'],
+            'description'   => ['nullable', 'string', 'max:255'],
+            'product_ids'   => ['nullable', 'array'],
+            'product_ids.*' => ['integer', Rule::exists('products', 'id')],
             'display_order' => ['nullable', 'integer', 'min:0'],
         ];
     }

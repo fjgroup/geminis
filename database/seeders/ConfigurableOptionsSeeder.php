@@ -58,12 +58,12 @@ class ConfigurableOptionsSeeder extends Seeder
         );
 
         // Precios para espacio - Solo mensual activo (según requerimiento)
-        $this->createOptionPricing($espacioOption, $mensual, 1.00, true);
-        $this->createOptionPricing($espacioOption, $trimestral, 3.00, false); // Desactivado
-        $this->createOptionPricing($espacioOption, $semestral, 6.00, false);  // Desactivado
-        $this->createOptionPricing($espacioOption, $anual, 12.00, false);     // Desactivado
-        $this->createOptionPricing($espacioOption, $bienal, 24.00, false);    // Desactivado
-        $this->createOptionPricing($espacioOption, $trienal, 36.00, false);   // Desactivado
+        $this->createOptionPricing($espacioOption, $mensual, 0.50, true);
+        $this->createOptionPricing($espacioOption, $trimestral, 1.50, false); // Desactivado
+        $this->createOptionPricing($espacioOption, $semestral, 3.00, false);  // Desactivado
+        $this->createOptionPricing($espacioOption, $anual, 6.00, false);     // Desactivado
+        $this->createOptionPricing($espacioOption, $bienal, 12.00, false);    // Desactivado
+        $this->createOptionPricing($espacioOption, $trienal, 18.00, false);   // Desactivado
 
         // 2. Grupo: vCPU
         $vcpuGroup = ConfigurableOptionGroup::updateOrCreate(
@@ -95,12 +95,12 @@ class ConfigurableOptionsSeeder extends Seeder
         );
 
         // Precios para vCPU - Solo mensual activo
-        $this->createOptionPricing($vcpuOption, $mensual, 1.00, true);
-        $this->createOptionPricing($vcpuOption, $trimestral, 3.00, false); // Desactivado
-        $this->createOptionPricing($vcpuOption, $semestral, 6.00, false);  // Desactivado
-        $this->createOptionPricing($vcpuOption, $anual, 12.00, false);     // Desactivado
-        $this->createOptionPricing($vcpuOption, $bienal, 24.00, false);    // Desactivado
-        $this->createOptionPricing($vcpuOption, $trienal, 36.00, false);   // Desactivado
+        $this->createOptionPricing($vcpuOption, $mensual, 5.00, true);
+        $this->createOptionPricing($vcpuOption, $trimestral, 15.00, false); // Desactivado
+        $this->createOptionPricing($vcpuOption, $semestral, 30.00, false);  // Desactivado
+        $this->createOptionPricing($vcpuOption, $anual, 60.00, false);     // Desactivado
+        $this->createOptionPricing($vcpuOption, $bienal, 120.00, false);    // Desactivado
+        $this->createOptionPricing($vcpuOption, $trienal, 180.00, false);   // Desactivado
 
         // 3. Grupo: vRAM (Memoria RAM)
         $vramGroup = ConfigurableOptionGroup::updateOrCreate(
@@ -132,12 +132,12 @@ class ConfigurableOptionsSeeder extends Seeder
         );
 
                                                                            // Precios para vRAM - Solo mensual activo
-        $this->createOptionPricing($vramOption, $mensual, 0.75, true);     // $0.75 por GB
-        $this->createOptionPricing($vramOption, $trimestral, 2.25, false); // Desactivado
-        $this->createOptionPricing($vramOption, $semestral, 4.50, false);  // Desactivado
-        $this->createOptionPricing($vramOption, $anual, 9.00, false);      // Desactivado
-        $this->createOptionPricing($vramOption, $bienal, 18.00, false);    // Desactivado
-        $this->createOptionPricing($vramOption, $trienal, 27.00, false);   // Desactivado
+        $this->createOptionPricing($vramOption, $mensual, 1.00, true);     // $0.75 por GB
+        $this->createOptionPricing($vramOption, $trimestral, 3.00, false); // Desactivado
+        $this->createOptionPricing($vramOption, $semestral, 6.00, false);  // Desactivado
+        $this->createOptionPricing($vramOption, $anual, 12.00, false);      // Desactivado
+        $this->createOptionPricing($vramOption, $bienal, 24.00, false);    // Desactivado
+        $this->createOptionPricing($vramOption, $trienal, 36.00, false);   // Desactivado
 
         // 4. Grupo: Seguridad Email
         $spamGroup = ConfigurableOptionGroup::updateOrCreate(
@@ -167,12 +167,12 @@ class ConfigurableOptionsSeeder extends Seeder
         );
 
         // Precios para SpamExperts - Solo mensual activo, desmarcado por defecto
-        $this->createOptionPricing($spamOption, $mensual, 1.00, true);
-        $this->createOptionPricing($spamOption, $trimestral, 3.00, false); // Desactivado
-        $this->createOptionPricing($spamOption, $semestral, 6.00, false);  // Desactivado
-        $this->createOptionPricing($spamOption, $anual, 12.00, false);     // Desactivado
-        $this->createOptionPricing($spamOption, $bienal, 24.00, false);    // Desactivado
-        $this->createOptionPricing($spamOption, $trienal, 36.00, false);   // Desactivado
+        $this->createOptionPricing($spamOption, $mensual, 3.00, true);
+        $this->createOptionPricing($spamOption, $trimestral, 9.00, false); // Desactivado
+        $this->createOptionPricing($spamOption, $semestral, 18.00, false);  // Desactivado
+        $this->createOptionPricing($spamOption, $anual, 36.00, false);     // Desactivado
+        $this->createOptionPricing($spamOption, $bienal, 72.00, false);    // Desactivado
+        $this->createOptionPricing($spamOption, $trienal, 108.00, false);   // Desactivado
 
         // Asociar grupos con productos de hosting
         if ($hostingEco) {

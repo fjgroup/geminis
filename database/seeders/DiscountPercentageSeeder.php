@@ -1,10 +1,10 @@
 <?php
-
 namespace Database\Seeders;
 
+use App\Models\BillingCycle;
 use App\Models\DiscountPercentage;
+use App\Models\Product;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Str;
 
 class DiscountPercentageSeeder extends Seeder
 {
@@ -13,58 +13,53 @@ class DiscountPercentageSeeder extends Seeder
      */
     public function run(): void
     {
-        $discounts = [
-            [
-                'name' => 'Sin Descuento',
-                'slug' => 'sin-descuento',
-                'description' => 'No aplica descuento',
-                'percentage' => 0.00,
-                'applicable_product_types' => null, // Aplica a todos
-            ],
-            [
-                'name' => 'Descuento Hosting Básico',
-                'slug' => 'hosting-basico',
-                'description' => 'Descuentos para productos de hosting básico',
-                'percentage' => 5.00, // 5% trimestral
-                'applicable_product_types' => ['Hosting', 'VPS'],
-            ],
-            [
-                'name' => 'Descuento Hosting Intermedio',
-                'slug' => 'hosting-intermedio',
-                'description' => 'Descuentos para productos de hosting intermedio',
-                'percentage' => 11.00, // 11% semestral
-                'applicable_product_types' => ['Hosting', 'VPS'],
-            ],
-            [
-                'name' => 'Descuento Hosting Premium',
-                'slug' => 'hosting-premium',
-                'description' => 'Descuentos para productos de hosting premium',
-                'percentage' => 18.00, // 18% anual
-                'applicable_product_types' => ['Hosting', 'VPS'],
-            ],
-            [
-                'name' => 'Descuento Hosting Bianual',
-                'slug' => 'hosting-bianual',
-                'description' => 'Descuentos para productos de hosting bianual',
-                'percentage' => 26.00, // 26% bianual
-                'applicable_product_types' => ['Hosting', 'VPS'],
-            ],
-            [
-                'name' => 'Descuento Hosting Trianual',
-                'slug' => 'hosting-trianual',
-                'description' => 'Descuentos para productos de hosting trianual',
-                'percentage' => 35.00, // 35% trianual
-                'applicable_product_types' => ['Hosting', 'VPS'],
-            ],
+        // Definir los descuentos por ciclo
+        $discountsByCycle = [
+            1 => 0.00,  // Mensual - 0%
+            2 => 5.00,  // Trimestral - 5%
+            3 => 11.00, // Semestral - 11%
+            4 => 18.00, // Anual - 18%
+            5 => 26.00, // Bienal - 26%
+            6 => 35.00, // Trienal - 35%
         ];
 
-        foreach ($discounts as $discount) {
-            DiscountPercentage::updateOrCreate(
-                ['slug' => $discount['slug']],
-                $discount
-            );
+        // Productos ID 1, 2, 3
+        $productIds = [1, 2, 3];
+
+        // Obtener nombres de productos y ciclos para generar nombres descriptivos
+        $products      = Product::whereIn('id', $productIds)->get();
+        $billingCycles = BillingCycle::all();
+
+        foreach ($productIds as $productId) {
+            foreach ($discountsByCycle as $cycleId => $percentage) {
+                $product = $products->find($productId);
+                $cycle   = $billingCycles->find($cycleId);
+
+                if ($product && $cycle) {
+                    $name = "Descuento {$product->name} {$cycle->name}";
+                    $slug = Str::slug($name);
+
+                    DiscountPercentage::updateOrCreate(
+                        [
+                            'product_id'       => $productId,
+                            'billing_cycle_id' => $cycleId,
+                        ],
+                        [
+                            'name'        => $name,
+                            'slug'        => $slug,
+                            'description' => "Descuento del {$percentage}% para {$product->name} con facturación {$cycle->name}",
+                            'percentage'  => $percentage,
+                            'is_active'   => true,
+                        ]
+                    );
+
+                    $this->command->info("✅ Creado: {$name} ({$percentage}%)");
+                } else {
+                    $this->command->warn("⚠️ No se encontró producto ID {$productId} o ciclo ID {$cycleId}");
+                }
+            }
         }
 
-        $this->command->info('✅ Descuentos creados correctamente');
+        $this->command->info('✅ Descuentos creados correctamente para productos 1, 2, 3 y todos los ciclos');
     }
 }

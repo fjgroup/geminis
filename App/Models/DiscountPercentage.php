@@ -1,36 +1,47 @@
 <?php
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class DiscountPercentage extends Model
 {
+    use HasFactory;
+
     protected $fillable = [
         'name',
         'slug',
         'description',
         'percentage',
         'is_active',
-        'applicable_product_types',
+        'product_id',
+        'billing_cycle_id',
     ];
 
     protected $casts = [
-        'percentage'               => 'decimal:2',
-        'is_active'                => 'boolean',
-        'applicable_product_types' => 'array',
+        'percentage' => 'decimal:2',
+        'is_active'  => 'boolean',
     ];
 
     /**
-     * Relación con billing cycles
+     * Get the product that this discount applies to.
      */
-    public function billingCycles(): HasMany
+    public function product(): BelongsTo
     {
-        return $this->hasMany(BillingCycle::class);
+        return $this->belongsTo(Product::class);
     }
 
     /**
-     * Scope para descuentos activos
+     * Get the billing cycle that this discount applies to.
+     */
+    public function billingCycle(): BelongsTo
+    {
+        return $this->belongsTo(BillingCycle::class);
+    }
+
+    /**
+     * Scope to get active discounts only.
      */
     public function scopeActive($query)
     {
@@ -38,14 +49,23 @@ class DiscountPercentage extends Model
     }
 
     /**
-     * Verificar si el descuento aplica a un tipo de producto
+     * Scope to get discounts for a specific product and billing cycle.
      */
-    public function appliesToProductType(string $productType): bool
+    public function scopeForProductAndCycle($query, $productId, $billingCycleId)
     {
-        if (empty($this->applicable_product_types)) {
-            return true; // Si no hay restricciones, aplica a todos
-        }
+        return $query->where('product_id', $productId)
+            ->where('billing_cycle_id', $billingCycleId);
+    }
 
-        return in_array($productType, $this->applicable_product_types);
+    /**
+     * Get the discount percentage for a specific product and billing cycle.
+     */
+    public static function getDiscountForProductAndCycle($productId, $billingCycleId)
+    {
+        $discount = static::active()
+            ->forProductAndCycle($productId, $billingCycleId)
+            ->first();
+
+        return $discount ? $discount->percentage : 0;
     }
 }

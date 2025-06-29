@@ -35,40 +35,7 @@ const props = defineProps({
 // Paso de depuración: Imprimir los billingCycles que llegan como props
 console.log('Props billingCycles en Edit.vue:', JSON.parse(JSON.stringify(props.billingCycles)));
 
-// Función para inicializar recursos base dinámicos
-function initializeBaseResources() {
-    const baseResources = {};
 
-    // Si el producto ya tiene recursos base guardados, usarlos
-    if (props.product.base_resources) {
-        return props.product.base_resources;
-    }
-
-    // Si no, inicializar con 0 para todas las opciones disponibles
-    if (props.availableResourceGroups) {
-        props.availableResourceGroups.forEach(group => {
-            if (group.options) {
-                group.options.forEach(option => {
-                    baseResources[option.id] = 0;
-                });
-            }
-        });
-    }
-
-    return baseResources;
-}
-
-// Computed para obtener grupos configurables asociados al producto
-const associatedConfigurableGroups = computed(() => {
-    if (!props.availableResourceGroups || !form.configurable_option_groups) {
-        return [];
-    }
-
-    const associatedGroupIds = Object.keys(form.configurable_option_groups);
-    return props.availableResourceGroups.filter(group =>
-        associatedGroupIds.includes(group.id.toString())
-    );
-});
 
 
 
@@ -83,9 +50,7 @@ const form = useForm({
     status: props.product.status,
     is_publicly_available: props.product.is_publicly_available,
     is_resellable_by_default: props.product.is_resellable_by_default,
-    configurable_option_groups: props.product.associated_option_groups || {}, // Objeto: { groupId: { display_order: X } }
-    // Recursos base dinámicos (basados en opciones configurables)
-    base_resources: initializeBaseResources(),
+    configurable_option_groups: props.product.configurable_groups || {}, // Objeto: { groupId: { display_order: X, base_quantity: Y } }
 });
 
 // Estado para el modal de precios
@@ -164,6 +129,9 @@ const submitProductForm = () => {
     // Reemplazar el objeto original en el formulario con el objeto formateado
     form.configurable_option_groups = formattedOptionGroups;
 
+    // Debug: Log los datos que se van a enviar
+    console.log('Datos del formulario antes de enviar:', JSON.parse(JSON.stringify(form.data())));
+    console.log('Grupos configurables formateados:', formattedOptionGroups);
 
     form.put(route("admin.products.update", props.product.id));
 };
@@ -301,19 +269,11 @@ const formatCurrency = (amount) => {
     }).format(amount || 0);
 };
 
-// Propiedad computada para filtrar los grupos de opciones
+// Propiedad computada para mostrar todos los grupos de opciones disponibles
 const filteredOptionGroups = computed(() => {
     if (!props.all_option_groups) return [];
-    return props.all_option_groups.filter(group => {
-        // El grupo ya está asociado a este producto
-        const isAssociated = !!form.configurable_option_groups[group.id];
-        // El grupo es global (no tiene un owner_product_id)
-        const isGlobal = group.owner_product_id === null;
-        // El grupo es específico de ESTE producto
-        const isSpecificToThisProduct = group.owner_product_id === props.product.id;
-
-        return isAssociated || isGlobal || isSpecificToThisProduct;
-    });
+    // Ahora todos los grupos son globales y pueden ser asociados a cualquier producto
+    return props.all_option_groups;
 });
 // Método para obtener el nombre del ciclo de facturación de forma segura
 const getBillingCycleName = (pricing) => {
@@ -369,29 +329,9 @@ const getBillingCycleName = (pricing) => {
                                 Configura las cantidades base para cada grupo de opciones configurables asociado a este producto.
                             </p>
 
-                            <div v-if="associatedConfigurableGroups.length > 0" class="space-y-4">
-                                <div v-for="group in associatedConfigurableGroups" :key="group.id"
-                                     class="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
-                                    <h4 class="font-medium text-gray-900 dark:text-gray-100 mb-3">{{ group.name }}</h4>
-                                    <p v-if="group.description" class="text-sm text-gray-600 dark:text-gray-400 mb-3">{{ group.description }}</p>
-
-                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div v-for="option in group.options" :key="option.id">
-                                            <InputLabel :for="`base_${option.id}`" :value="`${option.name} (Base)`" />
-                                            <input
-                                                :id="`base_${option.id}`"
-                                                type="number"
-                                                step="0.01"
-                                                min="0"
-                                                v-model="form.base_resources[option.id]"
-                                                class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600"
-                                                :placeholder="`Cantidad base de ${option.name.toLowerCase()}`"
-                                            />
-                                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                                Cantidad incluida en el precio base del producto
-                                            </p>
-                                        </div>
-                                    </div>
+                            <div v-if="Object.keys(form.configurable_option_groups).length > 0" class="space-y-4">
+                                <div class="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                                    Las cantidades base se configuran en la sección "Grupos de Opciones Configurables Asociados" más abajo.
                                 </div>
                             </div>
 
@@ -645,13 +585,13 @@ const getBillingCycleName = (pricing) => {
                                 <div class="flex items-center">
                                     <label :for="'group-quantity-' + group_opt.id"
                                         class="mr-2 text-sm text-gray-500 dark:text-gray-400">Cantidad Base:</label>
-                                    <input type="number" step="0.01" min="0" v-model.number="
+                                    <input type="text" v-model="
                                             form.configurable_option_groups[
                                                 group_opt.id
                                             ].base_quantity
                                         " :id="'group-quantity-' + group_opt.id"
                                         :placeholder="getQuantityPlaceholder(group_opt)"
-                                        class="w-24 p-1 text-sm border-gray-300 rounded-md shadow-sm dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600 focus:ring-indigo-500 focus:border-indigo-500" />
+                                        class="w-32 p-2 text-sm border-gray-300 rounded-md shadow-sm dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600 focus:ring-indigo-500 focus:border-indigo-500" />
                                     <span class="ml-1 text-xs text-gray-400">{{ getQuantityUnit(group_opt) }}</span>
                                 </div>
                             </div>

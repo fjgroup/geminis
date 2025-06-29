@@ -62,7 +62,7 @@ class Product extends Model
     public function configurableOptionGroups(): BelongsToMany
     {
         return $this->belongsToMany(ConfigurableOptionGroup::class, 'product_configurable_option_groups')
-            ->withPivot('display_order')
+            ->withPivot('display_order', 'base_quantity')
             ->withTimestamps();
     }
 
@@ -77,6 +77,22 @@ class Product extends Model
     public function productType(): BelongsTo
     {
         return $this->belongsTo(ProductType::class, 'product_type_id');
+    }
+
+    /**
+     * Get the discount percentages for this product.
+     */
+    public function discountPercentages(): HasMany
+    {
+        return $this->hasMany(DiscountPercentage::class);
+    }
+
+    /**
+     * Get the discount percentage for a specific billing cycle.
+     */
+    public function getDiscountForCycle($billingCycleId)
+    {
+        return DiscountPercentage::getDiscountForProductAndCycle($this->id, $billingCycleId);
     }
 
     // Otros métodos y relaciones del modelo Product...

@@ -3,7 +3,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class BillingCycle extends Model
@@ -19,7 +18,7 @@ class BillingCycle extends Model
         'name',
         'slug',
         'days',
-        'discount_percentage_id',
+        
     ];
 
     /**
@@ -31,19 +30,19 @@ class BillingCycle extends Model
     }
 
     /**
-     * Get the discount percentage for this billing cycle.
+     * Get the discount percentages for this billing cycle.
      */
-    public function discountPercentage(): BelongsTo
+    public function discountPercentages(): HasMany
     {
-        return $this->belongsTo(DiscountPercentage::class);
+        return $this->hasMany(DiscountPercentage::class);
     }
 
     /**
-     * Get the discount percentage value or 0 if none.
+     * Get the discount percentage for a specific product in this billing cycle.
      */
-    public function getDiscountPercentageAttribute(): float
+    public function getDiscountForProduct($productId)
     {
-        return $this->discountPercentage?->percentage ?? 0.0;
+        return DiscountPercentage::getDiscountForProductAndCycle($productId, $this->id);
     }
 
     /**

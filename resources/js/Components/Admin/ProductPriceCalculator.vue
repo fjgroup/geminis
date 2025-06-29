@@ -33,7 +33,7 @@ initializeOptions();
 // Precio base del producto para el ciclo seleccionado
 const basePrice = computed(() => {
     if (!props.product?.pricings || !selectedBillingCycle.value) return 0;
-    
+
     const pricing = props.product.pricings.find(p => p.billing_cycle_id === selectedBillingCycle.value);
     return pricing ? parseFloat(pricing.price) : 0;
 });
@@ -41,13 +41,13 @@ const basePrice = computed(() => {
 // Calcular precio de opciones configurables
 const optionsPrice = computed(() => {
     let total = 0;
-    
+
     if (!props.availableResourceGroups) return total;
-    
+
     props.availableResourceGroups.forEach(group => {
         group.options.forEach(option => {
             const selectedValue = selectedOptions.value[option.id];
-            
+
             if (option.option_type === 'quantity' && selectedValue > 0) {
                 // Para opciones de cantidad, multiplicar por la cantidad
                 const optionPrice = getOptionPrice(option);
@@ -58,14 +58,14 @@ const optionsPrice = computed(() => {
             }
         });
     });
-    
+
     return total;
 });
 
 // Obtener precio de una opción para el ciclo seleccionado
 const getOptionPrice = (option) => {
     if (!option.pricings || !selectedBillingCycle.value) return 0;
-    
+
     const pricing = option.pricings.find(p => p.billing_cycle_id === selectedBillingCycle.value);
     return pricing ? parseFloat(pricing.price) : 0;
 };
@@ -78,7 +78,7 @@ const totalPrice = computed(() => {
 // Información del ciclo seleccionado
 const selectedCycleInfo = computed(() => {
     if (!selectedBillingCycle.value || !props.billingCycles) return null;
-    
+
     return props.billingCycles.find(cycle => cycle.id === selectedBillingCycle.value);
 });
 
@@ -90,25 +90,26 @@ const formatCurrency = (amount) => {
     }).format(amount || 0);
 };
 
-// Obtener recursos base totales
+// Obtener recursos base totales desde base_resources dinámico
 const getTotalResources = computed(() => {
+    const baseResources = props.product?.base_resources || {};
     const base = {
-        disk: parseFloat(props.product?.base_disk_space_gb || 0),
-        vcpu: parseInt(props.product?.base_vcpu_cores || 0),
-        ram: parseFloat(props.product?.base_ram_gb || 0),
-        bandwidth: parseInt(props.product?.base_bandwidth_gb || 0),
-        emails: parseInt(props.product?.base_email_accounts || 0),
-        databases: parseInt(props.product?.base_databases || 0),
-        domains: parseInt(props.product?.base_domains || 0),
-        subdomains: parseInt(props.product?.base_subdomains || 0),
+        disk: parseFloat(baseResources.disk_space || 0),
+        vcpu: parseInt(baseResources.vcpu_cores || 0),
+        ram: parseFloat(baseResources.ram_memory || 0),
+        bandwidth: parseInt(baseResources.bandwidth || 0),
+        emails: parseInt(baseResources.email_accounts || 0),
+        databases: parseInt(baseResources.databases || 0),
+        domains: parseInt(baseResources.domains || 0),
+        subdomains: parseInt(baseResources.subdomains || 0),
     };
-    
+
     // Agregar recursos de opciones configurables
     if (props.availableResourceGroups) {
         props.availableResourceGroups.forEach(group => {
             group.options.forEach(option => {
                 const selectedValue = selectedOptions.value[option.id];
-                
+
                 if (option.option_type === 'quantity' && selectedValue > 0) {
                     // Mapear opciones a recursos (esto se puede hacer más dinámico)
                     if (group.name.toLowerCase().includes('espacio') || group.name.toLowerCase().includes('disco')) {
@@ -122,7 +123,7 @@ const getTotalResources = computed(() => {
             });
         });
     }
-    
+
     return base;
 });
 </script>
@@ -132,7 +133,7 @@ const getTotalResources = computed(() => {
         <h3 class="text-lg font-semibold text-blue-800 dark:text-blue-200 mb-4 flex items-center">
             🧮 Calculadora de Precios
         </h3>
-        
+
         <!-- Selector de Ciclo de Facturación -->
         <div class="mb-6">
             <InputLabel for="billing_cycle" value="Ciclo de Facturación" />

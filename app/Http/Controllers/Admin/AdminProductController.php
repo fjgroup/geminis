@@ -1,25 +1,25 @@
 <?php
-
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Admin\StoreProductRequest; // Para el CRUD del producto principal
-use App\Http\Requests\Admin\UpdateProductRequest; // Para el CRUD del producto principal
-use App\Http\Requests\Admin\StoreProductPricingRequest; // ¡IMPORTANTE! Añadir esta importación
+use App\Http\Requests\Admin\StoreProductPricingRequest;  // Para el CRUD del producto principal
+use App\Http\Requests\Admin\StoreProductRequest;         // Para el CRUD del producto principal
 use App\Http\Requests\Admin\UpdateProductPricingRequest; // ¡IMPORTANTE! Añadir esta importación
-use Inertia\Inertia;
+use App\Http\Requests\Admin\UpdateProductRequest;        // ¡IMPORTANTE! Añadir esta importación
+use App\Models\BillingCycle;
+use App\Models\ConfigurableOptionGroup;
+use App\Models\Product;
+use App\Models\ProductPricing;        // Asegúrate que el namespace y nombre de clase son correctos
+use App\Models\ProductType;           // Añadir
+use App\Models\User;                  // Para cargar revendedores si es necesario
+use Illuminate\Http\RedirectResponse; // Added for ProductType
+
+use Illuminate\Support\Facades\Log; // Añadir importación para BillingCycle
+use Illuminate\Support\Str;
+use Inertia\Inertia; // Para el slug
 use Inertia\Response;
 
-use App\Models\Product;
-use App\Models\ProductPricing; // Asegúrate que el namespace y nombre de clase son correctos
-use App\Models\ConfigurableOptionGroup; // Añadir
-use App\Models\User; // Para cargar revendedores si es necesario
-use App\Models\ProductType; // Added for ProductType
-
-use App\Models\BillingCycle; // Añadir importación para BillingCycle
-use Illuminate\Http\RedirectResponse;
-use Illuminate\Support\Str; // Para el slug
-use Illuminate\Support\Facades\Log; // Añadir importación para Log
+// Añadir importación para Log
 
 class AdminProductController extends Controller
 {
@@ -30,21 +30,21 @@ class AdminProductController extends Controller
     {
         $this->authorize('viewAny', Product::class);
 
-    $products = Product::latest()
-        ->with('owner') // Carga la relación 'owner' si la tienes definida en el modelo Product
-        ->paginate(10)
-        ->through(fn ($product) => [
-            'id' => $product->id,
-            'name' => $product->name,
-            'slug' => $product->slug,
-            'type' => $product->type,
-            'owner_name' => $product->owner_id ? ($product->owner ? $product->owner->name : 'Revendedor (ID: '.$product->owner_id.')') : 'Plataforma',
-            'status' => $product->status,
-        ]);
+        $products = Product::latest()
+            ->with('owner') // Carga la relación 'owner' si la tienes definida en el modelo Product
+            ->paginate(10)
+            ->through(fn($product) => [
+                'id'         => $product->id,
+                'name'       => $product->name,
+                'slug'       => $product->slug,
+                'type'       => $product->type,
+                'owner_name' => $product->owner_id ? ($product->owner ? $product->owner->name : 'Revendedor (ID: ' . $product->owner_id . ')') : 'Plataforma',
+                'status'     => $product->status,
+            ]);
 
-    return Inertia::render('Admin/Products/Index', [
-        'products' => $products,
-    ]);
+        return Inertia::render('Admin/Products/Index', [
+            'products' => $products,
+        ]);
     }
 
     /**
@@ -67,13 +67,13 @@ class AdminProductController extends Controller
      * Store a newly created resource in storage.
      */
     public function store(StoreProductRequest $request): RedirectResponse
-     {
+    {
         // La autorización y validación son manejadas por StoreProductRequest
         $validatedData = $request->validated();
 
         // Si el slug no viene en $validatedData (porque es nullable y no se envió), lo generamos.
         // Si se envía, se usará el valor validado.
-        if (empty($validatedData['slug']) && !empty($validatedData['name'])) {
+        if (empty($validatedData['slug']) && ! empty($validatedData['name'])) {
             $validatedData['slug'] = Str::slug($validatedData['name']);
         }
         // Remove old 'type' field if product_type_id is present, to avoid confusion
@@ -109,41 +109,41 @@ class AdminProductController extends Controller
         // Obtener todos los ciclos de facturación
         $billingCyclesFromDB = BillingCycle::orderBy('name')->get(['id', 'name']);
 
-
         $resellers = User::where('role', 'reseller')->orderBy('name')->get(['id', 'name', 'company_name']);
-        // Incluir product_id para saber si un grupo es global o específico de un producto
-        $allOptionGroups = ConfigurableOptionGroup::orderBy('name')->get(['id', 'name', 'product_id']);
-        $productTypes = ProductType::orderBy('name')->get(['id', 'name']);
+        // Obtener todos los grupos de opciones configurables
+        $allOptionGroups = ConfigurableOptionGroup::orderBy('name')->get(['id', 'name']);
+        $productTypes    = ProductType::orderBy('name')->get(['id', 'name']);
 
-        $allOptionGroupsData = $allOptionGroups->map(fn ($group) => [
-            'id' => $group->id,
+        $allOptionGroupsData = $allOptionGroups->map(fn($group) => [
+            'id'   => $group->id,
             'name' => $group->name,
-            'owner_product_id' => $group->product_id, // Este es el product_id de la tabla configurable_option_groups
         ])->toArray();
 
         // Añade esta línea para depurar:
 
         return Inertia::render('Admin/Products/Edit', [
-            'product' => $product->toArray() + [
+            'product'           => $product->toArray() + [
                 // pricings ya está en $product->toArray() si la relación está cargada
                 // 'productType' ya está cargado y se incluirá en toArray()
-                'associated_option_groups' => $product->configurableOptionGroups->mapWithKeys(function ($group) {
-                    return [$group->id => ['display_order' => $group->pivot->display_order ?? 0]];
+                'configurable_groups' => $product->configurableOptionGroups->mapWithKeys(function ($group) {
+                    return [$group->id => [
+                        'display_order' => $group->pivot->display_order ?? 0,
+                        'base_quantity' => $group->pivot->base_quantity ?? 0,
+                    ]];
                 })->toArray(),
             ],
-            'resellers' => $resellers->map(fn ($reseller) => [
-                'id' => $reseller->id,
-                'label' => $reseller->name . ($reseller->company_name ? " ({$reseller->company_name})" : "")
+            'resellers'         => $resellers->map(fn($reseller) => [
+                'id'    => $reseller->id,
+                'label' => $reseller->name . ($reseller->company_name ? " ({$reseller->company_name})" : ""),
             ])->toArray(),
             'all_option_groups' => $allOptionGroupsData, // Usar la variable depurada
-            'productTypes' => $productTypes->map(fn($pt) => ['value' => $pt->id, 'label' => $pt->name]),
-            'billingCycles' => $billingCyclesFromDB->map(fn($cycle) => [
+            'productTypes'      => $productTypes->map(fn($pt) => ['value' => $pt->id, 'label' => $pt->name]),
+            'billingCycles'     => $billingCyclesFromDB->map(fn($cycle) => [
                 'value' => $cycle->id,
-                'label' => $cycle->name
+                'label' => $cycle->name,
             ]), // Pasar los ciclos de facturación formateados para SelectInput
         ]);
     }
-
 
     /**
      * Update the specified resource in storage.
@@ -160,7 +160,7 @@ class AdminProductController extends Controller
         // Si el slug fue enviado explícitamente y es diferente al generado por el nuevo nombre,
         // se podría dar prioridad al slug enviado (si esa es la lógica deseada y el form lo permite).
         // Por ahora, si el nombre cambia, el slug se regenera basado en el nuevo nombre.
-        if (isset($productData['name']) && (!isset($productData['slug']) || empty($productData['slug']) || $productData['name'] !== $product->name) ) {
+        if (isset($productData['name']) && (! isset($productData['slug']) || empty($productData['slug']) || $productData['name'] !== $product->name)) {
             $productData['slug'] = Str::slug($productData['name']);
         }
         // The old 'type' field is now excluded by the except() method above.
@@ -169,18 +169,18 @@ class AdminProductController extends Controller
         //    unset($productData['type']); // This would attempt to unset 'type' again if it somehow passed the except filter.
         // }
 
-
         $product->update($productData);
 
         // Sincronizar grupos de opciones configurables
         if ($request->has('configurable_option_groups')) {
 
-
             $groupsToSync = [];
             foreach ($request->input('configurable_option_groups', []) as $groupId => $pivotData) {
-                $groupsToSync[$groupId] = ['display_order' => isset($pivotData['display_order']) ? (int)$pivotData['display_order'] : 0];
+                $groupsToSync[$groupId] = [
+                    'display_order' => isset($pivotData['display_order']) ? (int) $pivotData['display_order'] : 0,
+                    'base_quantity' => isset($pivotData['base_quantity']) ? (float) $pivotData['base_quantity'] : 0,
+                ];
             }
-
 
             $product->configurableOptionGroups()->sync($groupsToSync);
         } else {
