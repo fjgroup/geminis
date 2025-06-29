@@ -162,14 +162,20 @@ const formatResourceValue = (key, value) => {
 
 // Función para calcular precio con descuento
 const calculatePriceWithDiscount = (basePrice, productId, billingCycleId) => {
-    // TEMPORAL: Descuentos desactivados para reactivar la web
-    return basePrice;
+    const discount = getDiscountPercentage(productId, billingCycleId);
+    return basePrice * (1 - discount / 100);
 };
 
 // Función para obtener el descuento para un producto y ciclo específico
 const getDiscountPercentage = (productId, billingCycleId) => {
-    // TEMPORAL: Descuentos desactivados para reactivar la web
-    return 0;
+    // Buscar descuento en los datos del producto
+    const product = props.mainServiceProducts?.find(p => p.id === productId);
+    if (!product) return 0;
+
+    const pricing = product.pricings?.find(p => p.billing_cycle.id === billingCycleId);
+    if (!pricing || !pricing.discount_percentage) return 0;
+
+    return pricing.discount_percentage.percentage || 0;
 };
 
 const selectMainProductForConfiguration = (product) => {
@@ -323,7 +329,7 @@ onMounted(() => {
                         <div>
                             <p class="mb-4 text-lg text-gray-700 dark:text-gray-300">
                                 Añadiendo servicios para: <strong class="text-indigo-600">{{ displayAccountName
-                                    }}</strong>
+                                }}</strong>
                             </p>
 
                             <section>
@@ -338,7 +344,7 @@ onMounted(() => {
                                         <div>
                                             <h4 class="text-lg font-semibold text-gray-800 dark:text-gray-200">{{
                                                 product.name
-                                                }}</h4>
+                                            }}</h4>
                                             <p class="mb-3 text-sm text-gray-600 dark:text-gray-400">{{
                                                 product.description }}
                                             </p>
@@ -577,7 +583,7 @@ onMounted(() => {
                                             product.name }}
                                         </h4>
                                         <p class="mb-2 text-sm text-gray-600 dark:text-gray-400">{{ product.description
-                                            }}</p>
+                                        }}</p>
                                         <div class="space-y-2">
                                             <button v-for="pricing in product.pricings" :key="pricing.id"
                                                 @click="console.log(`Clic en SSL: ProdID=${product.id}, PricingID=${pricing.id}`); handleAddAdditionalService(product.id, pricing.id)"
@@ -620,7 +626,7 @@ onMounted(() => {
                                             product.name }}
                                         </h4>
                                         <p class="mb-2 text-sm text-gray-600 dark:text-gray-400">{{ product.description
-                                            }}</p>
+                                        }}</p>
                                         <div class="space-y-2">
                                             <button v-for="pricing in product.pricings" :key="pricing.id"
                                                 @click="console.log(`Clic en Licencia: ProdID=${product.id}, PricingID=${pricing.id}`); handleAddAdditionalService(product.id, pricing.id)"

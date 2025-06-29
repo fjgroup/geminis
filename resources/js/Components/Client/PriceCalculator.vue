@@ -63,13 +63,12 @@ const calculatePricing = async () => {
 
         calculationResult.value = response.data;
 
-        // TEMPORAL: Descuentos desactivados para reactivar la web
         // Apply discount if applicable
-        // if (hasDiscount.value) {
-        //     const discountAmount = (calculationResult.value.total_price * discountPercentage.value) / 100;
-        //     calculationResult.value.discount_amount = discountAmount;
-        //     calculationResult.value.discounted_price = calculationResult.value.total_price - discountAmount;
-        // }
+        if (hasDiscount.value) {
+            const discountAmount = (calculationResult.value.total_price * discountPercentage.value) / 100;
+            calculationResult.value.discount_amount = discountAmount;
+            calculationResult.value.discounted_price = calculationResult.value.total_price - discountAmount;
+        }
 
         emit('priceCalculated', {
             ...calculationResult.value,
@@ -269,7 +268,7 @@ const getOptionType = (option) => {
                     <span>Total</span>
                     <span class="text-blue-600">
                         {{ formatCurrency(hasDiscount ? calculationResult.discounted_price :
-                        calculationResult.total_price) }}
+                            calculationResult.total_price) }}
                     </span>
                 </div>
 
