@@ -1,14 +1,18 @@
 <?php
-
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\ConfigurableOptionGroup;
-use App\Models\Product; // Para el dropdown de productos
 use App\Http\Requests\Admin\StoreConfigurableOptionGroupRequest;
 use App\Http\Requests\Admin\UpdateConfigurableOptionGroupRequest;
-use Inertia\Inertia;
+use App\Models\BillingCycle;
+use App\Models\ConfigurableOption;
+use App\Models\ConfigurableOptionGroup;
+use App\Models\ConfigurableOptionPricing;
+use App\Models\Product;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+use Inertia\Inertia;
 
 class ConfigurableOptionGroupController extends Controller
 {
@@ -19,17 +23,22 @@ class ConfigurableOptionGroupController extends Controller
     {
         // TODO: Add authorization check, e.g., $this->authorize('viewAny', ConfigurableOptionGroup::class);
 
-        $groups = ConfigurableOptionGroup::with('productOwner:id,name') // Cambiar 'product' a 'productOwner' si esa es la relación
+        $groups = ConfigurableOptionGroup::with(['productOwner:id,name', 'options'])
             ->orderBy('display_order')
             ->orderBy('name')
-            ->paginate(10)
-            ->through(fn ($group) => [
-                'id' => $group->id,
-                'name' => $group->name,
-                'description' => $group->description,
-                'product_name' => $group->productOwner ? $group->productOwner->name : 'Global', // Usar productOwner
-                'product_id' => $group->product_id,
+            ->paginate(15)
+            ->through(fn($group) => [
+                'id'            => $group->id,
+                'name'          => $group->name,
+                'slug'          => $group->slug,
+                'description'   => $group->description,
+                'product_name'  => $group->productOwner ? $group->productOwner->name : 'Global',
+                'product_id'    => $group->product_id,
                 'display_order' => $group->display_order,
+                'is_active'     => $group->is_active,
+                'is_required'   => $group->is_required,
+                'options_count' => $group->options->count(),
+                'created_at'    => $group->created_at,
             ]);
 
         return Inertia::render('Admin/ConfigurableOptionGroups/Index', [
@@ -67,8 +76,56 @@ class ConfigurableOptionGroupController extends Controller
     public function show(ConfigurableOptionGroup $configurableOptionGroup)
     {
         // TODO: Add authorization check, e.g., $this->authorize('view', $configurableOptionGroup);
-        // Typically not used for CRUDs with Inertia, redirecting to edit is common.
-        return redirect()->route('admin.configurable-option-groups.edit', $configurableOptionGroup);
+
+        $group = $configurableOptionGroup->load([
+            'options.pricings.billingCycle',
+            'productOwner',
+            'products',
+        ]);
+
+        $billingCycles = BillingCycle::ordered()->get(['id', 'name', 'slug']);
+        $products      = Product::active()->ordered()->get(['id', 'name']);
+
+        return Inertia::render('Admin/ConfigurableOptionGroups/Show', [
+            'group'         => [
+                'id'            => $group->id,
+                'name'          => $group->name,
+                'slug'          => $group->slug,
+                'description'   => $group->description,
+                'product_id'    => $group->product_id,
+                'display_order' => $group->display_order,
+                'is_active'     => $group->is_active,
+                'is_required'   => $group->is_required,
+                'created_at'    => $group->created_at,
+                'updated_at'    => $group->updated_at,
+                'product_owner' => $group->productOwner,
+                'products'      => $group->products,
+                'options'       => $group->options->map(fn($option) => [
+                    'id'            => $option->id,
+                    'name'          => $option->name,
+                    'slug'          => $option->slug,
+                    'value'         => $option->value,
+                    'description'   => $option->description,
+                    'option_type'   => $option->option_type,
+                    'is_required'   => $option->is_required,
+                    'is_active'     => $option->is_active,
+                    'min_value'     => $option->min_value,
+                    'max_value'     => $option->max_value,
+                    'display_order' => $option->display_order,
+                    'pricings'      => $option->pricings->map(fn($pricing) => [
+                        'id'                 => $pricing->id,
+                        'billing_cycle_id'   => $pricing->billing_cycle_id,
+                        'billing_cycle_name' => $pricing->billingCycle->name,
+                        'price'              => $pricing->price,
+                        'setup_fee'          => $pricing->setup_fee,
+                        'currency_code'      => $pricing->currency_code,
+                        'is_active'          => $pricing->is_active,
+                    ]),
+                ]),
+            ],
+            'billingCycles' => $billingCycles,
+            'products'      => $products,
+        ]);
     }
 
     /**
@@ -85,20 +142,20 @@ class ConfigurableOptionGroupController extends Controller
         }]);
 
         return Inertia::render('Admin/ConfigurableOptionGroups/Edit', [
-            'group' => [
-                'id' => $configurableOptionGroup->id,
-                'name' => $configurableOptionGroup->name,
-                'description' => $configurableOptionGroup->description,
-                'product_id' => $configurableOptionGroup->product_id,
+            'group'    => [
+                'id'            => $configurableOptionGroup->id,
+                'name'          => $configurableOptionGroup->name,
+                'description'   => $configurableOptionGroup->description,
+                'product_id'    => $configurableOptionGroup->product_id,
                 'display_order' => $configurableOptionGroup->display_order,
                 // Mapear las opciones para pasarlas a la vista
-                'options' => $configurableOptionGroup->options->map(fn ($option) => [
-                    'id' => $option->id,
-                    'name' => $option->name,
-                    'value' => $option->value,
+                'options'       => $configurableOptionGroup->options->map(fn($option) => [
+                    'id'            => $option->id,
+                    'name'          => $option->name,
+                    'value'         => $option->value,
                     'display_order' => $option->display_order,
-                    'group_id' => $option->group_id, // Incluir el group_id
-                ])->all(), // Asegúrate de usar ->all() o ->toArray() si es una colección
+                    'group_id'      => $option->group_id, // Incluir el group_id
+                ])->all(),                            // Asegúrate de usar ->all() o ->toArray() si es una colección
             ],
             'products' => $products,
             // 'errors' => session('errors') ? session('errors')->getBag('default')->getMessages() : (object) [], // Para pasar errores de validación de opciones
@@ -126,5 +183,65 @@ class ConfigurableOptionGroupController extends Controller
         $configurableOptionGroup->delete();
         return redirect()->route('admin.configurable-option-groups.index')
             ->with('success', 'Grupo de opciones configurable eliminado exitosamente.');
+    }
+
+    /**
+     * Add an option to the group
+     */
+    public function addOption(Request $request, ConfigurableOptionGroup $configurableOptionGroup)
+    {
+        $validated = $request->validate([
+            'name'                        => 'required|string|max:255',
+            'slug'                        => 'nullable|string|max:255|unique:configurable_options,slug',
+            'value'                       => 'nullable|string|max:255',
+            'description'                 => 'nullable|string|max:1000',
+            'option_type'                 => 'required|in:dropdown,radio,checkbox,quantity,text',
+            'is_required'                 => 'boolean',
+            'is_active'                   => 'boolean',
+            'min_value'                   => 'nullable|numeric|min:0',
+            'max_value'                   => 'nullable|numeric|min:0',
+            'display_order'               => 'integer|min:0',
+            'pricings'                    => 'array',
+            'pricings.*.billing_cycle_id' => 'required|exists:billing_cycles,id',
+            'pricings.*.price'            => 'required|numeric|min:0',
+            'pricings.*.setup_fee'        => 'nullable|numeric|min:0',
+        ]);
+
+        // Auto-generate slug if not provided
+        if (empty($validated['slug'])) {
+            $validated['slug'] = Str::slug($validated['name']);
+        }
+
+        $validated['group_id'] = $configurableOptionGroup->id;
+        $pricings              = $validated['pricings'] ?? [];
+        unset($validated['pricings']);
+
+        $option = ConfigurableOption::create($validated);
+
+        // Create pricings
+        foreach ($pricings as $pricing) {
+            ConfigurableOptionPricing::create([
+                'configurable_option_id' => $option->id,
+                'billing_cycle_id'       => $pricing['billing_cycle_id'],
+                'price'                  => $pricing['price'],
+                'setup_fee'              => $pricing['setup_fee'] ?? 0,
+                'currency_code'          => 'USD',
+                'is_active'              => true,
+            ]);
+        }
+
+        return redirect()->route('admin.configurable-option-groups.show', $configurableOptionGroup)
+            ->with('success', 'Opción agregada exitosamente.');
+    }
+
+    /**
+     * Remove an option from the group
+     */
+    public function removeOption(ConfigurableOptionGroup $configurableOptionGroup, ConfigurableOption $option)
+    {
+        $option->delete();
+
+        return redirect()->route('admin.configurable-option-groups.show', $configurableOptionGroup)
+            ->with('success', 'Opción eliminada exitosamente.');
     }
 }

@@ -14,7 +14,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log;
+
 use Illuminate\Support\Str;
 
 class ClientCartController extends Controller
@@ -279,7 +279,7 @@ class ClientCartController extends Controller
         if (! empty($account['primary_service'])) {
             Log::info('Reemplazando servicio principal existente', [
                 'user_id'        => Auth::id(),
-                'account_id'     => $activeAccountId,
+                'account_id'     => $cart['active_account_id'],
                 'old_product_id' => $account['primary_service']['product_id'] ?? null,
                 'new_product_id' => $validatedData['product_id'],
             ]);

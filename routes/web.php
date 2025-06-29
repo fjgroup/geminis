@@ -31,6 +31,7 @@ use App\Http\Controllers\Admin\AdminProductTypeController;
 use App\Http\Controllers\Admin\AdminTransactionController;
 use App\Http\Controllers\Admin\ConfigurableOptionController;
 use App\Http\Controllers\Admin\ConfigurableOptionGroupController;
+use App\Http\Controllers\Admin\ProductController;
 // use App\Http\Controllers\Admin\AdminOrderController; // Removed
 use App\Http\Controllers\Admin\UserController as AdminUserController;   // Import the admin invoice controller
 use App\Http\Controllers\Api\DomainApiController;                       // Import the admin transaction controller
@@ -62,10 +63,21 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'verified', 'admin']
     Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
 
     Route::resource('users', AdminUserController::class);
+    Route::resource('products', ProductController::class);
 
-    Route::resource('configurable-option-groups', ConfigurableOptionGroupController::class)->except(['show']); // Show no se usa
+    // Ruta para calcular precios de productos
+    Route::post('products/{product}/calculate-pricing', [ProductController::class, 'calculatePricing'])
+        ->name('products.calculate-pricing');
 
-    // Rutas anidadas para las opciones dentro de un grupo
+    Route::resource('configurable-option-groups', ConfigurableOptionGroupController::class);
+
+    // Rutas para gestionar opciones dentro de un grupo
+    Route::post('configurable-option-groups/{configurableOptionGroup}/options', [ConfigurableOptionGroupController::class, 'addOption'])
+        ->name('configurable-option-groups.add-option');
+    Route::delete('configurable-option-groups/{configurableOptionGroup}/options/{option}', [ConfigurableOptionGroupController::class, 'removeOption'])
+        ->name('configurable-option-groups.remove-option');
+
+    // Rutas anidadas para las opciones dentro de un grupo (si necesitas el controlador separado)
     Route::resource('configurable-option-groups.options', ConfigurableOptionController::class)->shallow()->except(['index', 'show', 'create', 'edit']);
 
     // Rutas para Client Services
