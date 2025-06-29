@@ -215,6 +215,34 @@ class ProductController extends Controller
                 ];
             });
 
+        // Calcular precio automático usando el servicio
+        $pricingCalculator = app(\App\Services\PricingCalculatorService::class);
+       // $calculatedPrice   = 0;
+
+        try {
+            $calculation     = $pricingCalculator->calculateProductPrice($product->id, 1, []); // Ciclo mensual
+            $calculatedPrice = $calculation['total'];
+
+            // Debug: Log para verificar el cálculo
+            \Illuminate\Support\Facades\Log::info('Precio calculado para producto ' . $product->id . ': ' . $calculatedPrice, [
+                'product_id'  => $product->id,
+                'calculation' => $calculation,
+            ]);
+
+            // Debug temporal: forzar un valor para probar
+            if ($calculatedPrice == 0) {
+                $calculatedPrice = 99.99; // Valor temporal para debug
+                \Illuminate\Support\Facades\Log::info('Forzando precio temporal: ' . $calculatedPrice);
+            }
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Error calculando precio en admin: ' . $e->getMessage(), [
+                'product_id' => $product->id,
+                'exception'  => $e,
+            ]);
+            // Debug temporal: forzar un valor en caso de error
+            $calculatedPrice = 88.88;
+        }
+
         return Inertia::render('Admin/Products/Edit', [
             'product'                 => [
                 'id'                       => $product->id,
@@ -251,6 +279,7 @@ class ProductController extends Controller
             'billingCycles'           => $billingCycles,
             'configurableGroups'      => $configurableGroups,
             'availableResourceGroups' => $availableResourceGroups,
+            'calculatedPrice'         => $calculatedPrice,
         ]);
     }
 

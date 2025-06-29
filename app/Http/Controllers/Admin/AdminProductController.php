@@ -114,15 +114,57 @@ class AdminProductController extends Controller
         $allOptionGroups = ConfigurableOptionGroup::orderBy('name')->get(['id', 'name']);
         $productTypes    = ProductType::orderBy('name')->get(['id', 'name']);
 
+        // Obtener grupos configurables con sus opciones para recursos base dinámicos
+        $availableResourceGroups = ConfigurableOptionGroup::with(['options' => function ($query) {
+            $query->where('is_active', true)->orderBy('display_order');
+        }])
+            ->active()
+            ->ordered()
+            ->get()
+            ->map(function ($group) {
+                return [
+                    'id'      => $group->id,
+                    'name'    => $group->name,
+                    'slug'    => \Illuminate\Support\Str::slug($group->name),
+                    'options' => $group->options->map(function ($option) {
+                        return [
+                            'id'          => $option->id,
+                            'name'        => $option->name,
+                            'option_type' => $option->option_type,
+                            'value'       => $option->value,
+                        ];
+                    }),
+                ];
+            });
+
         $allOptionGroupsData = $allOptionGroups->map(fn($group) => [
             'id'   => $group->id,
             'name' => $group->name,
         ])->toArray();
 
-        // Añade esta línea para depurar:
+        // Calcular precio automático usando el servicio
+        $pricingCalculator = app(\App\Services\PricingCalculatorService::class);
+        $calculatedPrice   = 0;
+
+        try {
+            $calculation     = $pricingCalculator->calculateProductPrice($product->id, 1, []); // Ciclo mensual
+            $calculatedPrice = $calculation['total'];
+
+            // Debug: Log para verificar el cálculo
+            \Illuminate\Support\Facades\Log::info('AdminProductController - Precio calculado para producto ' . $product->id . ': ' . $calculatedPrice, [
+                'product_id'  => $product->id,
+                'calculation' => $calculation,
+            ]);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('AdminProductController - Error calculando precio: ' . $e->getMessage(), [
+                'product_id' => $product->id,
+                'exception'  => $e,
+            ]);
+            $calculatedPrice = 0;
+        }
 
         return Inertia::render('Admin/Products/Edit', [
-            'product'           => $product->toArray() + [
+            'product'                 => $product->toArray() + [
                 // pricings ya está en $product->toArray() si la relación está cargada
                 // 'productType' ya está cargado y se incluirá en toArray()
                 'configurable_groups' => $product->configurableOptionGroups->mapWithKeys(function ($group) {
@@ -132,16 +174,18 @@ class AdminProductController extends Controller
                     ]];
                 })->toArray(),
             ],
-            'resellers'         => $resellers->map(fn($reseller) => [
+            'resellers'               => $resellers->map(fn($reseller) => [
                 'id'    => $reseller->id,
                 'label' => $reseller->name . ($reseller->company_name ? " ({$reseller->company_name})" : ""),
             ])->toArray(),
-            'all_option_groups' => $allOptionGroupsData, // Usar la variable depurada
-            'productTypes'      => $productTypes->map(fn($pt) => ['value' => $pt->id, 'label' => $pt->name]),
-            'billingCycles'     => $billingCyclesFromDB->map(fn($cycle) => [
+            'all_option_groups'       => $allOptionGroupsData, // Usar la variable depurada
+            'productTypes'            => $productTypes->map(fn($pt) => ['value' => $pt->id, 'label' => $pt->name]),
+            'billingCycles'           => $billingCyclesFromDB->map(fn($cycle) => [
                 'value' => $cycle->id,
                 'label' => $cycle->name,
             ]), // Pasar los ciclos de facturación formateados para SelectInput
+            'availableResourceGroups' => $availableResourceGroups,
+            'calculatedPrice'         => $calculatedPrice,
         ]);
     }
 

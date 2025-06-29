@@ -96,55 +96,52 @@ class PricingController extends Controller
     }
 
     /**
-     * Calcular precio automático de un producto para el admin
+     * Obtener precio mensual simple de un producto para el admin
      */
-    public function calculateAdminProductPrice(Request $request): JsonResponse
+    public function getAdminProductPrice(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'product_id'       => 'required|integer|exists:products,id',
-            'billing_cycle_id' => 'nullable|integer|exists:billing_cycles,id',
+            'product_id' => 'required|integer|exists:products,id',
         ]);
 
         if ($validator->fails()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Datos de entrada inválidos',
+                'message' => 'ID de producto inválido',
                 'errors'  => $validator->errors(),
             ], 422);
         }
 
         try {
-            $productId      = $request->product_id;
-            $billingCycleId = $request->billing_cycle_id ?? 1; // Default mensual
+            $productId = $request->product_id;
 
-            // Calcular solo con recursos base (sin opciones adicionales)
-            $calculation = $this->pricingCalculator->calculateProductPrice(
-                $productId,
-                $billingCycleId,
-                []// Sin opciones configurables adicionales
-            );
+            // Obtener solo el precio mensual del producto (billing_cycle_id = 1)
+            $pricing = \App\Models\ProductPricing::where('product_id', $productId)
+                ->where('billing_cycle_id', 1) // Solo mensual
+                ->first();
+
+            if (! $pricing) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Precio mensual no encontrado para este producto',
+                ], 404);
+            }
 
             return response()->json([
                 'success' => true,
                 'data'    => [
-                    'product_id'           => $productId,
-                    'billing_cycle_id'     => $billingCycleId,
-                    'base_price'           => $calculation['base_price']['price'],
-                    'base_resources_total' => $calculation['base_resources']['total'],
-                    'calculated_total'     => $calculation['total'],
-                    'currency_code'        => $calculation['currency_code'],
-                    'breakdown'            => [
-                        'base_price'     => $calculation['base_price'],
-                        'base_resources' => $calculation['base_resources'],
-                        'discount'       => $calculation['discount'],
-                    ],
+                    'product_id'      => $productId,
+                    'monthly_price'   => (float) $pricing->price,
+                    'setup_fee'       => (float) $pricing->setup_fee,
+                    'currency_code'   => $pricing->currency_code,
+                    'formatted_price' => number_format($pricing->price, 2) . ' ' . $pricing->currency_code,
                 ],
             ]);
 
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Error al calcular el precio del producto',
+                'message' => 'Error al obtener el precio del producto',
                 'error'   => $e->getMessage(),
             ], 500);
         }

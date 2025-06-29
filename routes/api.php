@@ -27,7 +27,7 @@ Route::post('/webhooks/paypal', [PayPalWebhookController::class, 'handle'])->nam
 Route::prefix('pricing')->group(function () {
     Route::post('/calculate-product', [\App\Http\Controllers\Api\PricingController::class, 'calculateProductPrice'])->name('api.pricing.calculate-product');
     Route::post('/calculate-cart', [\App\Http\Controllers\Api\PricingController::class, 'calculateCartTotal'])->name('api.pricing.calculate-cart');
-    Route::post('/admin-calculate', [\App\Http\Controllers\Api\PricingController::class, 'calculateAdminProductPrice'])->name('api.pricing.admin-calculate');
+    Route::get('/admin-price/{product_id}', [\App\Http\Controllers\Api\PricingController::class, 'getAdminProductPrice'])->name('api.pricing.admin-price');
     Route::get('/base-resources/{product_id}', [\App\Http\Controllers\Api\PricingController::class, 'getProductBaseResources'])->name('api.pricing.base-resources');
     Route::post('/bulk-pricing', [\App\Http\Controllers\Api\PricingController::class, 'getBulkPricing'])->name('api.pricing.bulk');
 });

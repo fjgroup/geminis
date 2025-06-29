@@ -30,10 +30,12 @@ const props = defineProps({
     billingCycles: Array, // Nueva prop para ciclos de facturación
     productTypes: Array, // Added: Esperando array de { value: id, label: name }
     availableResourceGroups: Array, // Grupos configurables con sus opciones
+    calculatedPrice: Number, // Precio calculado desde el backend
 });
 
 // Paso de depuración: Imprimir los billingCycles que llegan como props
 console.log('Props billingCycles en Edit.vue:', JSON.parse(JSON.stringify(props.billingCycles)));
+console.log('Precio calculado recibido como prop:', props.calculatedPrice);
 
 
 
@@ -77,11 +79,10 @@ const ownerOptions = [
     { value: null, label: "Producto de Plataforma (Administrador)" },
     ...(props.resellers
         ? props.resellers.map((reseller) => ({
-              value: reseller.id,
-              label: `${reseller.name} (${
-                  reseller.company_name || "Sin compañía"
-              })`,
-          }))
+            value: reseller.id,
+            label: `${reseller.name} (${reseller.company_name || "Sin compañía"
+                })`,
+        }))
         : []),
 ];
 
@@ -116,12 +117,12 @@ const submitProductForm = () => {
             // Asegurarse de que groupData es un objeto válido con display_order
             if (groupData !== null && typeof groupData === 'object' && groupData.hasOwnProperty('display_order')) {
                 // Convertir la clave groupId a string explícitamente si es numérico y asegurarse de que display_order es numérico
-                 formattedOptionGroups[String(groupId)] = {
+                formattedOptionGroups[String(groupId)] = {
                     display_order: Number(groupData.display_order),
                     base_quantity: Number(groupData.base_quantity || 0)
-                 };
+                };
             } else {
-                 console.warn(`Unexpected data format for group ID ${groupId}:`, groupData);
+                console.warn(`Unexpected data format for group ID ${groupId}:`, groupData);
             }
         }
     }
@@ -172,9 +173,9 @@ const openEditPricingModal = (pricingId) => {
 const submitPricingForm = () => {
     const url = editingPricing.value
         ? route("admin.products.pricing.update", {
-              product: props.product.id,
-              pricing: editingPricing.value.id,
-          })
+            product: props.product.id,
+            pricing: editingPricing.value.id,
+        })
         : route("admin.products.pricing.store", props.product.id);
     const method = editingPricing.value ? "put" : "post";
 
@@ -230,36 +231,12 @@ const getQuantityUnit = (group) => {
     return '';
 };
 
-// Calcular precio total basado en cantidades base
-const calculateTotalPrice = () => {
-    let total = 0;
-
-    // Obtener ciclo mensual (ID 1) para el cálculo
-    const monthlyCycle = props.billingCycles?.find(cycle => cycle.id === 1);
-    if (!monthlyCycle) return total;
-
-    // Iterar sobre grupos asociados
-    for (const groupId in form.configurable_option_groups) {
-        const groupData = form.configurable_option_groups[groupId];
-        const baseQuantity = groupData.base_quantity || 0;
-
-        if (baseQuantity > 0) {
-            // Buscar el grupo en availableResourceGroups
-            const group = props.availableResourceGroups?.find(g => g.id == groupId);
-            if (group && group.options) {
-                // Sumar precios de todas las opciones del grupo
-                group.options.forEach(option => {
-                    const pricing = option.pricings?.find(p => p.billing_cycle_id === monthlyCycle.id);
-                    if (pricing) {
-                        total += baseQuantity * pricing.price;
-                    }
-                });
-            }
-        }
-    }
-
-    return total;
+// Función para obtener el precio calculado (viene del backend como prop)
+const getTotalPrice = () => {
+    return props.calculatedPrice || 0;
 };
+
+// El precio se calcula automáticamente en el backend
 
 // Formatear moneda
 const formatCurrency = (amount) => {
@@ -278,11 +255,11 @@ const filteredOptionGroups = computed(() => {
 // Método para obtener el nombre del ciclo de facturación de forma segura
 const getBillingCycleName = (pricing) => {
 
-  const rawPricing = toRaw(pricing); // Obtener el objeto crudo del Proxy
+    const rawPricing = toRaw(pricing); // Obtener el objeto crudo del Proxy
 
-  // Acceder a la relación usando el nombre de columna de la base de datos (snake_case) con corchetes
-  const billingCycle = rawPricing["billing_cycle"];
-  return billingCycle && billingCycle.name ? billingCycle.name : 'N/A';
+    // Acceder a la relación usando el nombre de columna de la base de datos (snake_case) con corchetes
+    const billingCycle = rawPricing["billing_cycle"];
+    return billingCycle && billingCycle.name ? billingCycle.name : 'N/A';
 };
 
 </script>
@@ -323,26 +300,35 @@ const getBillingCycleName = (pricing) => {
                         </div>
 
                         <!-- Recursos Base Dinámicos -->
-                        <div class="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                            <h3 class="text-lg font-medium text-blue-800 dark:text-blue-200 mb-4">Recursos Base Incluidos</h3>
+                        <div
+                            class="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                            <h3 class="text-lg font-medium text-blue-800 dark:text-blue-200 mb-4">Recursos Base
+                                Incluidos</h3>
                             <p class="text-sm text-blue-600 dark:text-blue-300 mb-4">
-                                Configura las cantidades base para cada grupo de opciones configurables asociado a este producto.
+                                Configura las cantidades base para cada grupo de opciones configurables asociado a este
+                                producto.
                             </p>
 
                             <div v-if="Object.keys(form.configurable_option_groups).length > 0" class="space-y-4">
                                 <div class="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                                    Las cantidades base se configuran en la sección "Grupos de Opciones Configurables Asociados" más abajo.
+                                    Las cantidades base se configuran en la sección "Grupos de Opciones Configurables
+                                    Asociados"
+                                    más abajo.
                                 </div>
                             </div>
 
                             <div v-else class="text-center py-8">
                                 <div class="text-gray-500 dark:text-gray-400">
-                                    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                                    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24"
+                                        stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                                     </svg>
-                                    <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">No hay grupos configurables asociados</h3>
+                                    <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">No hay grupos
+                                        configurables asociados</h3>
                                     <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                                        Primero asocia grupos de opciones configurables a este producto en la sección de abajo.
+                                        Primero asocia grupos de opciones configurables a este producto en la sección de
+                                        abajo.
                                     </p>
                                 </div>
                             </div>
@@ -351,20 +337,16 @@ const getBillingCycleName = (pricing) => {
                         <!-- Product Type ID -->
                         <div class="mb-4">
                             <InputLabel for="product_type_id" value="Tipo de Producto *" />
-                            <SelectInput
-                                id="product_type_id"
-                                class="block w-full mt-1"
-                                v-model="form.product_type_id"
-                                :options="props.productTypes"
-                                required
-                            />
+                            <SelectInput id="product_type_id" class="block w-full mt-1" v-model="form.product_type_id"
+                                :options="props.productTypes" required />
                             <InputError class="mt-2" :message="form.errors.product_type_id" />
                         </div>
 
                         <!-- Module Name -->
                         <div class="mb-4">
                             <label for="module_name"
-                                class="block text-sm font-medium text-gray-700 dark:text-gray-300">Nombre del Módulo
+                                class="block text-sm font-medium text-gray-700 dark:text-gray-300">Nombre
+                                del Módulo
                                 (Opcional)</label>
                             <input type="text" v-model="form.module_name" id="module_name"
                                 class="block w-full mt-1 border-gray-300 rounded-md shadow-sm dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
@@ -376,7 +358,8 @@ const getBillingCycleName = (pricing) => {
                         <!-- Owner ID (Propietario) -->
                         <div class="mb-4">
                             <label for="owner_id"
-                                class="block text-sm font-medium text-gray-700 dark:text-gray-300">Propietario del
+                                class="block text-sm font-medium text-gray-700 dark:text-gray-300">Propietario
+                                del
                                 Producto</label>
                             <select v-model="form.owner_id" id="owner_id"
                                 class="block w-full mt-1 border-gray-300 rounded-md shadow-sm dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
@@ -441,9 +424,9 @@ const getBillingCycleName = (pricing) => {
                             <button type="submit" :disabled="form.processing"
                                 class="flex items-center px-4 py-2 text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50">
                                 {{
-                                form.processing
-                                ? "Actualizando..."
-                                : "Actualizar Producto"
+                                    form.processing
+                                        ? "Actualizando..."
+                                        : "Actualizar Producto"
                                 }}
                             </button>
                         </div>
@@ -496,9 +479,9 @@ const getBillingCycleName = (pricing) => {
                             </thead>
                             <tbody class="bg-white divide-y divide-gray-200 dark:bg-gray-800 dark:divide-gray-700">
                                 <tr v-if="
-                                        !product.pricings ||
-                                        product.pricings.length === 0
-                                    ">
+                                    !product.pricings ||
+                                    product.pricings.length === 0
+                                ">
                                     <td colspan="6"
                                         class="px-4 py-3 text-sm text-center text-gray-500 dark:text-gray-400">
                                         No hay precios definidos para este
@@ -549,15 +532,16 @@ const getBillingCycleName = (pricing) => {
                             Grupos de Opciones Configurables Asociados
                         </h3>
                         <div class="text-right">
-                            <div class="text-sm text-gray-500 dark:text-gray-400">Precio calculado automáticamente:</div>
+                            <div class="text-sm text-gray-500 dark:text-gray-400">Precio calculado automáticamente:
+                            </div>
                             <div class="text-lg font-bold text-green-600 dark:text-green-400">
-                                {{ formatCurrency(calculateTotalPrice()) }}
+                                {{ formatCurrency(getTotalPrice()) }}
                             </div>
                         </div>
                     </div>
                     <div v-if="
-                            !filteredOptionGroups || filteredOptionGroups.length === 0
-                        " class="text-sm text-gray-500 dark:text-gray-400">
+                        !filteredOptionGroups || filteredOptionGroups.length === 0
+                    " class="text-sm text-gray-500 dark:text-gray-400">
                         No hay grupos de opciones configurables definidos en el
                         sistema o aplicables a este producto.
                     </div>
@@ -575,20 +559,18 @@ const getBillingCycleName = (pricing) => {
                                 <div class="flex items-center">
                                     <label :for="'group-order-' + group_opt.id"
                                         class="mr-2 text-sm text-gray-500 dark:text-gray-400">Prioridad:</label>
-                                    <input type="number" v-model.number="
-                                            form.configurable_option_groups[
-                                                group_opt.id
-                                            ].display_order
+                                    <input type="number" v-model.number="form.configurable_option_groups[
+                                        group_opt.id
+                                    ].display_order
                                         " :id="'group-order-' + group_opt.id"
                                         class="w-20 p-1 text-sm border-gray-300 rounded-md shadow-sm dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600 focus:ring-indigo-500 focus:border-indigo-500" />
                                 </div>
                                 <div class="flex items-center">
                                     <label :for="'group-quantity-' + group_opt.id"
                                         class="mr-2 text-sm text-gray-500 dark:text-gray-400">Cantidad Base:</label>
-                                    <input type="text" v-model="
-                                            form.configurable_option_groups[
-                                                group_opt.id
-                                            ].base_quantity
+                                    <input type="text" v-model="form.configurable_option_groups[
+                                        group_opt.id
+                                    ].base_quantity
                                         " :id="'group-quantity-' + group_opt.id"
                                         :placeholder="getQuantityPlaceholder(group_opt)"
                                         class="w-32 p-2 text-sm border-gray-300 rounded-md shadow-sm dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600 focus:ring-indigo-500 focus:border-indigo-500" />
@@ -610,9 +592,9 @@ const getBillingCycleName = (pricing) => {
             <div class="w-full max-w-lg p-6 bg-white rounded-lg shadow-xl dark:bg-gray-800">
                 <h2 class="mb-4 text-lg font-semibold text-gray-900 dark:text-gray-100">
                     {{
-                    editingPricing
-                    ? "Editar Precio"
-                    : "Agregar Nuevo Precio"
+                        editingPricing
+                            ? "Editar Precio"
+                            : "Agregar Nuevo Precio"
                     }}
                 </h2>
                 <form @submit.prevent="submitPricingForm">
@@ -622,7 +604,8 @@ const getBillingCycleName = (pricing) => {
                             Facturación</label>
                         <select v-model="pricingForm.billing_cycle_id" id="billing_cycle"
                             class="block w-full mt-1 border-gray-300 rounded-md shadow-sm dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-                            <option v-for="option in dynamicBillingCycleOptions" :key="option.value" :value="option.value">
+                            <option v-for="option in dynamicBillingCycleOptions" :key="option.value"
+                                :value="option.value">
                                 {{ option.label }}
                             </option>
                         </select>
@@ -679,13 +662,13 @@ const getBillingCycleName = (pricing) => {
                         <button type="submit" :disabled="pricingForm.processing"
                             class="px-4 py-2 text-sm text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50">
                             {{
-                            pricingForm.processing
-                            ? editingPricing
-                            ? "Actualizando..."
-                            : "Guardando..."
-                            : editingPricing
-                            ? "Actualizar Precio"
-                            : "Guardar Precio"
+                                pricingForm.processing
+                                    ? editingPricing
+                                        ? "Actualizando..."
+                                        : "Guardando..."
+                                    : editingPricing
+                                        ? "Actualizar Precio"
+                                        : "Guardar Precio"
                             }}
                         </button>
                     </div>
