@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Http\Requests;
 
 use App\Models\User;
@@ -16,8 +15,8 @@ class ProfileUpdateRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => ['required', 'string', 'max:255'],
-            'email' => [
+            'name'             => ['required', 'string', 'max:255'],
+            'email'            => [
                 'required',
                 'string',
                 'lowercase',
@@ -25,6 +24,16 @@ class ProfileUpdateRequest extends FormRequest
                 'max:255',
                 Rule::unique(User::class)->ignore($this->user()->id),
             ],
+            'company_name'     => ['nullable', 'string', 'max:255'],
+            'phone'            => ['nullable', 'string', 'max:20'],
+            'address'          => ['nullable', 'string', 'max:500'],
+            'city'             => ['nullable', 'string', 'max:100'],
+            'state'            => ['nullable', 'string', 'max:100'],
+            'postal_code'      => ['nullable', 'string', 'max:20'],
+            'country'          => ['nullable', 'string', 'max:100'],
+            'company_logo'     => ['nullable', 'image', 'mimes:jpeg,png,jpg,gif,svg', 'max:2048'],
+            'current_password' => ['nullable', 'current_password'],
+            'password'         => ['nullable', 'confirmed', 'min:8'],
         ];
     }
 }

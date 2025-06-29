@@ -1,16 +1,13 @@
 <?php
-
 namespace App\Models;
-use App\Models\ProductPricing;
 
+use App\Models\ProductPricing;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
-
-
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Product extends Model
 {
@@ -27,17 +24,34 @@ class Product extends Model
         'is_publicly_available',
         'is_resellable_by_default',
         'display_order',
-        'product_type_id', // Added
-      //  'welcome_email_template_id',
+        'product_type_id',
+        'auto_setup',
+        'requires_approval',
+        'setup_fee',
+        'stock_quantity',
+        'track_stock',
+        // Base resources (dynamic)
+        'base_resources',
+        // Landing page fields
+        'landing_page_slug',
+        'landing_page_description',
+        'landing_page_image',
+        'features_list',
+        'call_to_action_text',
+        'metadata',
+        //  'welcome_email_template_id',
     ];
 
-     protected $casts = [
-         'is_publicly_available' => 'boolean',
-         'is_resellable_by_default' => 'boolean',
-        // 'status' => 'boolean',
-        // ... otros castings que ya tengas, por ejemplo:
-        // 'created_at' => 'datetime',
-        // 'updated_at' => 'datetime',
+    protected $casts = [
+        'is_publicly_available'    => 'boolean',
+        'is_resellable_by_default' => 'boolean',
+        'auto_setup'               => 'boolean',
+        'requires_approval'        => 'boolean',
+        'track_stock'              => 'boolean',
+        'setup_fee'                => 'decimal:2',
+        'features_list'            => 'array',
+        'metadata'                 => 'array',
+        'base_resources'           => 'array',
     ];
 
     public function owner(): BelongsTo
@@ -64,6 +78,6 @@ class Product extends Model
     {
         return $this->belongsTo(ProductType::class, 'product_type_id');
     }
-    
+
     // Otros métodos y relaciones del modelo Product...
 }

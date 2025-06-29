@@ -21,6 +21,7 @@ import {
 import InputLabel from '@/Components/Forms/InputLabel.vue';
 import SelectInput from '@/Components/Forms/SelectInput.vue';
 import InputError from '@/Components/Forms/InputError.vue';
+import ProductPriceCalculator from '@/Components/Admin/ProductPriceCalculator.vue';
 
 const props = defineProps({
     product: Object,
@@ -28,10 +29,46 @@ const props = defineProps({
     all_option_groups: Array, // Todos los grupos de opciones disponibles
     billingCycles: Array, // Nueva prop para ciclos de facturación
     productTypes: Array, // Added: Esperando array de { value: id, label: name }
+    availableResourceGroups: Array, // Grupos configurables con sus opciones
 });
 
 // Paso de depuración: Imprimir los billingCycles que llegan como props
 console.log('Props billingCycles en Edit.vue:', JSON.parse(JSON.stringify(props.billingCycles)));
+
+// Función para inicializar recursos base dinámicos
+function initializeBaseResources() {
+    const baseResources = {};
+
+    // Si el producto ya tiene recursos base guardados, usarlos
+    if (props.product.base_resources) {
+        return props.product.base_resources;
+    }
+
+    // Si no, inicializar con 0 para todas las opciones disponibles
+    if (props.availableResourceGroups) {
+        props.availableResourceGroups.forEach(group => {
+            if (group.options) {
+                group.options.forEach(option => {
+                    baseResources[option.id] = 0;
+                });
+            }
+        });
+    }
+
+    return baseResources;
+}
+
+// Computed para obtener grupos configurables asociados al producto
+const associatedConfigurableGroups = computed(() => {
+    if (!props.availableResourceGroups || !form.configurable_option_groups) {
+        return [];
+    }
+
+    const associatedGroupIds = Object.keys(form.configurable_option_groups);
+    return props.availableResourceGroups.filter(group =>
+        associatedGroupIds.includes(group.id.toString())
+    );
+});
 
 
 
@@ -47,6 +84,8 @@ const form = useForm({
     is_publicly_available: props.product.is_publicly_available,
     is_resellable_by_default: props.product.is_resellable_by_default,
     configurable_option_groups: props.product.associated_option_groups || {}, // Objeto: { groupId: { display_order: X } }
+    // Recursos base dinámicos (basados en opciones configurables)
+    base_resources: initializeBaseResources(),
 });
 
 // Estado para el modal de precios
@@ -265,6 +304,52 @@ const getBillingCycleName = (pricing) => {
                                 class="block w-full mt-1 border-gray-300 rounded-md shadow-sm dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"></textarea>
                             <div v-if="form.errors.description" class="mt-1 text-sm text-red-600">
                                 {{ form.errors.description }}
+                            </div>
+                        </div>
+
+                        <!-- Recursos Base Dinámicos -->
+                        <div class="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                            <h3 class="text-lg font-medium text-blue-800 dark:text-blue-200 mb-4">Recursos Base Incluidos</h3>
+                            <p class="text-sm text-blue-600 dark:text-blue-300 mb-4">
+                                Configura las cantidades base para cada grupo de opciones configurables asociado a este producto.
+                            </p>
+
+                            <div v-if="associatedConfigurableGroups.length > 0" class="space-y-4">
+                                <div v-for="group in associatedConfigurableGroups" :key="group.id"
+                                     class="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                                    <h4 class="font-medium text-gray-900 dark:text-gray-100 mb-3">{{ group.name }}</h4>
+                                    <p v-if="group.description" class="text-sm text-gray-600 dark:text-gray-400 mb-3">{{ group.description }}</p>
+
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div v-for="option in group.options" :key="option.id">
+                                            <InputLabel :for="`base_${option.id}`" :value="`${option.name} (Base)`" />
+                                            <input
+                                                :id="`base_${option.id}`"
+                                                type="number"
+                                                step="0.01"
+                                                min="0"
+                                                v-model="form.base_resources[option.id]"
+                                                class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600"
+                                                :placeholder="`Cantidad base de ${option.name.toLowerCase()}`"
+                                            />
+                                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                                Cantidad incluida en el precio base del producto
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div v-else class="text-center py-8">
+                                <div class="text-gray-500 dark:text-gray-400">
+                                    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                                    </svg>
+                                    <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">No hay grupos configurables asociados</h3>
+                                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                                        Primero asocia grupos de opciones configurables a este producto en la sección de abajo.
+                                    </p>
+                                </div>
                             </div>
                         </div>
 

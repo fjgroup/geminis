@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Models;
 
 use Illuminate\Contracts\Auth\MustVerifyEmail;
@@ -7,9 +6,9 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 class User extends Authenticatable implements MustVerifyEmail
 {
@@ -28,13 +27,13 @@ class User extends Authenticatable implements MustVerifyEmail
         'role',
         'reseller_id',
         'company_name',
-        'phone_number',
-        'address_line1',
-        'address_line2',
+        'phone',
+        'address',
         'city',
-        'state_province',
+        'state',
         'postal_code',
         'country',
+        'company_logo',
         'status',
         'language_code',
         'currency_code',
@@ -69,9 +68,9 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         return [
             'email_verified_at' => 'datetime',
-            'last_login_at' => 'datetime',
-            'password' => 'hashed',
-            'balance' => 'decimal:2', // Added balance cast
+            'last_login_at'     => 'datetime',
+            'password'          => 'hashed',
+            'balance'           => 'decimal:2', // Added balance cast
         ];
     }
 
@@ -94,9 +93,9 @@ class User extends Authenticatable implements MustVerifyEmail
 
         if (class_exists('NumberFormatter')) {
             $locale = config('app.locale', 'en_US'); // Use app's locale
-            // Construct locale string specific for currency, e.g., en_US@currency=USD
-            // This helps ensure the correct currency symbol and formatting for the given code.
-            // However, NumberFormatter often infers well from just locale + currency code.
+                                                     // Construct locale string specific for currency, e.g., en_US@currency=USD
+                                                     // This helps ensure the correct currency symbol and formatting for the given code.
+                                                     // However, NumberFormatter often infers well from just locale + currency code.
             $formatter = new \NumberFormatter($locale, \NumberFormatter::CURRENCY);
             return $formatter->formatCurrency($balance, $currencyCode);
         }
@@ -121,9 +120,9 @@ class User extends Authenticatable implements MustVerifyEmail
 
             // Opcional: Si un revendedor es eliminado, ¿qué pasa con sus clientes?
             // Podrías desasociarlos o reasignarlos. Ejemplo:
-         if ($user->role === 'reseller') {
-                 $user->clients()->update(['reseller_id' => null]); // Desasociar clientes
-             }
+            if ($user->role === 'reseller') {
+                $user->clients()->update(['reseller_id' => null]); // Desasociar clientes
+            }
         });
     }
 
@@ -131,7 +130,7 @@ class User extends Authenticatable implements MustVerifyEmail
      * Check if the user has a specific role.
      * @param string $roleName  @return bool
      */
-        public function hasRole(string $roleName): bool
+    public function hasRole(string $roleName): bool
     {
         return $this->role === $roleName;
     }
@@ -158,7 +157,7 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     //Example for a future relationship (ResellerProfile)
-        public function resellerProfile():HasOne
+    public function resellerProfile(): HasOne
     {
         return $this->hasOne(ResellerProfile::class, 'user_id');
     }
@@ -166,11 +165,10 @@ class User extends Authenticatable implements MustVerifyEmail
     /**
      * Get the client services for the user.
      */
-        public function clientServices(): HasMany
+    public function clientServices(): HasMany
     {
         return $this->hasMany(ClientService::class, 'client_id');
     }
-
 
     /**
      * Check if the user has the 'admin' role.

@@ -9,9 +9,12 @@ const props = defineProps({
 
 const form = useForm({
     name: '',
+    slug: '',
     description: '',
     product_id: null,
     display_order: 0,
+    is_active: true,
+    is_required: false,
 });
 
 const submit = () => {
@@ -21,6 +24,7 @@ const submit = () => {
 
 <template>
     <AdminLayout title="Crear Grupo de Opciones Configurables">
+
         <Head title="Crear Nuevo Grupo de Opciones Configurables" />
         <template #header>
             <h2 class="text-xl font-semibold leading-tight text-gray-800">

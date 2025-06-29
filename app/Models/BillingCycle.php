@@ -45,4 +45,12 @@ class BillingCycle extends Model
     {
         return $this->discountPercentage?->percentage ?? 0.0;
     }
+
+    /**
+     * Scope to order billing cycles by days (shortest first).
+     */
+    public function scopeOrdered($query)
+    {
+        return $query->orderBy('days', 'asc');
+    }
 }

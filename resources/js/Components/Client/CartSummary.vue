@@ -113,14 +113,19 @@ const totalGeneral = computed(() => {
     }
     let total = 0;
     accounts.value.forEach(account => {
-        // Asumiendo que domain_info, primary_service, additional_services tienen una propiedad 'price'
-        // si son ítems facturables.
-        if (account.domain_info && account.domain_info.price && account.domain_info.product_id) {
-            total += parseFloat(account.domain_info.price);
+        // Calcular precio del dominio
+        if (account.domain_info && account.domain_info.product_id) {
+            // Usar override_price si existe, sino usar price
+            const domainPrice = account.domain_info.override_price || account.domain_info.price || 0;
+            total += parseFloat(domainPrice);
         }
+
+        // Calcular precio del servicio principal
         if (account.primary_service && account.primary_service.price) {
             total += parseFloat(account.primary_service.price);
         }
+
+        // Calcular precio de servicios adicionales
         if (account.additional_services && account.additional_services.length) {
             account.additional_services.forEach(service => {
                 if (service.price) {
@@ -186,10 +191,9 @@ const cartCurrency = computed(() => {
                             <div v-if="account.domain_info.product_id && account.domain_info.product_name"
                                 class="ml-3 text-sm text-gray-600">
                                 <span>{{ account.domain_info.product_name }}</span>
-                                <span v-if="typeof account.domain_info.price === 'number'"
-                                    class="float-right font-medium">
-                                    {{ formatCurrency(account.domain_info.price, account.domain_info.currency_code ||
-                                        cartCurrency) }}
+                                <span class="float-right font-medium">
+                                    {{ formatCurrency(account.domain_info.override_price || account.domain_info.price ||
+                                        0, account.domain_info.currency_code || cartCurrency) }}
                                 </span>
                             </div>
                             <div v-else-if="!account.domain_info.product_id" class="ml-3 text-sm text-gray-500">

@@ -12,9 +12,8 @@ use App\Models\ProductPricing;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
-
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class ClientCartController extends Controller
@@ -298,20 +297,106 @@ class ClientCartController extends Controller
         if (! empty($validatedData['configurable_options'])) {
             $validConfigOptions  = [];
             $productConfigGroups = $product->configurableOptionGroups->keyBy('id');
-            foreach ($validatedData['configurable_options'] as $groupId => $optionId) {
-                // Validar que los IDs de grupo y opción sean numéricos antes de usarlos para buscar en la BD
-                if (! is_numeric($groupId) || ! is_numeric($optionId)) {
-                    return back()->withInput()->withErrors(['configurable_options' => "ID de grupo u opción inválido (no numérico): Grupo {$groupId} -> Opción {$optionId}."]);
+
+            foreach ($validatedData['configurable_options'] as $optionId => $value) {
+                // Buscar la opción para obtener su grupo
+                $option = ConfigurableOption::with('group')->find($optionId);
+
+                if (! $option) {
+                    continue; // Saltar opciones que no existen
                 }
-                if (! isset($productConfigGroups[$groupId])) {
-                    return back()->withInput()->withErrors(['configurable_options' => "Grupo de opción configurable inválido: ID {$groupId}."]);
+
+                $group = $option->group;
+
+                // Verificar que el grupo pertenece al producto
+                if (! $productConfigGroups->contains('id', $group->id)) {
+                    continue; // Saltar opciones de grupos que no pertenecen al producto
                 }
-                $group = $productConfigGroups[$groupId];
-                if (! $group->options->contains('id', $optionId)) {
-                    return back()->withInput()->withErrors(['configurable_options.' . $groupId => "Opción configurable inválida: ID {$optionId} para el grupo '{$group->name}'."]);
+
+                // Procesar según el tipo de opción
+                switch ($option->option_type) {
+                    case 'checkbox':
+                        // Para checkbox, solo guardar si está marcado
+                        if ($value) {
+                            $validConfigOptions[$optionId] = [
+                                'option_id' => $option->id,
+                                'group_id'  => $group->id,
+                                'value'     => true,
+                                'quantity'  => 1,
+                            ];
+                        }
+                        break;
+
+                    case 'quantity':
+                        // Para quantity, validar rango y guardar cantidad
+                        $quantity = (int) $value;
+                        if ($quantity > 0) {
+                            if ($option->min_value && $quantity < $option->min_value) {
+                                return back()->withInput()->withErrors([
+                                    'configurable_options.' . $optionId => "La cantidad mínima para '{$option->name}' es {$option->min_value}.",
+                                ]);
+                            }
+                            if ($option->max_value && $quantity > $option->max_value) {
+                                return back()->withInput()->withErrors([
+                                    'configurable_options.' . $optionId => "La cantidad máxima para '{$option->name}' es {$option->max_value}.",
+                                ]);
+                            }
+
+                            $validConfigOptions[$optionId] = [
+                                'option_id' => $option->id,
+                                'group_id'  => $group->id,
+                                'value'     => $quantity,
+                                'quantity'  => $quantity,
+                            ];
+                        }
+                        break;
+
+                    case 'radio':
+                    case 'dropdown':
+                        // Para radio/dropdown, guardar la selección
+                        if ($value) {
+                            $validConfigOptions[$optionId] = [
+                                'option_id' => $option->id,
+                                'group_id'  => $group->id,
+                                'value'     => $value,
+                                'quantity'  => 1,
+                            ];
+                        }
+                        break;
+
+                    default:
+                        // Para otros tipos, guardar el valor tal como viene
+                        if ($value) {
+                            $validConfigOptions[$optionId] = [
+                                'option_id' => $option->id,
+                                'group_id'  => $group->id,
+                                'value'     => $value,
+                                'quantity'  => 1,
+                            ];
+                        }
+                        break;
                 }
-                $validConfigOptions[(int) $groupId] = (int) $optionId;
             }
+
+            // Verificar opciones obligatorias
+            foreach ($productConfigGroups as $group) {
+                if ($group->is_required) {
+                    $hasRequiredOption = false;
+                    foreach ($group->options as $option) {
+                        if (isset($validConfigOptions[$option->id])) {
+                            $hasRequiredOption = true;
+                            break;
+                        }
+                    }
+
+                    if (! $hasRequiredOption) {
+                        return back()->withInput()->withErrors([
+                            'configurable_options' => "Debes seleccionar una opción para el grupo obligatorio '{$group->name}'.",
+                        ]);
+                    }
+                }
+            }
+
             $primaryServiceData['configurable_options'] = $validConfigOptions;
         } else {
             $primaryServiceData['configurable_options'] = null;

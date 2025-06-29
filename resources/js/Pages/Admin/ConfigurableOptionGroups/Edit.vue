@@ -10,6 +10,7 @@ import TextInput from '@/Components/Forms/TextInput.vue';
 import InputError from '@/Components/Forms/InputError.vue';
 import ConfirmationModal from '@/Components/UI/ConfirmationModal.vue';
 import Alert from '@/Components/UI/Alert.vue';
+import ConfigurableOptionPricingForm from '@/Components/Admin/ConfigurableOptionPricingForm.vue';
 import { ref, computed } from 'vue';
 import { PlusCircleIcon, PencilSquareIcon, TrashIcon } from '@heroicons/vue/24/outline'; // Asegúrate de tener estos iconos instalados
 
@@ -17,6 +18,7 @@ const props = defineProps({
     group: Object,
     products: Array,
     errors: Object, // Para errores de validación de las opciones
+    billingCycles: Array, // Agregar ciclos de facturación
 });
 
 const page = usePage(); // Obtener el objeto page
@@ -41,9 +43,11 @@ const submit = () => {
 const showAddOptionModal = ref(false);
 const showEditOptionModal = ref(false);
 const showConfirmDeleteOptionModal = ref(false);
+const showPricingModal = ref(false);
 
 const optionToDelete = ref(null);
 const optionToEdit = ref(null);
+const optionForPricing = ref(null);
 
 const newOptionForm = useForm({
     name: '',
@@ -116,6 +120,22 @@ const updateOption = () => {
     });
 };
 
+// Métodos para el modal de precios
+const openPricingModal = (option) => {
+    optionForPricing.value = option;
+    showPricingModal.value = true;
+};
+
+const closePricingModal = () => {
+    showPricingModal.value = false;
+    optionForPricing.value = null;
+};
+
+const onPricingSaved = () => {
+    // Recargar la página para mostrar los precios actualizados
+    router.reload({ only: ['group'] });
+};
+
 const groupOptions = computed(() => props.group.options || []);
 
 </script>
@@ -184,16 +204,24 @@ const groupOptions = computed(() => props.group.options || []);
                                             class="px-6 py-4 text-sm text-gray-500 whitespace-nowrap dark:text-gray-400">
                                             {{ option.display_order }}</td>
                                         <td class="px-6 py-4 text-sm font-medium whitespace-nowrap">
-                                            <SecondaryButton @click="openEditOptionModal(option)"
-                                                class="flex items-center mr-2">
-                                                <PencilSquareIcon class="w-4 h-4 mr-1" />
-                                                Editar
-                                            </SecondaryButton>
-                                            <DangerButton @click="confirmDeleteOption(option)"
-                                                class="flex items-center">
-                                                <TrashIcon class="w-4 h-4 mr-1" />
-                                                Eliminar
-                                            </DangerButton>
+                                            <div class="flex flex-col space-y-2">
+                                                <div class="flex space-x-2">
+                                                    <SecondaryButton @click="openEditOptionModal(option)"
+                                                        class="flex items-center">
+                                                        <PencilSquareIcon class="w-4 h-4 mr-1" />
+                                                        Editar
+                                                    </SecondaryButton>
+                                                    <PrimaryButton @click="openPricingModal(option)"
+                                                        class="flex items-center bg-green-600 hover:bg-green-700">
+                                                        💰 Precios
+                                                    </PrimaryButton>
+                                                </div>
+                                                <DangerButton @click="confirmDeleteOption(option)"
+                                                    class="flex items-center">
+                                                    <TrashIcon class="w-4 h-4 mr-1" />
+                                                    Eliminar
+                                                </DangerButton>
+                                            </div>
                                         </td>
                                     </tr>
                                 </tbody>
@@ -288,6 +316,15 @@ const groupOptions = computed(() => props.group.options || []);
                 </DangerButton>
             </template>
         </ConfirmationModal>
+
+        <!-- Modal para Gestionar Precios -->
+        <ConfigurableOptionPricingForm
+            :show="showPricingModal"
+            :option="optionForPricing"
+            :billingCycles="props.billingCycles || []"
+            @close="closePricingModal"
+            @saved="onPricingSaved"
+        />
 
     </AdminLayout>
 </template>

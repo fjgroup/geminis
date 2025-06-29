@@ -31,6 +31,7 @@ use App\Http\Controllers\Admin\AdminProductTypeController;
 use App\Http\Controllers\Admin\AdminTransactionController;
 use App\Http\Controllers\Admin\ConfigurableOptionController;
 use App\Http\Controllers\Admin\ConfigurableOptionGroupController;
+use App\Http\Controllers\Admin\DiscountPercentageController;
 use App\Http\Controllers\Admin\ProductController;
 // use App\Http\Controllers\Admin\AdminOrderController; // Removed
 use App\Http\Controllers\Admin\UserController as AdminUserController;   // Import the admin invoice controller
@@ -80,6 +81,10 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'verified', 'admin']
     // Rutas anidadas para las opciones dentro de un grupo (si necesitas el controlador separado)
     Route::resource('configurable-option-groups.options', ConfigurableOptionController::class)->shallow()->except(['index', 'show', 'create', 'edit']);
 
+    // Ruta para actualizar precios de opciones configurables
+    Route::post('configurable-options/{option}/update-pricings', [ConfigurableOptionController::class, 'updatePricings'])
+        ->name('configurable-options.update-pricings');
+
     // Rutas para Client Services
     Route::resource('client-services', AdminClientServiceController::class);
     Route::post('/client-services/{client_service}/retry-provisioning', [AdminClientServiceController::class, 'retryProvisioning'])
@@ -120,6 +125,9 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'verified', 'admin']
     Route::resource('payment-methods', AdminPaymentMethodController::class);
     // Product Types Route
     Route::resource('product-types', AdminProductTypeController::class);
+
+    // Discount Percentages Route
+    Route::resource('discount-percentages', DiscountPercentageController::class);
 });
 
 // Rutas para el Panel de Revendedor

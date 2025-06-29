@@ -1,13 +1,15 @@
 <?php
-
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\ConfigurableOption;
-use App\Models\ConfigurableOptionGroup; // Para obtener el grupo padre
 use App\Http\Requests\Admin\StoreConfigurableOptionRequest;
 use App\Http\Requests\Admin\UpdateConfigurableOptionRequest;
+use App\Models\ConfigurableOption;
+use App\Models\ConfigurableOptionGroup;
+use App\Models\ConfigurableOptionPricing;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+
 // No necesitamos Inertia aquí ya que las acciones redirigen, se eliminó la importación de Inertia
 
 class ConfigurableOptionController extends Controller
@@ -64,13 +66,12 @@ class ConfigurableOptionController extends Controller
      * Update the specified resource in storage.
      */
     public function update(
-        UpdateConfigurableOptionRequest $request, ConfigurableOption $option): RedirectResponse
-    {
-        
+        UpdateConfigurableOptionRequest $request, ConfigurableOption $option): RedirectResponse {
+
         // TODO: Add authorization check
 
         $validatedData = $request->validated();
-        $groupId = $option->group_id;
+        $groupId       = $option->group_id;
 
         // Verificación crucial: Si groupId es null aquí, hay un problema fundamental.
         if (is_null($groupId)) {
@@ -90,7 +91,7 @@ class ConfigurableOptionController extends Controller
         $option->update($validatedData);
 
         return redirect()->route('admin.configurable-option-groups.edit', ['configurable_option_group' => $groupId])
-          ->with('success', 'Opción configurable actualizada exitosamente.');
+            ->with('success', 'Opción configurable actualizada exitosamente.');
     }
 
     /**
@@ -108,9 +109,40 @@ class ConfigurableOptionController extends Controller
 
         $option->delete();
 
- 
         // Redirigir a la página de edición del grupo padre y corregir mensaje
         return redirect()->route('admin.configurable-option-groups.edit', ['configurable_option_group' => $groupId])
             ->with('success', 'Opción configurable eliminada exitosamente.');
+    }
+
+    /**
+     * Update pricings for a configurable option.
+     */
+    public function updatePricings(Request $request, ConfigurableOption $option): RedirectResponse
+    {
+        $request->validate([
+            'pricings'                    => 'required|array',
+            'pricings.*.billing_cycle_id' => 'required|exists:billing_cycles,id',
+            'pricings.*.price'            => 'required|numeric|min:0',
+            'pricings.*.setup_fee'        => 'nullable|numeric|min:0',
+            'pricings.*.currency_code'    => 'required|string|max:3',
+            'pricings.*.is_active'        => 'boolean',
+        ]);
+
+        foreach ($request->pricings as $pricingData) {
+            ConfigurableOptionPricing::updateOrCreate(
+                [
+                    'configurable_option_id' => $option->id,
+                    'billing_cycle_id'       => $pricingData['billing_cycle_id'],
+                ],
+                [
+                    'price'         => $pricingData['price'],
+                    'setup_fee'     => $pricingData['setup_fee'] ?? 0,
+                    'currency_code' => $pricingData['currency_code'],
+                    'is_active'     => $pricingData['is_active'] ?? true,
+                ]
+            );
+        }
+
+        return back()->with('success', 'Precios actualizados exitosamente.');
     }
 }

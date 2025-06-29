@@ -38,7 +38,25 @@ return new class extends Migration
             $table->decimal('setup_fee', 10, 2)->default(0.00);   // Tarifa de configuración base
             $table->integer('stock_quantity')->nullable();        // Para productos con stock limitado
             $table->boolean('track_stock')->default(false);       // Si debe rastrear inventario
-            $table->json('metadata')->nullable();                 // Para configuraciones adicionales
+
+                                                                     // Recursos base incluidos en el producto
+            $table->decimal('base_disk_space_gb', 8, 2)->nullable(); // Espacio en disco base (GB)
+            $table->integer('base_vcpu_cores')->nullable();          // vCPU cores base
+            $table->decimal('base_ram_gb', 8, 2)->nullable();        // RAM base (GB)
+            $table->integer('base_bandwidth_gb')->nullable();        // Ancho de banda base (GB)
+            $table->integer('base_email_accounts')->nullable();      // Cuentas de email base
+            $table->integer('base_databases')->nullable();           // Bases de datos base
+            $table->integer('base_domains')->nullable();             // Dominios adicionales base
+            $table->integer('base_subdomains')->nullable();          // Subdominios base
+
+                                                                             // Landing page y marketing
+            $table->string('landing_page_slug')->nullable()->unique();       // Slug para landing page pública
+            $table->text('landing_page_description')->nullable();            // Descripción para landing page
+            $table->string('landing_page_image')->nullable();                // Imagen para landing page
+            $table->json('features_list')->nullable();                       // Lista de características para mostrar
+            $table->string('call_to_action_text')->default('Comprar Ahora'); // Texto del botón CTA
+
+            $table->json('metadata')->nullable(); // Para configuraciones adicionales
 
             $table->timestamps();
             $table->softDeletes();

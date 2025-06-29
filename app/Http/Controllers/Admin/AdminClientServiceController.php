@@ -1,33 +1,34 @@
 <?php
-
 namespace App\Http\Controllers\Admin;
 
-use App\Http\Controllers\Controller; // Asegúrate que Controller está importado
-use App\Http\Requests\Admin\StoreClientServiceRequest; // Importar el FormRequest
+use App\Http\Controllers\Controller;                    // Asegúrate que Controller está importado
+use App\Http\Requests\Admin\StoreClientServiceRequest;  // Importar el FormRequest
 use App\Http\Requests\Admin\UpdateClientServiceRequest; // Importar el FormRequest de actualización
 
+use App\Jobs\ProvisionClientServiceJob;
+use App\Models\BillingCycle;
+use App\Models\ClientService;
+use App\Models\PaymentMethod; // Importar BillingCycle
 use App\Models\Product;
 use App\Models\User;
-use App\Models\ClientService;
-use App\Models\BillingCycle; // Importar BillingCycle
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
-use Inertia\Inertia; // Importar Inertia
-use Inertia\Response; // Importar Response
-use App\Jobs\ProvisionClientServiceJob; // Added
-use Illuminate\Support\Facades\Gate; // Added
-use Illuminate\Support\Facades\Log; // Added, though likely already available via Controller
-use Illuminate\Support\Facades\Auth; // Added for auth()->user()
-use App\Models\PaymentMethod; // Import PaymentMethod
-use Illuminate\Support\Facades\Hash; // Import Hash facade for password hashing
+use Illuminate\Http\RedirectResponse; // Importar Inertia
+use Illuminate\Http\Request;          // Importar Response
+use Illuminate\Support\Facades\Auth;  // Added
+use Illuminate\Support\Facades\Gate;  // Added
+use Illuminate\Support\Facades\Hash;  // Added, though likely already available via Controller
+use Illuminate\Support\Facades\Log;   // Added for auth()->user()
+use Inertia\Inertia;                  // Import PaymentMethod
+use Inertia\Response;
+
+// Import Hash facade for password hashing
 
 class AdminClientServiceController extends Controller
 {
     /**
      * Display a listing of the resource.
      */
-    public function index(Request $request): Response // Inyectar Request
+    public function index(Request $request): Response// Inyectar Request
     {
         // TODO: Implementar autorización, ej: $this->authorize('viewAny', ClientService::class);
 
@@ -38,30 +39,30 @@ class AdminClientServiceController extends Controller
             $searchTerm = $request->input('search');
             $query->where(function ($q) use ($searchTerm) {
                 $q->where('domain_name', 'LIKE', "%{$searchTerm}%")
-                  ->orWhereHas('client', fn($qr) => $qr->where('name', 'LIKE', "%{$searchTerm}%"))
-                  ->orWhereHas('product', fn($qr) => $qr->where('name', 'LIKE', "%{$searchTerm}%"));
+                    ->orWhereHas('client', fn($qr) => $qr->where('name', 'LIKE', "%{$searchTerm}%"))
+                    ->orWhereHas('product', fn($qr) => $qr->where('name', 'LIKE', "%{$searchTerm}%"));
             });
         }
 
         $clientServices = $query->latest('id') // O el orden que prefieras
 
             ->paginate(10)
-            ->through(fn ($service) => [
-                'id' => $service->id,
-                'client_name' => $service->client->name,
-                'product_name' => $service->product->name,
-                'domain_name' => $service->domain_name,
-                'status' => $service->status,
+            ->through(fn($service) => [
+                'id'                      => $service->id,
+                'client_name'             => $service->client->name,
+                'product_name'            => $service->product->name,
+                'domain_name'             => $service->domain_name,
+                'status'                  => $service->status,
                 'next_due_date_formatted' => $service->next_due_date->format('d/m/Y'),
-                'billing_amount' => $service->billing_amount,
-                'reseller_name' => $service->reseller ? $service->reseller->name : 'N/A (Plataforma)',
-                'billing_cycle_name' => $service->billingCycle ? $service->billingCycle->name : 'N/A', // Añadir billing_cycle_name
+                'billing_amount'          => $service->billing_amount,
+                'reseller_name'           => $service->reseller ? $service->reseller->name : 'N/A (Plataforma)',
+                'billing_cycle_name'      => $service->billingCycle ? $service->billingCycle->name : 'N/A', // Añadir billing_cycle_name
             ]);
 // Pasar los filtros actuales a la vista para que el input de búsqueda pueda mantener su valor
 
         return Inertia::render('Admin/ClientServices/Index', [
             'clientServices' => $clientServices,
-            'filters' => $request->only(['search']), // Pasa los filtros a la vista
+            'filters'        => $request->only(['search']), // Pasa los filtros a la vista
 
         ]);
     }
@@ -73,12 +74,12 @@ class AdminClientServiceController extends Controller
     {
         // TODO: Implementar autorización, ej: $this->authorize('create', ClientService::class);
 
-        $clients = User::where('role', 'client')->orderBy('name')->get(['id', 'name']);
+        $clients  = User::where('role', 'client')->orderBy('name')->get(['id', 'name']);
         $products = Product::with(['pricings.billingCycle'])->where('status', 'active')->orderBy('name')->get(['id', 'name']); // Solo productos activos, con sus precios, cargando pricings y su billingCycle
-        // Nota: Los ProductPricings se cargarán dinámicamente en el formulario o se pasarán todos
-        // y se filtrarán en el frontend, o se pasarán asociados al producto seleccionado.
-        // Por simplicidad inicial, podríamos pasar todos los activos.
-        // $productPricings = \App\Models\ProductPricing::where('is_active', true)->get(['id', 'billing_cycle', 'price', 'product_id']);
+                                                                                                                               // Nota: Los ProductPricings se cargarán dinámicamente en el formulario o se pasarán todos
+                                                                                                                               // y se filtrarán en el frontend, o se pasarán asociados al producto seleccionado.
+                                                                                                                               // Por simplicidad inicial, podríamos pasar todos los activos.
+                                                                                                                               // $productPricings = \App\Models\ProductPricing::where('is_active', true)->get(['id', 'billing_cycle', 'price', 'product_id']);
 
         $resellers = User::where('role', 'reseller')->orderBy('name')->get(['id', 'name']);
         // $servers = \App\Models\Server::orderBy('name')->get(['id', 'name']); // Cuando exista el modelo Server
@@ -86,21 +87,20 @@ class AdminClientServiceController extends Controller
         $billingCycles = BillingCycle::all(); // Obtener todos los BillingCycle
 
         return Inertia::render('Admin/ClientServices/Create',
-        [
-            'clients' => $clients->map(fn($user) => ['value' => $user->id, 'label' => $user->name]),
+            [
+                'clients'       => $clients->map(fn($user) => ['value' => $user->id, 'label' => $user->name]),
 
-            // Formatear productos para que usen 'value' y 'label', pero manteniendo 'pricings'
-            'products' => $products->map(fn($product) => ['value' => $product->id, 'label' => $product->name, 'pricings' => $product->pricings]),
+                // Formatear productos para que usen 'value' y 'label', pero manteniendo 'pricings'
+                'products'      => $products->map(fn($product) => ['value' => $product->id, 'label' => $product->name, 'pricings' => $product->pricings]),
 
+                // 'productPricings' => $productPricings, // Considerar cómo manejar esto
+                'resellers'     => $resellers->map(fn($user) => ['value' => $user->id, 'label' => $user->name]),
 
-            // 'productPricings' => $productPricings, // Considerar cómo manejar esto
-            'resellers' => $resellers->map(fn($user) => ['value' => $user->id, 'label' => $user->name]),
+                // 'servers' => $servers->map(fn($server) => ['value' => $server->id, 'label' => $server->name]),
+                'statusOptions' => ClientService::getPossibleEnumValues('status'),
 
-            // 'servers' => $servers->map(fn($server) => ['value' => $server->id, 'label' => $server->name]),
-            'statusOptions' => ClientService::getPossibleEnumValues('status'),
-
-            'billingCycles' => $billingCycles, // Pasar billingCycles a la vista
-        ]);
+                'billingCycles' => $billingCycles, // Pasar billingCycles a la vista
+            ]);
     }
 
     /**
@@ -122,9 +122,31 @@ class AdminClientServiceController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(ClientService $clientService)
+    public function show(ClientService $clientService): Response
     {
-        //
+        $clientService->load([
+            'client',
+            'product.productType',
+            'productPricing.billingCycle',
+            'reseller',
+            'server',
+        ]);
+
+        return Inertia::render('Admin/ClientServices/Show', [
+            'clientService' => [
+                'id'              => $clientService->id,
+                'domain_name'     => $clientService->domain_name,
+                'status'          => $clientService->status,
+                'next_due_date'   => $clientService->next_due_date,
+                'created_at'      => $clientService->created_at,
+                'updated_at'      => $clientService->updated_at,
+                'client'          => $clientService->client,
+                'product'         => $clientService->product,
+                'product_pricing' => $clientService->productPricing,
+                'reseller'        => $clientService->reseller,
+                'server'          => $clientService->server,
+            ],
+        ]);
     }
 
     /**
@@ -139,13 +161,11 @@ class AdminClientServiceController extends Controller
 
         $clients = User::where('role', 'client')->orderBy('name')->get(['id', 'name']);
 
-        // Asegurarse de cargar pricings y billingCycle para la lista de productos, similar a create()
+                                                             // Asegurarse de cargar pricings y billingCycle para la lista de productos, similar a create()
         $products = Product::with(['pricings.billingCycle']) // Cargar pricings y sus billingCycle
-                            ->where('status', 'active')
-                            ->orWhere('id', $clientService->product_id) // Incluir el producto actual aunque no esté activo
-                            ->orderBy('name')->get(); // Obtener todas las columnas para que las relaciones funcionen
-
-
+            ->where('status', 'active')
+            ->orWhere('id', $clientService->product_id) // Incluir el producto actual aunque no esté activo
+            ->orderBy('name')->get();                   // Obtener todas las columnas para que las relaciones funcionen
 
         $resellers = User::where('role', 'reseller')->orderBy('name')->get(['id', 'name']);
         // $servers = \App\Models\Server::orderBy('name')->get(['id', 'name']); // Cuando exista
@@ -153,15 +173,14 @@ class AdminClientServiceController extends Controller
         // Formatear fechas para los inputs de tipo 'date'
         // Los casts 'date' en el modelo ya convierten estos a objetos Carbon.
         $clientService->registration_date_formatted = $clientService->registration_date ? $clientService->registration_date->format('Y-m-d') : null;
-        $clientService->next_due_date_formatted = $clientService->next_due_date ? $clientService->next_due_date->format('Y-m-d') : null;
-        $clientService->termination_date_formatted = $clientService->termination_date ? $clientService->termination_date->format('Y-m-d') : null;
-
+        $clientService->next_due_date_formatted     = $clientService->next_due_date ? $clientService->next_due_date->format('Y-m-d') : null;
+        $clientService->termination_date_formatted  = $clientService->termination_date ? $clientService->termination_date->format('Y-m-d') : null;
 
         $clientService->load([
             'client', // ¡Asegúrate de que esta relación esté aquí!
             'productPricing',
             'product.pricings', // Esto carga el producto y luego sus pricings
-            'billingCycle'
+            'billingCycle',
         ]); // Cargar billingCycle
 
         $billingCycles = BillingCycle::all(); // Obtener todos los BillingCycle
@@ -170,21 +189,37 @@ class AdminClientServiceController extends Controller
         $paymentMethods = \App\Models\PaymentMethod::where('is_active', true)->orderBy('name')->get(['id', 'name']);
 
         return Inertia::render('Admin/ClientServices/Edit', [
-            'clientService' => $clientService,
+            'clientService'  => [
+                'id'                 => $clientService->id,
+                'client_id'          => $clientService->client_id,
+                'product_id'         => $clientService->product_id,
+                'product_pricing_id' => $clientService->product_pricing_id,
+                'billing_cycle_id'   => $clientService->billing_cycle_id,
+                'reseller_id'        => $clientService->reseller_id,
+                'domain_name'        => $clientService->domain_name,
+                'status'             => $clientService->status,
+                'registration_date'  => $clientService->registration_date_formatted,
+                'next_due_date'      => $clientService->next_due_date_formatted,
+                'termination_date'   => $clientService->termination_date_formatted,
+                'notes'              => $clientService->notes,
+                'client'             => $clientService->client,
+                'product'            => $clientService->product,
+                'product_pricing'    => $clientService->productPricing,
+                'billing_cycle'      => $clientService->billingCycle,
+            ],
             // Pasamos los datos para los selectores, similar al método create
-            'clients' => $clients->map(fn($user) => ['value' => $user->id, 'label' => $user->name]),
+            'clients'        => $clients->map(fn($user) => ['value' => $user->id, 'label' => $user->name]),
 
             // Formatear productos para que usen 'value' y 'label', pero manteniendo 'pricings'
-            'products' => $products->map(fn($product) => ['value' => $product->id, 'label' => $product->name, 'pricings' => $product->pricings]),
+            'products'       => $products->map(fn($product) => ['value' => $product->id, 'label' => $product->name, 'pricings' => $product->pricings]),
 
-
-            'resellers' => $resellers->map(fn($user) => ['value' => $user->id, 'label' => $user->name]),
+            'resellers'      => $resellers->map(fn($user) => ['value' => $user->id, 'label' => $user->name]),
 
             // 'servers' => $servers->map(fn($server) => ['value' => $server->id, 'label' => $server->name]),
-            'statusOptions' => ClientService::getPossibleEnumValues('status'),
-            'billingCycles' => $billingCycles, // Pasar billingCycles a la vista
+            'statusOptions'  => ClientService::getPossibleEnumValues('status'),
+            'billingCycles'  => $billingCycles,                                                                          // Pasar billingCycles a la vista
             'paymentMethods' => $paymentMethods->map(fn($method) => ['value' => $method->id, 'label' => $method->name]), // Pasar métodos de pago formateados
-            // 'productPricings' se cargarán dinámicamente en el formulario _Form.vue
+                                                                                                                         // 'productPricings' se cargarán dinámicamente en el formulario _Form.vue
         ]);
     }
 
@@ -247,7 +282,7 @@ class AdminClientServiceController extends Controller
         // TODO: Implementar autorización, ej: $this->authorize('delete', $clientService);
 
         $clientService->delete(); // Realiza un borrado suave (SoftDelete) porque el modelo ClientService usa el trait SoftDeletes.
-                                 // Para un borrado permanente, se usaría: $clientService->forceDelete();
+                                  // Para un borrado permanente, se usaría: $clientService->forceDelete();
 
         return redirect()->route('admin.client-services.index')
             ->with('success', 'Servicio de cliente eliminado exitosamente.');
@@ -275,7 +310,7 @@ class AdminClientServiceController extends Controller
 
         if ($clientService->status !== 'provisioning_failed') {
             return redirect()->route('admin.client-services.edit', $clientService->id)
-                             ->with('error', 'El servicio no está en estado de fallo de aprovisionamiento.');
+                ->with('error', 'El servicio no está en estado de fallo de aprovisionamiento.');
         }
 
         // Load the orderItem and its necessary nested relations for the job
@@ -283,41 +318,40 @@ class AdminClientServiceController extends Controller
         $clientService->loadMissing([
             'orderItem.order.client',
             'orderItem.product.productType',
-            'orderItem.productPricing.billingCycle'
+            'orderItem.productPricing.billingCycle',
         ]);
 
-        if (!$clientService->orderItem) {
+        if (! $clientService->orderItem) {
             Log::error("AdminClientServiceController: No se encontró OrderItem para ClientService ID: {$clientService->id} durante el reintento de aprovisionamiento.");
             return redirect()->route('admin.client-services.edit', $clientService->id)
-                             ->with('error', 'No se pudo encontrar el ítem de orden asociado para reintentar el aprovisionamiento.');
+                ->with('error', 'No se pudo encontrar el ítem de orden asociado para reintentar el aprovisionamiento.');
         }
 
         // Check if all required nested relations for the job are loaded on orderItem
-        if (!$clientService->orderItem->order ||
-            !$clientService->orderItem->order->client ||
-            !$clientService->orderItem->product ||
-            !$clientService->orderItem->product->productType ||
-            !$clientService->orderItem->productPricing ||
-            !$clientService->orderItem->productPricing->billingCycle
-            ) {
+        if (! $clientService->orderItem->order ||
+            ! $clientService->orderItem->order->client ||
+            ! $clientService->orderItem->product ||
+            ! $clientService->orderItem->product->productType ||
+            ! $clientService->orderItem->productPricing ||
+            ! $clientService->orderItem->productPricing->billingCycle
+        ) {
             Log::error("AdminClientServiceController: Faltan relaciones necesarias en OrderItem ID: {$clientService->orderItem->id} para el reintento de aprovisionamiento de ClientService ID: {$clientService->id}.",
                 [
-                    'order_loaded' => !!$clientService->orderItem->order,
-                    'client_loaded' => !!($clientService->orderItem->order && $clientService->orderItem->order->client),
-                    'product_loaded' => !!$clientService->orderItem->product,
-                    'productType_loaded' => !!($clientService->orderItem->product && $clientService->orderItem->product->productType),
-                    'productPricing_loaded' => !!$clientService->orderItem->productPricing,
-                    'billingCycle_loaded' => !!($clientService->orderItem->productPricing && $clientService->orderItem->productPricing->billingCycle),
+                    'order_loaded'          => ! ! $clientService->orderItem->order,
+                    'client_loaded'         => ! ! ($clientService->orderItem->order && $clientService->orderItem->order->client),
+                    'product_loaded'        => ! ! $clientService->orderItem->product,
+                    'productType_loaded'    => ! ! ($clientService->orderItem->product && $clientService->orderItem->product->productType),
+                    'productPricing_loaded' => ! ! $clientService->orderItem->productPricing,
+                    'billingCycle_loaded'   => ! ! ($clientService->orderItem->productPricing && $clientService->orderItem->productPricing->billingCycle),
                 ]
             );
             return redirect()->route('admin.client-services.edit', $clientService->id)
-                             ->with('error', 'Faltan datos relacionados con el ítem de orden. No se puede reintentar el aprovisionamiento.');
+                ->with('error', 'Faltan datos relacionados con el ítem de orden. No se puede reintentar el aprovisionamiento.');
         }
 
-
-        // Optionally, update status to indicate a retry is in progress
+                                                          // Optionally, update status to indicate a retry is in progress
         $clientService->status = 'pending_configuration'; // Reset to a state where provisioning can be attempted
-        $clientService->notes = ($clientService->notes ? $clientService->notes . "\n" : '') . "Reintento de aprovisionamiento iniciado por admin (" . Auth::user()->name . ") el " . now()->toDateTimeString() . ".";
+        $clientService->notes  = ($clientService->notes ? $clientService->notes . "\n" : '') . "Reintento de aprovisionamiento iniciado por admin (" . Auth::user()->name . ") el " . now()->toDateTimeString() . ".";
         $clientService->save();
 
         ProvisionClientServiceJob::dispatch($clientService->orderItem);
@@ -325,6 +359,6 @@ class AdminClientServiceController extends Controller
         Log::info("AdminClientServiceController: Reintento de aprovisionamiento despachado para ClientService ID: {$clientService->id} vía OrderItem ID: {$clientService->orderItem->id}.");
 
         return redirect()->route('admin.client-services.edit', $clientService->id)
-                         ->with('success', 'Se ha encolado el reintento de aprovisionamiento para el servicio.');
+            ->with('success', 'Se ha encolado el reintento de aprovisionamiento para el servicio.');
     }
 }

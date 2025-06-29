@@ -197,7 +197,7 @@ const isDomainExpanded = (domain) => {
 
 // Get domain summary info
 const getDomainSummary = (services) => {
-    const totalPrice = services.reduce((sum, service) => sum + parseFloat(service.price || 0), 0);
+    const totalPrice = services.reduce((sum, service) => sum + parseFloat(service.billing_amount || 0), 0);
     const nextDueDate = services.reduce((earliest, service) => {
         const serviceDate = new Date(service.next_due_date);
         return !earliest || serviceDate < earliest ? serviceDate : earliest;

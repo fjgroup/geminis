@@ -65,7 +65,19 @@ class ConfigurableOptionGroupController extends Controller
     public function store(StoreConfigurableOptionGroupRequest $request): RedirectResponse
     {
         // Authorization is handled by StoreConfigurableOptionGroupRequest
-        ConfigurableOptionGroup::create($request->validated());
+        $validated = $request->validated();
+
+        // Auto-generate slug if not provided
+        if (empty($validated['slug'])) {
+            $validated['slug'] = Str::slug($validated['name']);
+        }
+
+        // Ensure product_id is null for global groups
+        if (empty($validated['product_id'])) {
+            $validated['product_id'] = null;
+        }
+
+        ConfigurableOptionGroup::create($validated);
         return redirect()->route('admin.configurable-option-groups.index')
             ->with('success', 'Grupo de opciones configurable creado exitosamente.');
     }
@@ -135,30 +147,49 @@ class ConfigurableOptionGroupController extends Controller
     {
         // TODO: Add authorization check, e.g., $this->authorize('update', $configurableOptionGroup);
 
-        $products = Product::orderBy('name')->get(['id', 'name']);
-        // Cargar el producto propietario (si existe) y también las opciones configurables asociadas
-        $configurableOptionGroup->load(['productOwner:id,name', 'options' => function ($query) {
-            $query->orderBy('display_order')->orderBy('name');
-        }]);
+        $configurableOptionGroup->load([
+            'options.pricings.billingCycle',
+            'productOwner',
+        ]);
+
+        $products      = Product::orderBy('name')->get(['id', 'name']);
+        $billingCycles = BillingCycle::ordered()->get(['id', 'name', 'slug']);
 
         return Inertia::render('Admin/ConfigurableOptionGroups/Edit', [
-            'group'    => [
+            'group'         => [
                 'id'            => $configurableOptionGroup->id,
                 'name'          => $configurableOptionGroup->name,
+                'slug'          => $configurableOptionGroup->slug,
                 'description'   => $configurableOptionGroup->description,
                 'product_id'    => $configurableOptionGroup->product_id,
                 'display_order' => $configurableOptionGroup->display_order,
-                // Mapear las opciones para pasarlas a la vista
+                'is_active'     => $configurableOptionGroup->is_active,
+                'is_required'   => $configurableOptionGroup->is_required,
                 'options'       => $configurableOptionGroup->options->map(fn($option) => [
                     'id'            => $option->id,
                     'name'          => $option->name,
+                    'slug'          => $option->slug,
                     'value'         => $option->value,
+                    'description'   => $option->description,
+                    'option_type'   => $option->option_type,
+                    'is_required'   => $option->is_required,
+                    'is_active'     => $option->is_active,
+                    'min_value'     => $option->min_value,
+                    'max_value'     => $option->max_value,
                     'display_order' => $option->display_order,
-                    'group_id'      => $option->group_id, // Incluir el group_id
-                ])->all(),                            // Asegúrate de usar ->all() o ->toArray() si es una colección
+                    'pricings'      => $option->pricings->map(fn($pricing) => [
+                        'id'                 => $pricing->id,
+                        'billing_cycle_id'   => $pricing->billing_cycle_id,
+                        'billing_cycle_name' => $pricing->billingCycle->name,
+                        'price'              => $pricing->price,
+                        'setup_fee'          => $pricing->setup_fee,
+                        'currency_code'      => $pricing->currency_code,
+                        'is_active'          => $pricing->is_active,
+                    ]),
+                ]),
             ],
-            'products' => $products,
-            // 'errors' => session('errors') ? session('errors')->getBag('default')->getMessages() : (object) [], // Para pasar errores de validación de opciones
+            'products'      => $products,
+            'billingCycles' => $billingCycles,
         ]);
     }
 

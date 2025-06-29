@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Http\Requests\Admin;
 
 use Illuminate\Foundation\Http\FormRequest;
@@ -24,10 +23,13 @@ class StoreConfigurableOptionGroupRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string', 'max:255'],
-            'product_id' => ['nullable', 'integer', Rule::exists('products', 'id')],
+            'name'          => ['required', 'string', 'max:255'],
+            'slug'          => ['nullable', 'string', 'max:255', 'unique:configurable_option_groups,slug'],
+            'description'   => ['nullable', 'string', 'max:1000'],
+            'product_id'    => ['nullable', 'integer', Rule::exists('products', 'id')],
             'display_order' => ['nullable', 'integer', 'min:0'],
+            'is_active'     => ['boolean'],
+            'is_required'   => ['boolean'],
         ];
     }
 }

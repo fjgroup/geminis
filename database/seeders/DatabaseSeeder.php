@@ -2,7 +2,9 @@
 namespace Database\Seeders;
 
 // use Illuminate\Database\Console\Seeds\WithoutModelEvents;
+use App\Models\User;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Hash;
 
 class DatabaseSeeder extends Seeder
 {
@@ -11,12 +13,28 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // User::factory(10)->create();
+        // Crear usuario admin
+        User::factory()->create([
+            'name'              => 'Admin User',
+            'email'             => 'admin@geminis.test',
+            'email_verified_at' => now(),
+            'password'          => Hash::make('password'),
+            'role'              => 'admin',
+        ]);
 
-        /*   User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-        ]);*/
+        // Crear usuario cliente
+        User::factory()->create([
+            'name'              => 'Cliente Test',
+            'email'             => 'cliente@geminis.test',
+            'email_verified_at' => now(),
+            'password'          => Hash::make('password'),
+            'role'              => 'client',
+            'company_name'      => 'Empresa Test',
+            'phone'             => '+1234567890',
+            'address'           => '123 Test Street',
+            'city'              => 'Test City',
+            'country'           => 'Test Country',
+        ]);
 
         $this->call([
             // Primero los descuentos (necesarios para billing cycles)

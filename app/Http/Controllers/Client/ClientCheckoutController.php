@@ -150,7 +150,72 @@ class ClientCheckoutController extends Controller
         $licenseTypeIds     = [6];
 
         $mainServiceProducts = Product::whereIn('product_type_id', $mainServiceTypeIds)
-            ->where('status', 'active')->with(['pricings.billingCycle', 'productType', 'configurableOptionGroups.options'])->orderBy('display_order')->get();
+            ->where('status', 'active')
+            ->with(['pricings.billingCycle', 'productType', 'configurableOptionGroups.options.pricings.billingCycle'])
+            ->orderBy('display_order')
+            ->get()
+            ->map(function ($product) {
+                return [
+                    'id'                         => $product->id,
+                    'name'                       => $product->name,
+                    'description'                => $product->description,
+                    'landing_page_slug'          => $product->landing_page_slug,
+                    'features_list'              => $product->features_list,
+                    'call_to_action_text'        => $product->call_to_action_text,
+                    // Recursos base dinámicos
+                    'base_resources'             => $product->base_resources ?? [],
+                    // Precios y opciones
+                    'pricings'                   => $product->pricings->map(function ($pricing) {
+                        return [
+                            'id'            => $pricing->id,
+                            'price'         => $pricing->price,
+                            'setup_fee'     => $pricing->setup_fee,
+                            'currency_code' => $pricing->currency_code,
+                            'billing_cycle' => [
+                                'id'                  => $pricing->billingCycle->id,
+                                'name'                => $pricing->billingCycle->name,
+                                'days'                => $pricing->billingCycle->days,
+                                'discount_percentage' => $pricing->billingCycle->discount_percentage,
+                            ],
+                        ];
+                    }),
+                    'configurable_option_groups' => $product->configurableOptionGroups->map(function ($group) {
+                        return [
+                            'id'            => $group->id,
+                            'name'          => $group->name,
+                            'description'   => $group->description,
+                            'is_required'   => $group->is_required,
+                            'display_order' => $group->display_order,
+                            'options'       => $group->options->map(function ($option) {
+                                return [
+                                    'id'            => $option->id,
+                                    'name'          => $option->name,
+                                    'description'   => $option->description,
+                                    'option_type'   => $option->option_type,
+                                    'value'         => $option->value,
+                                    'is_required'   => $option->is_required,
+                                    'min_value'     => $option->min_value,
+                                    'max_value'     => $option->max_value,
+                                    'display_order' => $option->display_order,
+                                    'pricings'      => $option->pricings->map(function ($pricing) {
+                                        return [
+                                            'id'            => $pricing->id,
+                                            'price'         => $pricing->price,
+                                            'setup_fee'     => $pricing->setup_fee,
+                                            'currency_code' => $pricing->currency_code,
+                                            'billing_cycle' => [
+                                                'id'   => $pricing->billingCycle->id,
+                                                'name' => $pricing->billingCycle->name,
+                                                'days' => $pricing->billingCycle->days,
+                                            ],
+                                        ];
+                                    }),
+                                ];
+                            }),
+                        ];
+                    }),
+                ];
+            });
 
         $sslProducts = Product::whereIn('product_type_id', $sslTypeIds)
             ->where('status', 'active')->with(['pricings.billingCycle', 'productType'])->orderBy('display_order')->get();
