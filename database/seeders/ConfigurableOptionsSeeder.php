@@ -52,7 +52,7 @@ class ConfigurableOptionsSeeder extends Seeder
                 'is_required'   => false,
                 'is_active'     => true,
                 'min_value'     => 1,
-                'max_value'     => 1000,
+                'max_value'     => 500,
                 'display_order' => 1,
             ]
         );
@@ -89,7 +89,7 @@ class ConfigurableOptionsSeeder extends Seeder
                 'is_required'   => false,
                 'is_active'     => true,
                 'min_value'     => 1,
-                'max_value'     => 32,
+                'max_value'     => 15,
                 'display_order' => 1,
             ]
         );
@@ -102,13 +102,50 @@ class ConfigurableOptionsSeeder extends Seeder
         $this->createOptionPricing($vcpuOption, $bienal, 24.00, false);    // Desactivado
         $this->createOptionPricing($vcpuOption, $trienal, 36.00, false);   // Desactivado
 
-        // 3. Grupo: Seguridad Email
+        // 3. Grupo: vRAM (Memoria RAM)
+        $vramGroup = ConfigurableOptionGroup::updateOrCreate(
+            ['slug' => 'vram'],
+            [
+                'name'          => 'vRam',
+                'description'   => 'Memoria Ram',
+                'display_order' => 3,
+                'is_active'     => true,
+                'is_required'   => false,
+            ]
+        );
+
+        // Opciones de vRAM
+        $vramOption = ConfigurableOption::updateOrCreate(
+            ['slug' => 'vram-adicional'],
+            [
+                'group_id'      => $vramGroup->id,
+                'name'          => 'vRAM Adicional',
+                'value'         => 'vram_gb',
+                'description'   => 'Memoria RAM adicional en GB',
+                'option_type'   => 'quantity',
+                'is_required'   => false,
+                'is_active'     => true,
+                'min_value'     => 1,
+                'max_value'     => 15,
+                'display_order' => 1,
+            ]
+        );
+
+                                                                           // Precios para vRAM - Solo mensual activo
+        $this->createOptionPricing($vramOption, $mensual, 0.75, true);     // $0.75 por GB
+        $this->createOptionPricing($vramOption, $trimestral, 2.25, false); // Desactivado
+        $this->createOptionPricing($vramOption, $semestral, 4.50, false);  // Desactivado
+        $this->createOptionPricing($vramOption, $anual, 9.00, false);      // Desactivado
+        $this->createOptionPricing($vramOption, $bienal, 18.00, false);    // Desactivado
+        $this->createOptionPricing($vramOption, $trienal, 27.00, false);   // Desactivado
+
+        // 4. Grupo: Seguridad Email
         $spamGroup = ConfigurableOptionGroup::updateOrCreate(
             ['slug' => 'seguridad-email'],
             [
                 'name'          => 'Seguridad Email',
                 'description'   => 'Protección avanzada para correo electrónico',
-                'display_order' => 3,
+                'display_order' => 4,
                 'is_active'     => true,
                 'is_required'   => false,
             ]

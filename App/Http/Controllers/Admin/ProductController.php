@@ -240,7 +240,12 @@ class ProductController extends Controller
                     'price'            => $pricing->price,
                     'setup_fee'        => $pricing->setup_fee,
                 ]),
-                'configurable_groups'      => $product->configurableOptionGroups->pluck('id')->toArray(),
+                'configurable_groups'      => $product->configurableOptionGroups->mapWithKeys(function ($group) {
+                    return [$group->id => [
+                        'display_order' => $group->pivot->display_order ?? 0,
+                        'base_quantity' => $group->pivot->base_quantity ?? 0,
+                    ]];
+                })->toArray(),
             ],
             'productTypes'            => $productTypes,
             'billingCycles'           => $billingCycles,
@@ -289,6 +294,15 @@ class ProductController extends Controller
         $configurableGroups = $validated['configurable_groups'] ?? [];
         unset($validated['pricings'], $validated['configurable_groups']);
 
+        // Preparar datos para la tabla pivot con base_quantity
+        $pivotData = [];
+        foreach ($configurableGroups as $groupId => $groupData) {
+            $pivotData[$groupId] = [
+                'display_order' => $groupData['display_order'] ?? 0,
+                'base_quantity' => $groupData['base_quantity'] ?? 0,
+            ];
+        }
+
         // Debug: Log los datos que se van a actualizar
         Log::info('Updating product with data:', $validated);
 
@@ -307,11 +321,61 @@ class ProductController extends Controller
             ]);
         }
 
-        // Update configurable option groups
-        $product->configurableOptionGroups()->sync($configurableGroups);
+        // Update configurable option groups with pivot data
+        $product->configurableOptionGroups()->sync($pivotData);
+
+        // Recalcular precios automáticamente basado en recursos base
+        $this->recalculateProductPrices($product);
 
         return redirect()->route('admin.products.show', $product)
             ->with('success', 'Producto actualizado exitosamente.');
+    }
+
+    /**
+     * Recalcular precios del producto basado en recursos base y precios de opciones
+     */
+    private function recalculateProductPrices(Product $product)
+    {
+        // Obtener todos los ciclos de facturación
+        $billingCycles = BillingCycle::all();
+
+        foreach ($billingCycles as $cycle) {
+            $totalPrice = 0;
+
+            // Calcular precio basado en recursos base del producto
+            foreach ($product->configurableOptionGroups as $group) {
+                $baseQuantity = $group->pivot->base_quantity ?? 0;
+
+                if ($baseQuantity > 0) {
+                    // Buscar el precio de esta opción para este ciclo
+                    foreach ($group->options as $option) {
+                        $optionPricing = $option->pricings()
+                            ->where('billing_cycle_id', $cycle->id)
+                            ->first();
+
+                        if ($optionPricing) {
+                            $totalPrice += $baseQuantity * $optionPricing->price;
+                        }
+                    }
+                }
+            }
+
+            // Actualizar o crear el precio para este ciclo
+            if ($totalPrice > 0) {
+                ProductPricing::updateOrCreate(
+                    [
+                        'product_id'       => $product->id,
+                        'billing_cycle_id' => $cycle->id,
+                    ],
+                    [
+                        'price'         => $totalPrice,
+                        'setup_fee'     => 0,
+                        'currency_code' => 'USD',
+                        'is_active'     => true,
+                    ]
+                );
+            }
+        }
     }
 
     /**

@@ -58,6 +58,26 @@ const formatCurrency = (value, currencyCode = 'USD') => {
     return new Intl.NumberFormat('es-ES', { style: 'currency', currency: currencyCode }).format(value);
 };
 
+// Obtener cantidad base de un grupo para un producto
+const getBaseQuantity = (product, groupId) => {
+    if (!product.configurable_option_groups) return 0;
+
+    const group = product.configurable_option_groups.find(g => g.id === groupId);
+    return group?.pivot?.base_quantity || 0;
+};
+
+// Obtener unidad de un grupo
+const getGroupUnit = (group) => {
+    const name = group.name.toLowerCase();
+    if (name.includes('espacio') || name.includes('disco')) return ' GB';
+    if (name.includes('vcpu') || name.includes('cpu')) return ' cores';
+    if (name.includes('ram') || name.includes('memoria')) return ' GB';
+    if (name.includes('backup')) return ' backups';
+    if (name.includes('email')) return ' emails';
+    if (name.includes('dominio')) return ' dominios';
+    return '';
+};
+
 // Función para obtener el label del tipo de opción
 const getOptionTypeLabel = (optionType) => {
     const types = {
@@ -314,8 +334,7 @@ onMounted(() => {
 
                                         <div v-if="currentSelectedMainProduct && currentSelectedMainProduct.id === product.id && product.configurable_option_groups && product.configurable_option_groups.length > 0"
                                             class="p-4 my-4 space-y-4 rounded-md bg-gray-50 dark:bg-gray-700">
-                                            <h5 class="font-semibold text-gray-700 text-md dark:text-gray-200">Configura
-                                                tu servicio:</h5>
+                                            <h5 class="font-semibold text-gray-700 text-md dark:text-gray-200">Configura tu servicio:</h5>
 
                                             <div v-for="group in product.configurable_option_groups" :key="group.id"
                                                 class="p-3 border border-gray-200 rounded-lg dark:border-gray-600">

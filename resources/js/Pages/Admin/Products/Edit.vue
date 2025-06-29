@@ -151,7 +151,10 @@ const submitProductForm = () => {
             // Asegurarse de que groupData es un objeto válido con display_order
             if (groupData !== null && typeof groupData === 'object' && groupData.hasOwnProperty('display_order')) {
                 // Convertir la clave groupId a string explícitamente si es numérico y asegurarse de que display_order es numérico
-                 formattedOptionGroups[String(groupId)] = { display_order: Number(groupData.display_order) };
+                 formattedOptionGroups[String(groupId)] = {
+                    display_order: Number(groupData.display_order),
+                    base_quantity: Number(groupData.base_quantity || 0)
+                 };
             } else {
                  console.warn(`Unexpected data format for group ID ${groupId}:`, groupData);
             }
@@ -242,8 +245,60 @@ const toggleGroupSelection = (groupId) => {
     if (isGroupSelected(groupId)) {
         delete form.configurable_option_groups[groupId];
     } else {
-        form.configurable_option_groups[groupId] = { display_order: 0 }; // Default order
+        form.configurable_option_groups[groupId] = {
+            display_order: 0,
+            base_quantity: 0
+        };
     }
+};
+
+// Obtener placeholder para cantidad según el tipo de grupo
+const getQuantityPlaceholder = (group) => {
+    return '0';
+};
+
+// Obtener unidad para cantidad según el tipo de grupo
+const getQuantityUnit = (group) => {
+    return '';
+};
+
+// Calcular precio total basado en cantidades base
+const calculateTotalPrice = () => {
+    let total = 0;
+
+    // Obtener ciclo mensual (ID 1) para el cálculo
+    const monthlyCycle = props.billingCycles?.find(cycle => cycle.id === 1);
+    if (!monthlyCycle) return total;
+
+    // Iterar sobre grupos asociados
+    for (const groupId in form.configurable_option_groups) {
+        const groupData = form.configurable_option_groups[groupId];
+        const baseQuantity = groupData.base_quantity || 0;
+
+        if (baseQuantity > 0) {
+            // Buscar el grupo en availableResourceGroups
+            const group = props.availableResourceGroups?.find(g => g.id == groupId);
+            if (group && group.options) {
+                // Sumar precios de todas las opciones del grupo
+                group.options.forEach(option => {
+                    const pricing = option.pricings?.find(p => p.billing_cycle_id === monthlyCycle.id);
+                    if (pricing) {
+                        total += baseQuantity * pricing.price;
+                    }
+                });
+            }
+        }
+    }
+
+    return total;
+};
+
+// Formatear moneda
+const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('es-ES', {
+        style: 'currency',
+        currency: 'USD'
+    }).format(amount || 0);
 };
 
 // Propiedad computada para filtrar los grupos de opciones
@@ -549,9 +604,17 @@ const getBillingCycleName = (pricing) => {
 
                 <!-- Sección para Grupos de Opciones Configurables -->
                 <div class="p-6 mt-6 overflow-hidden bg-white shadow-sm sm:rounded-lg md:p-8 dark:bg-gray-800">
-                    <h3 class="mb-4 text-lg font-medium text-gray-900 dark:text-gray-100">
-                        Grupos de Opciones Configurables Asociados
-                    </h3>
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">
+                            Grupos de Opciones Configurables Asociados
+                        </h3>
+                        <div class="text-right">
+                            <div class="text-sm text-gray-500 dark:text-gray-400">Precio calculado automáticamente:</div>
+                            <div class="text-lg font-bold text-green-600 dark:text-green-400">
+                                {{ formatCurrency(calculateTotalPrice()) }}
+                            </div>
+                        </div>
+                    </div>
                     <div v-if="
                             !filteredOptionGroups || filteredOptionGroups.length === 0
                         " class="text-sm text-gray-500 dark:text-gray-400">
@@ -568,15 +631,29 @@ const getBillingCycleName = (pricing) => {
                                     class="w-5 h-5 text-indigo-600 border-gray-300 rounded dark:bg-gray-900 dark:border-gray-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 dark:ring-offset-gray-800" />
                                 <span class="ml-3 text-sm text-gray-700 dark:text-gray-300">{{ group_opt.name }}</span>
                             </label>
-                            <div v-if="isGroupSelected(group_opt.id)" class="flex items-center">
-                                <label :for="'group-order-' + group_opt.id"
-                                    class="mr-2 text-sm text-gray-500 dark:text-gray-400">Prioridad:</label>
-                                <input type="number" v-model.number="
-                                        form.configurable_option_groups[
-                                            group_opt.id
-                                        ].display_order
-                                    " :id="'group-order-' + group_opt.id"
-                                    class="w-20 p-1 text-sm border-gray-300 rounded-md shadow-sm dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600 focus:ring-indigo-500 focus:border-indigo-500" />
+                            <div v-if="isGroupSelected(group_opt.id)" class="flex items-center space-x-4">
+                                <div class="flex items-center">
+                                    <label :for="'group-order-' + group_opt.id"
+                                        class="mr-2 text-sm text-gray-500 dark:text-gray-400">Prioridad:</label>
+                                    <input type="number" v-model.number="
+                                            form.configurable_option_groups[
+                                                group_opt.id
+                                            ].display_order
+                                        " :id="'group-order-' + group_opt.id"
+                                        class="w-20 p-1 text-sm border-gray-300 rounded-md shadow-sm dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600 focus:ring-indigo-500 focus:border-indigo-500" />
+                                </div>
+                                <div class="flex items-center">
+                                    <label :for="'group-quantity-' + group_opt.id"
+                                        class="mr-2 text-sm text-gray-500 dark:text-gray-400">Cantidad Base:</label>
+                                    <input type="number" step="0.01" min="0" v-model.number="
+                                            form.configurable_option_groups[
+                                                group_opt.id
+                                            ].base_quantity
+                                        " :id="'group-quantity-' + group_opt.id"
+                                        :placeholder="getQuantityPlaceholder(group_opt)"
+                                        class="w-24 p-1 text-sm border-gray-300 rounded-md shadow-sm dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600 focus:ring-indigo-500 focus:border-indigo-500" />
+                                    <span class="ml-1 text-xs text-gray-400">{{ getQuantityUnit(group_opt) }}</span>
+                                </div>
                             </div>
                         </div>
                     </div>
