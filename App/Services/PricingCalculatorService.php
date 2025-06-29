@@ -2,7 +2,6 @@
 namespace App\Services;
 
 use App\Models\ConfigurableOptionPricing;
-use App\Models\DiscountPercentage;
 use App\Models\Product;
 use App\Models\ProductPricing;
 use Illuminate\Support\Facades\Log;
@@ -210,9 +209,23 @@ class PricingCalculatorService
 
     /**
      * Obtener el descuento aplicable para un producto y ciclo
+     * TEMPORALMENTE DESACTIVADO - Siempre retorna 0% descuento
      */
     private function getDiscount(int $productId, int $billingCycleId): array
     {
+        // TEMPORAL: Desactivar descuentos para reactivar la web
+        Log::info('PricingCalculatorService: Descuentos temporalmente desactivados', [
+            'product_id'       => $productId,
+            'billing_cycle_id' => $billingCycleId,
+        ]);
+
+        return [
+            'percentage'  => 0,
+            'name'        => 'Sin descuento',
+            'description' => 'Descuentos temporalmente desactivados',
+        ];
+
+        /* CÓDIGO ORIGINAL COMENTADO:
         $discount = DiscountPercentage::where('product_id', $productId)
             ->where('billing_cycle_id', $billingCycleId)
             ->first();
@@ -235,6 +248,7 @@ class PricingCalculatorService
             'name'        => $discount->name,
             'description' => $discount->description,
         ];
+        */
     }
 
     /**
