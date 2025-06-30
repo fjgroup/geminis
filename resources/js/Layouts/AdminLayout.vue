@@ -1,6 +1,6 @@
 <script setup>
 import { ref } from 'vue';
-import { Head, Link, router } from '@inertiajs/vue3'; // router es necesario para logout
+import { Head, Link, router, usePage } from '@inertiajs/vue3'; // router es necesario para logout
 import NavLink from '@/Components/Shared/NavLink.vue';
 import {
     HomeIcon,
@@ -17,9 +17,12 @@ import DropdownLink from '@/Components/Shared/DropdownLink.vue';
 import ResponsiveNavLink from '@/Components/Shared/ResponsiveNavLink.vue';
 // import ApplicationLogo from '@/Components/UI/ApplicationLogo.vue'; // Descomenta si tienes y quieres usar un logo SVG
 
-defineProps({
+const props = defineProps({
     title: String,
 });
+
+// El contexto ahora viene del middleware inyectado globalmente
+const { userContext, panelConfig } = usePage().props;
 
 const showingNavigationDropdown = ref(false);
 </script>
@@ -34,8 +37,11 @@ const showingNavigationDropdown = ref(false);
             <div class="w-64 bg-white shadow-lg">
                 <!-- Logo -->
                 <div class="flex items-center justify-center h-16 border-b border-gray-200">
-                    <Link :href="route('admin.dashboard')" class="flex items-center">
-                    <span class="text-xl font-semibold text-gray-800">Admin Panel</span>
+                    <Link :href="userContext?.isReseller ? route('reseller.dashboard') : route('admin.dashboard')"
+                        class="flex items-center">
+                    <span class="text-xl font-semibold text-gray-800">
+                        {{ panelConfig?.title || 'Panel de Administración' }}
+                    </span>
                     </Link>
                 </div>
 

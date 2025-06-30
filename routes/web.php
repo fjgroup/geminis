@@ -56,7 +56,7 @@ use Inertia\Inertia;
 
 // Rutas para la administración
 // Aplicamos múltiples capas de seguridad para proteger estas rutas
-Route::prefix('admin')->name('admin.')->middleware(['auth', 'verified', 'admin', 'admin.security', 'input.sanitize'])->group(function () {
+Route::prefix('admin')->name('admin.')->middleware(['auth', 'verified', 'admin', 'admin.security', 'input.sanitize', 'inject.context'])->group(function () {
     Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
 
     Route::resource('users', AdminUserController::class);
@@ -298,9 +298,54 @@ Route::prefix('client')->name('client.')->middleware(['auth', 'verified'])->grou
 //     ]);
 // });
 
-// New Landing Page Routes
-Route::get('/', [LandingPageController::class, 'showHome'])->name('landing.home');
-Route::get('/servicios/{categorySlug}', [LandingPageController::class, 'showCategory'])->name('landing.category');
+// Sales Landing Page Routes (New conversion-focused landing)
+Route::get('/', [App\Http\Controllers\SalesLandingController::class, 'showHome'])->name('sales.home');
+Route::get('/sales', [App\Http\Controllers\SalesLandingController::class, 'showHome'])->name('sales.index');
+Route::get('/para/{useCaseSlug}', [App\Http\Controllers\SalesLandingController::class, 'showUseCase'])->name('sales.usecase');
+Route::post('/empezar-compra', [App\Http\Controllers\SalesLandingController::class, 'startPurchase'])->name('sales.start-purchase');
+
+// Specific Use Case Pages
+Route::get('/para-educadores', [App\Http\Controllers\SalesLandingController::class, 'showEducators'])->name('sales.educators');
+Route::get('/para-emprendedores', [App\Http\Controllers\SalesLandingController::class, 'showEntrepreneurs'])->name('sales.entrepreneurs');
+Route::get('/para-profesionales', [App\Http\Controllers\SalesLandingController::class, 'showProfessionals'])->name('sales.professionals');
+Route::get('/para-negocios', [App\Http\Controllers\SalesLandingController::class, 'showSmallBusiness'])->name('sales.small-business');
+Route::get('/para-diseñadores-web', [App\Http\Controllers\SalesLandingController::class, 'showWebDesigners'])->name('sales.web-designers');
+Route::get('/technical-resellers', [App\Http\Controllers\SalesLandingController::class, 'showTechnicalResellers'])->name('sales.technical-resellers');
+
+// Public Registration with Sales Context
+Route::get('/registro-con-contexto', [App\Http\Controllers\PublicCheckoutController::class, 'showRegistrationWithContext'])->name('public.register.with-context');
+Route::post('/registro-con-contexto', [App\Http\Controllers\PublicCheckoutController::class, 'processRegistrationWithContext'])->name('public.register.with-context.process');
+
+// Reseller Panel Routes (uses same admin panel but with reseller context)
+Route::prefix('reseller')->name('reseller.')->middleware(['auth', 'verified', 'admin.or.reseller', 'inject.context'])->group(function () {
+    Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
+    Route::resource('users', AdminUserController::class)->names([
+        'index'   => 'users.index',
+        'create'  => 'users.create',
+        'store'   => 'users.store',
+        'show'    => 'users.show',
+        'edit'    => 'users.edit',
+        'update'  => 'users.update',
+        'destroy' => 'users.destroy',
+    ]);
+    Route::resource('products', ProductController::class)->names([
+        'index'   => 'products.index',
+        'create'  => 'products.create',
+        'store'   => 'products.store',
+        'show'    => 'products.show',
+        'edit'    => 'products.edit',
+        'update'  => 'products.update',
+        'destroy' => 'products.destroy',
+    ]);
+
+    // Ruta para calcular precios de productos
+    Route::post('products/{product}/calculate-pricing', [ProductController::class, 'calculatePricing'])
+        ->name('products.calculate-pricing');
+});
+
+// Old Technical Landing Page Routes (for reference/backup)
+Route::get('/servicios-tecnicos', [LandingPageController::class, 'showHome'])->name('landing.home');
+Route::get('/servicios-tecnicos/{categorySlug}', [LandingPageController::class, 'showCategory'])->name('landing.category');
 
 // API Routes for fetching products (used by checkout pages)
 Route::prefix('api/products')->name('api.products.')->group(function () {

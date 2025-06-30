@@ -1,21 +1,21 @@
 <?php
-
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasManyThrough;
-use Illuminate\Support\Facades\Log; // ¡Añadir esta línea!
-use Illuminate\Support\Facades\DB; // ¡Añadir esta línea!
-use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Models\BillingCycle;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Factories\HasFactory; // ¡Añadir esta línea!
+use Illuminate\Database\Eloquent\Model;                // ¡Añadir esta línea!
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+
 // use App\Models\OrderItem; // Removed
 
 class ClientService extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes; // HasResellerScope temporalmente deshabilitado
 
     protected $fillable = [
         'client_id',
@@ -28,7 +28,7 @@ class ClientService extends Model
         'domain_name',
         'username',
         'password_encrypted',
-    // 'server_id',
+        // 'server_id',
         'status',
         'registration_date',
         'next_due_date',
@@ -38,14 +38,12 @@ class ClientService extends Model
     ];
 
     protected $casts = [
-        'registration_date' => 'date',
-        'next_due_date' => 'date',
-        'termination_date' => 'date',
+        'registration_date'  => 'date',
+        'next_due_date'      => 'date',
+        'termination_date'   => 'date',
         'password_encrypted' => 'encrypted', // Laravel encriptará/desencriptará automáticamente este campo
-        'billing_amount' => 'decimal:2',
+        'billing_amount'     => 'decimal:2',
     ];
-
-
 
     /**
      * Get the client that owns the service.
@@ -74,18 +72,18 @@ class ClientService extends Model
     /**
      * Get the product pricing associated with the service.
      */
-   public function productPricing(): BelongsTo
-   {
-       return $this->belongsTo(ProductPricing::class);
-   }
-   
+    public function productPricing(): BelongsTo
+    {
+        return $this->belongsTo(ProductPricing::class);
+    }
+
     /**
      * Get the billing cycle associated with the service.
      */
-   public function billingCycle(): BelongsTo
-   {
-       return $this->belongsTo(BillingCycle::class);
-   }
+    public function billingCycle(): BelongsTo
+    {
+        return $this->belongsTo(BillingCycle::class);
+    }
 
     // public function server(): BelongsTo
     // {
@@ -102,34 +100,34 @@ class ClientService extends Model
      */
     public static function getPossibleEnumValues(string $column): array
     {
-        $instance = new static;
-        $tableName = $instance->getTable();
+        $instance       = new static;
+        $tableName      = $instance->getTable();
         $connectionName = $instance->getConnectionName(); // Usa la conexión del modelo
 
         try {
             $columnDetails = DB::connection($connectionName)
-                                ->select("SHOW COLUMNS FROM `{$tableName}` WHERE Field = '{$column}'");
+                ->select("SHOW COLUMNS FROM `{$tableName}` WHERE Field = '{$column}'");
 
-            if (empty($columnDetails) || !isset($columnDetails[0]->Type)) {
+            if (empty($columnDetails) || ! isset($columnDetails[0]->Type)) {
                 Log::error("EnumHelper: Column '{$column}' not found or 'Type' not set for table '{$tableName}'.");
                 return [];
             }
 
             $type = $columnDetails[0]->Type;
 
-            if (!preg_match('/^enum\((.*)\)$/', $type, $matches)) {
+            if (! preg_match('/^enum\((.*)\)$/', $type, $matches)) {
                 Log::warning("EnumHelper: Column '{$column}' in table '{$tableName}' is not a standard ENUM type. Type found: {$type}");
                 return [];
             }
 
-            if (!isset($matches[1])) {
+            if (! isset($matches[1])) {
                 Log::error("EnumHelper: Could not parse ENUM values for column '{$column}' in table '{$tableName}'. Type: {$type}");
                 return [];
             }
 
             $enum = [];
             foreach (explode(',', $matches[1]) as $value) {
-                $v = trim($value, "'");
+                $v      = trim($value, "'");
                 $enum[] = ['value' => $v, 'label' => ucfirst(str_replace('_', ' ', $v))];
             }
             return $enum;
@@ -147,12 +145,12 @@ class ClientService extends Model
     public function renewalInvoices(): HasManyThrough
     {
         return $this->hasManyThrough(
-            Invoice::class,       // The final model we want to access
-            InvoiceItem::class,   // The intermediate model
-            'client_service_id',  // Foreign key on InvoiceItem table (links to ClientService)
-            'id',                 // Foreign key on Invoice table (links to InvoiceItem's invoice_id)
-            'id',                 // Local key on ClientService table
-            'invoice_id'          // Local key on InvoiceItem table
+            Invoice::class,                                 // The final model we want to access
+            InvoiceItem::class,                             // The intermediate model
+            'client_service_id',                            // Foreign key on InvoiceItem table (links to ClientService)
+            'id',                                           // Foreign key on Invoice table (links to InvoiceItem's invoice_id)
+            'id',                                           // Local key on ClientService table
+            'invoice_id'                                    // Local key on InvoiceItem table
         )->where('invoice_items.item_type', 'renewal'); // Filter items to be of type 'renewal'
     }
 

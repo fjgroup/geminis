@@ -94,5 +94,21 @@ class ProductTypeSeeder extends Seeder
                 'description'              => 'Servicios de gestión y soporte para infraestructura o aplicaciones.',
             ]
         );
+
+        ProductType::updateOrCreate(
+            ['slug' => 'reseller-hosting'],
+            [
+                'name'                          => 'Hosting Reseller',
+                'status'                        => 'active',
+                'requires_domain'               => false,
+                'creates_service_instance'      => true,
+                'is_publicly_available'         => true,
+                'supports_configurable_options' => true,
+                'supports_billing_cycles'       => true,
+                'supports_discounts'            => true,
+                'description'                   => 'Planes de hosting para revendedores que desean ofrecer servicios de hosting bajo su propia marca.',
+                'display_order'                 => 3,
+            ]
+        );
     }
 }

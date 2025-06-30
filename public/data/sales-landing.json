@@ -1,0 +1,329 @@
+{
+  "appName": "Fj Group CA",
+  "currencySymbol": "$",
+  "heroSection": {
+    "title": "Convierte tu Pasión en tu Sitio Web Profesional",
+    "subtitle": "Sin conocimientos técnicos. Sin complicaciones. Solo resultados que transforman tu vida.",
+    "ctaButtonText": "Crear Mi Sitio Web Ahora",
+    "backgroundImageUrl": "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80",
+    "trustIndicators": [
+      {
+        "icon": "verified",
+        "text": "Más de 1,000 sitios creados",
+        "color": "text-green-600"
+      },
+      {
+        "icon": "security",
+        "text": "100% Seguro y Protegido",
+        "color": "text-blue-600"
+      },
+      {
+        "icon": "support",
+        "text": "Soporte en Español 24/7",
+        "color": "text-purple-600"
+      }
+    ]
+  },
+  "useCases": [
+    {
+      "id": "educators",
+      "title": "Para Educadores y Profesores",
+      "headline": "Enseña Online y Llega a Más Estudiantes",
+      "description": "Crea tu academia virtual y genera ingresos extra enseñando lo que más te gusta desde la comodidad de tu hogar.",
+      "icon": "academic-cap",
+      "color": "bg-blue-50",
+      "accentColor": "text-blue-600",
+      "benefits": [
+        "Clases virtuales interactivas",
+        "Certificados automáticos para tus estudiantes",
+        "Cobra por tus cursos online",
+        "Gestiona tareas y calificaciones fácilmente",
+        "Acceso desde cualquier dispositivo"
+      ],
+      "ctaText": "Crear Mi Academia Online",
+      "targetProduct": "moodle-hosting",
+      "testimonial": {
+        "text": "En 2 semanas ya tenía mi primera clase online con 15 estudiantes. ¡Increíble!",
+        "author": "María González, Profesora de Inglés"
+      }
+    },
+    {
+      "id": "small-business",
+      "title": "Para Pequeños Negocios",
+      "headline": "Tu Negocio Online las 24 Horas",
+      "description": "Atrae más clientes y aumenta tus ventas con un sitio web profesional que trabaja por ti mientras duermes.",
+      "icon": "building-storefront",
+      "color": "bg-green-50",
+      "accentColor": "text-green-600",
+      "benefits": [
+        "Más clientes te encuentran en Google",
+        "Muestra tus servicios profesionalmente",
+        "Recibe consultas automáticamente",
+        "Horarios y contacto siempre disponibles",
+        "Credibilidad que genera confianza"
+      ],
+      "ctaText": "Crear Sitio de Mi Negocio",
+      "targetProduct": "business-hosting",
+      "testimonial": {
+        "text": "Mis ventas aumentaron 40% desde que tengo mi sitio web. Los clientes me ven más profesional.",
+        "author": "Carlos Ruiz, Electricista"
+      }
+    },
+    {
+      "id": "entrepreneurs",
+      "title": "Para Emprendedores",
+      "headline": "Vende Tus Productos en Internet",
+      "description": "Convierte tu idea en un negocio rentable con una tienda online que acepta pagos y gestiona inventario automáticamente.",
+      "icon": "shopping-cart",
+      "color": "bg-amber-100",
+      "accentColor": "text-amber-900",
+      "benefits": [
+        "Tienda online completa y profesional",
+        "Acepta pagos con tarjeta y transferencias",
+        "Control de inventario automático",
+        "Envíos y facturación integrados",
+        "Reportes de ventas detallados"
+      ],
+      "ctaText": "Crear Mi Tienda Online",
+      "targetProduct": "ecommerce-hosting",
+      "testimonial": {
+        "text": "Vendí $2,000 en mi primer mes. La tienda es súper fácil de manejar.",
+        "author": "Ana Martínez, Repostería Artesanal"
+      }
+    },
+    {
+      "id": "professionals",
+      "title": "Para Profesionales",
+      "headline": "Tu Portafolio Digital Que Impresiona",
+      "description": "Destaca entre la competencia con un portafolio profesional que muestra tu experiencia y atrae mejores oportunidades.",
+      "icon": "briefcase",
+      "color": "bg-blue-50",
+      "accentColor": "text-blue-800",
+      "benefits": [
+        "Portafolio profesional que impresiona",
+        "Muestra tu experiencia y proyectos",
+        "Los clientes te contactan directamente",
+        "Diferénciate de la competencia",
+        "Actualiza tu información fácilmente"
+      ],
+      "ctaText": "Crear Mi Portafolio",
+      "targetProduct": "professional-hosting",
+      "testimonial": {
+        "text": "Conseguí 3 proyectos nuevos en el primer mes. Mi portafolio habla por mí.",
+        "author": "Luis Fernández, Diseñador Gráfico"
+      }
+    },
+    {
+      "id": "web-designers",
+      "title": "Para Diseñadores Web",
+      "headline": "Gana Dinero Recurrente con Hosting",
+      "description": "Ofrece hosting profesional a tus clientes y genera ingresos recurrentes cada mes. Panel de gestión GRATIS incluido.",
+      "icon": "code-bracket",
+      "color": "bg-purple-50",
+      "accentColor": "text-purple-600",
+      "benefits": [
+        "Panel de gestión GRATIS (sin WHMCS)",
+        "Gana $5-15 USD por cliente cada mes",
+        "Soporte técnico 24/7 para tus clientes",
+        "DNS privados con tu marca",
+        "Migración gratuita de sitios web"
+      ],
+      "ctaText": "Ver Planes para Diseñadores",
+      "targetProduct": "reseller-hosting",
+      "testimonial": {
+        "text": "Ahora gano $300 extra cada mes solo por el hosting de mis clientes. ¡Genial!",
+        "author": "Roberto Silva, Diseñador Web"
+      }
+    },
+    {
+      "id": "technical-resellers",
+      "title": "Para Revendedores Técnicos",
+      "headline": "Hosting Reseller Nivel Empresarial",
+      "description": "Soluciones de hosting marca blanca con cuentas ilimitadas, nameservers privados y características empresariales.",
+      "icon": "cog",
+      "color": "bg-gray-50",
+      "accentColor": "text-gray-800",
+      "benefits": [
+        "Cuentas cPanel ilimitadas",
+        "Nameservers privados (ns1.tudominio.com)",
+        "WHM/cPanel con acceso completo",
+        "Almacenamiento NVMe SSD ultra-rápido",
+        "Integración WHMCS incluida"
+      ],
+      "ctaText": "Ver Planes Técnicos",
+      "targetProduct": "enterprise-reseller",
+      "testimonial": {
+        "text": "La infraestructura empresarial nos permite ofrecer servicios de primer nivel.",
+        "author": "Carlos Mendoza, Hosting Provider"
+      }
+    }
+  ],
+  "whyChooseUs": {
+    "title": "¿Por Qué Miles de Personas Confían en Nosotros?",
+    "subtitle": "Descansa y dedícate a tus ventas. Disfruta de la tranquilidad de un hosting 100% confiable.",
+    "features": [
+      {
+        "icon": "shield-check",
+        "title": "Tu Sitio Siempre Protegido",
+        "description": "Respaldos automáticos 24/7. Si algo pasa, lo recuperamos en minutos. Tú solo enfócate en tu negocio."
+      },
+      {
+        "icon": "heart",
+        "title": "Soporte Humano Real",
+        "description": "César y su equipo te atienden personalmente. 15 años resolviendo problemas rápidamente."
+      },
+      {
+        "icon": "trending-up",
+        "title": "Crece Sin Preocupaciones",
+        "description": "Planes personalizables. Cuando necesites más espacio o potencia, lo ajustamos sin complicaciones."
+      },
+      {
+        "icon": "money-back",
+        "title": "Garantía de 45 Días",
+        "description": "Si no estás satisfecho, te devolvemos tu dinero. Sin preguntas, sin complicaciones."
+      }
+    ]
+  },
+  "testimonials": {
+    "title": "Lo Que Dicen Nuestros Clientes Reales",
+    "subtitle": "Más de 15 años cuidando el éxito digital de nuestros clientes",
+    "reviews": [
+      {
+        "name": "Centro Astrológico Venezolano",
+        "country": "Venezuela",
+        "rating": 5,
+        "text": "Muy buen servicio y además soy cliente de César hace casi 15 años y los problemas siempre me los ha resuelto rápidamente. Lo recomiendo ampliamente.",
+        "date": "Mayo 2024",
+        "business_type": "Centro de Consultas"
+      },
+      {
+        "name": "Victor Uzcátegui",
+        "country": "Perú",
+        "rating": 5,
+        "text": "Persona atenta y responsable con los servicios que ofrece. Una larga trayectoria contando con la atención en sus servicios de TI que ofrece.",
+        "date": "Abril 2024",
+        "business_type": "Empresario"
+      },
+      {
+        "name": "Wiser Fund",
+        "country": "Estados Unidos",
+        "rating": 5,
+        "text": "El equipo de FJ Group siempre está pendiente a mis requerimientos como cliente. Siempre están dispuestos a dar buenas respuestas y soluciones.",
+        "date": "Abril 2024",
+        "business_type": "Empresa Financiera"
+      },
+      {
+        "name": "Johanna Galán",
+        "country": "Ecuador",
+        "rating": 5,
+        "text": "Siempre responden rápido mis dudas o inquietudes.",
+        "date": "Abril 2024",
+        "business_type": "Emprendedora"
+      },
+      {
+        "name": "Edgard Figueroa",
+        "country": "Venezuela",
+        "rating": 5,
+        "text": "Es un hosting muy estable, siempre cuenta con las actualizaciones de certificados de seguridad. También cuenta con una atención personalizada. Muy buena elección.",
+        "date": "Abril 2024",
+        "business_type": "Desarrollador Web"
+      }
+    ]
+  },
+  "pricing": {
+    "title": "Planes Simples, Resultados Extraordinarios",
+    "subtitle": "Elige el plan perfecto para tu proyecto. Puedes cambiar cuando quieras.",
+    "plans": [
+      {
+        "id": "starter",
+        "name": "Emprendedor",
+        "description": "Perfecto para comenzar tu presencia online",
+        "price": 10,
+        "period": "mes",
+        "popular": false,
+        "features": [
+          "Sitio web profesional incluido",
+          "Dominio gratis el primer año",
+          "Email profesional (tu@tunegocio.com)",
+          "Certificado de seguridad SSL",
+          "Soporte por WhatsApp"
+        ],
+        "ctaText": "Comenzar Ahora",
+        "targetUseCase": ["small-business", "professionals"]
+      },
+      {
+        "id": "professional",
+        "name": "Profesional",
+        "description": "Para negocios que quieren crecer en serio",
+        "price": 16,
+        "period": "mes",
+        "popular": true,
+        "features": [
+          "Todo lo del plan Emprendedor",
+          "Tienda online básica incluida",
+          "Hasta 5 páginas personalizadas",
+          "Integración con redes sociales",
+          "Estadísticas de visitantes",
+          "Respaldos automáticos diarios"
+        ],
+        "ctaText": "Elegir Profesional",
+        "targetUseCase": ["entrepreneurs", "small-business"]
+      },
+      {
+        "id": "business",
+        "name": "Negocio",
+        "description": "Para empresas que buscan resultados serios",
+        "price": 22,
+        "period": "mes",
+        "popular": false,
+        "features": [
+          "Todo lo del plan Profesional",
+          "Tienda online avanzada",
+          "Academia virtual incluida",
+          "Páginas ilimitadas",
+          "Chat en vivo con clientes",
+          "Soporte prioritario por teléfono"
+        ],
+        "ctaText": "Impulsar Mi Negocio",
+        "targetUseCase": ["educators", "entrepreneurs"]
+      }
+    ]
+  },
+  "forDesigners": {
+    "title": "¿Eres Diseñador Web?",
+    "subtitle": "Ofrece hosting profesional a tus clientes con planes 100% personalizables",
+    "benefits": [
+      {
+        "icon": "adjustments",
+        "title": "Planes Totalmente Personalizables",
+        "description": "CPU, RAM y almacenamiento ajustables según las necesidades de cada proyecto"
+      },
+      {
+        "icon": "users",
+        "title": "Panel Reseller Incluido",
+        "description": "Gestiona todos los hostings de tus clientes desde un solo panel profesional"
+      },
+      {
+        "icon": "support",
+        "title": "Soporte Técnico Especializado",
+        "description": "Nuestro equipo técnico resuelve cualquier problema mientras tú te enfocas en diseñar"
+      },
+      {
+        "icon": "money",
+        "title": "Gana Dinero Recurrente",
+        "description": "Cobra mensualmente a tus clientes por un servicio que nosotros mantenemos"
+      }
+    ],
+    "cta": "Ver Planes para Diseñadores"
+  },
+  "guarantee": {
+    "title": "Garantía de 45 Días",
+    "description": "Si no estás 100% satisfecho, te devolvemos tu dinero. Sin preguntas, sin complicaciones.",
+    "icon": "shield-check"
+  },
+  "contactInfo": {
+    "phone": "+58 412 8172337",
+    "email": "cesarfigueroa@fjgroupca.com",
+    "whatsapp": "+584128172337"
+  }
+}

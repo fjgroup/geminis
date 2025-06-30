@@ -57,6 +57,9 @@ class DatabaseSeeder extends Seeder
 
             // Productos de hosting (después de opciones configurables)
             HostingProductsSeeder::class,
+
+            // Producto reseller temporal
+            ResellerProductSeeder::class,
         ]);
     }
 }
