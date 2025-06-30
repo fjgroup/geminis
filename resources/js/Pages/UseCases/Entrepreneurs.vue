@@ -5,18 +5,19 @@
             <div class="absolute inset-0 bg-gradient-to-r from-orange-600/5 to-amber-600/5"></div>
 
             <!-- Navigation -->
-            <nav class="relative z-10 px-6 py-4">
+            <nav class="relative z-10 px-4 sm:px-6 py-4">
                 <div class="max-w-7xl mx-auto flex justify-between items-center">
                     <div class="flex items-center">
-                        <img src="/images/logo.png" alt="Fj Group CA" class="h-8 w-auto mr-3">
-                        <span class="text-2xl font-bold text-gray-900">Fj Group CA</span>
+                        <img src="/images/logo.png" alt="Fj Group CA" class="h-6 sm:h-8 w-auto mr-2 sm:mr-3">
+                        <span class="text-lg sm:text-2xl font-bold text-gray-900">Fj Group CA</span>
                     </div>
-                    <div class="flex space-x-4">
-                        <Link :href="route('sales.home')" class="text-gray-600 hover:text-gray-900 font-medium">
+                    <div class="flex flex-col sm:flex-row space-y-1 sm:space-y-0 sm:space-x-4 text-right">
+                        <Link :href="route('sales.home')"
+                            class="text-gray-600 hover:text-gray-900 font-medium text-sm sm:text-base">
                         ← Volver al inicio
                         </Link>
                         <Link v-if="canLogin" :href="route('login')"
-                            class="text-gray-600 hover:text-gray-900 font-medium">
+                            class="text-gray-600 hover:text-gray-900 font-medium text-sm sm:text-base">
                         Iniciar Sesión
                         </Link>
                     </div>
@@ -24,19 +25,20 @@
             </nav>
 
             <!-- Hero Content -->
-            <div class="relative z-10 max-w-7xl mx-auto px-6 py-20">
-                <div class="grid lg:grid-cols-2 gap-12 items-center">
+            <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 py-12 sm:py-20">
+                <div class="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
                     <div>
                         <div
                             class="inline-flex items-center px-4 py-2 bg-orange-100 text-orange-800 rounded-full text-sm font-medium mb-6">
                             🚀 Para Emprendedores
                         </div>
 
-                        <h1 class="text-5xl md:text-6xl font-bold text-gray-900 mb-6 leading-tight">
+                        <h1
+                            class="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 mb-4 sm:mb-6 leading-tight">
                             Lanza Tu Startup al Mundo Digital
                         </h1>
 
-                        <p class="text-xl md:text-2xl text-gray-600 mb-8">
+                        <p class="text-lg sm:text-xl md:text-2xl text-gray-600 mb-6 sm:mb-8">
                             Convierte tu idea en un negocio online exitoso. Hosting escalable que crece contigo.
                             <strong>De MVP a unicornio.</strong>
                         </p>
@@ -101,18 +103,18 @@
         </section>
 
         <!-- Features Section -->
-        <section class="py-20 bg-white">
-            <div class="max-w-7xl mx-auto px-6">
-                <div class="text-center mb-16">
-                    <h2 class="text-4xl font-bold text-gray-900 mb-4">
+        <section class="py-12 sm:py-20 bg-white">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6">
+                <div class="text-center mb-8 sm:mb-16">
+                    <h2 class="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-3 sm:mb-4 px-4">
                         Todo lo que Necesitas para Emprender Online
                     </h2>
-                    <p class="text-xl text-gray-600 max-w-2xl mx-auto">
+                    <p class="text-lg sm:text-xl text-gray-600 max-w-2xl mx-auto px-4">
                         Herramientas profesionales para convertir tu idea en un negocio exitoso
                     </p>
                 </div>
 
-                <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
                     <div class="p-6 border border-gray-200 rounded-xl hover:shadow-lg transition-shadow">
                         <div class="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center mb-4">
                             <svg class="w-6 h-6 text-orange-600" fill="currentColor" viewBox="0 0 24 24">

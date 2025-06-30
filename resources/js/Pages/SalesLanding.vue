@@ -5,19 +5,26 @@
             <div class="absolute inset-0 bg-gradient-to-r from-blue-600/5 to-purple-600/5"></div>
 
             <!-- Navigation -->
-            <nav class="relative z-10 px-6 py-4">
+            <nav class="relative z-10 px-4 sm:px-6 py-4">
                 <div class="max-w-7xl mx-auto flex justify-between items-center">
                     <div class="flex items-center">
-                        <img src="/images/logo.png" alt="Fj Group CA" class="h-8 w-auto mr-3">
-                        <span class="text-2xl font-bold text-gray-900">{{ salesData.appName }}</span>
+                        <img src="/images/logo.png" alt="Fj Group CA" class="h-6 sm:h-8 w-auto mr-2 sm:mr-3">
+                        <span class="text-lg sm:text-2xl font-bold text-gray-900">{{ salesData.appName }}</span>
                     </div>
-                    <div class="flex space-x-4">
-                        <Link v-if="canLogin" :href="route('login')"
-                            class="text-gray-600 hover:text-gray-900 font-medium">
+                    <div class="flex space-x-2 sm:space-x-4">
+                        <!-- Si está autenticado, mostrar Dashboard -->
+                        <Link v-if="$page.props.auth.user" :href="getDashboardRoute()"
+                            class="text-gray-600 hover:text-gray-900 font-medium text-sm sm:text-base">
+                        Dashboard
+                        </Link>
+                        <!-- Si no está autenticado, mostrar Login -->
+                        <Link v-else-if="canLogin" :href="route('login')"
+                            class="text-gray-600 hover:text-gray-900 font-medium text-sm sm:text-base">
                         Iniciar Sesión
                         </Link>
-                        <Link v-if="canRegister" :href="route('register')"
-                            class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 font-medium">
+                        <!-- Botón de registro solo si no está autenticado -->
+                        <Link v-if="canRegister && !$page.props.auth.user" :href="route('register')"
+                            class="bg-blue-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-blue-700 font-medium text-sm sm:text-base">
                         Registrarse
                         </Link>
                     </div>
@@ -25,12 +32,13 @@
             </nav>
 
             <!-- Hero Content -->
-            <div class="relative z-10 max-w-7xl mx-auto px-6 py-20">
+            <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 py-12 sm:py-20">
                 <div class="text-center">
-                    <h1 class="text-5xl md:text-6xl font-bold text-gray-900 mb-6 leading-tight">
+                    <h1
+                        class="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 mb-4 sm:mb-6 leading-tight px-2">
                         {{ salesData.heroSection.title }}
                     </h1>
-                    <p class="text-xl md:text-2xl text-gray-600 mb-8 max-w-3xl mx-auto">
+                    <p class="text-lg sm:text-xl md:text-2xl text-gray-600 mb-6 sm:mb-8 max-w-3xl mx-auto px-4">
                         {{ salesData.heroSection.subtitle }}
                     </p>
 
@@ -58,39 +66,39 @@
         </section>
 
         <!-- Use Cases Section -->
-        <section id="use-cases" class="py-20 bg-gray-50">
-            <div class="max-w-7xl mx-auto px-6">
-                <div class="text-center mb-16">
-                    <h2 class="text-4xl font-bold text-gray-900 mb-4">
+        <section id="use-cases" class="py-12 sm:py-20 bg-gray-50">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6">
+                <div class="text-center mb-8 sm:mb-16">
+                    <h2 class="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-3 sm:mb-4 px-4">
                         ¿Cuál es tu Objetivo?
                     </h2>
-                    <p class="text-xl text-gray-600 max-w-2xl mx-auto">
+                    <p class="text-lg sm:text-xl text-gray-600 max-w-2xl mx-auto px-4">
                         Elige la opción que mejor describe lo que quieres lograr
                     </p>
                 </div>
 
-                <div class="grid md:grid-cols-2 gap-8">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
                     <div v-for="useCase in salesData.useCases" :key="useCase.id" :class="useCase.color"
-                        class="rounded-2xl p-8 border border-gray-200 hover:shadow-xl transition-all duration-300 cursor-pointer transform hover:-translate-y-2">
+                        class="rounded-2xl p-4 sm:p-6 md:p-8 border border-gray-200 hover:shadow-xl transition-all duration-300 cursor-pointer transform hover:-translate-y-2">
 
-                        <div class="flex items-center mb-6">
+                        <div class="flex items-center mb-4 sm:mb-6">
                             <div :class="useCase.accentColor"
-                                class="w-12 h-12 rounded-lg bg-white flex items-center justify-center mr-4">
-                                <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                                class="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-white flex items-center justify-center mr-3 sm:mr-4">
+                                <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="currentColor" viewBox="0 0 24 24">
                                     <!-- Icon placeholder - you can add specific icons here -->
                                     <path d="M12 2L2 7v10c0 5.55 3.84 9.74 9 11 5.16-1.26 9-5.45 9-11V7l-10-5z" />
                                 </svg>
                             </div>
                             <div>
-                                <h3 class="text-2xl font-bold text-gray-900">{{ useCase.title }}</h3>
+                                <h3 class="text-xl sm:text-2xl font-bold text-gray-900">{{ useCase.title }}</h3>
                             </div>
                         </div>
 
-                        <h4 :class="useCase.accentColor" class="text-xl font-semibold mb-3">
+                        <h4 :class="useCase.accentColor" class="text-lg sm:text-xl font-semibold mb-2 sm:mb-3">
                             {{ useCase.headline }}
                         </h4>
 
-                        <p class="text-gray-600 mb-6">
+                        <p class="text-gray-600 mb-4 sm:mb-6 text-sm sm:text-base">
                             {{ useCase.description }}
                         </p>
 
@@ -106,14 +114,14 @@
                             </li>
                         </ul>
 
-                        <div class="flex space-x-3">
+                        <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3">
                             <button @click="selectUseCase(useCase.id)"
                                 :class="useCase.accentColor.replace('text-', 'bg-')"
-                                class="flex-1 text-white py-3 rounded-lg font-semibold hover:opacity-90 transition-opacity">
+                                class="flex-1 text-white py-2 sm:py-3 rounded-lg font-semibold hover:opacity-90 transition-opacity text-sm sm:text-base">
                                 {{ useCase.ctaText }}
                             </button>
                             <Link :href="getUseCasePageUrl(useCase.id)"
-                                class="px-4 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium">
+                                class="px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium text-center text-sm sm:text-base">
                             Ver más
                             </Link>
                         </div>
@@ -314,6 +322,27 @@
     </div>
 </template>
 
+<style scoped>
+/* Color beige/marrón personalizado para emprendedores */
+.bg-brown-custom {
+    background-color: #fef7ed;
+    /* Color beige claro como en la imagen */
+}
+
+.text-brown-custom {
+    color: #ea580c;
+    /* Color naranja/marrón para el texto */
+}
+
+.border-brown-custom {
+    border-color: #92400e;
+}
+
+.bg-brown-custom-dark {
+    background-color: #ea580c;
+}
+</style>
+
 <script setup>
 import { Link } from '@inertiajs/vue3'
 import { ref } from 'vue'
@@ -353,6 +382,21 @@ const getUseCasePageUrl = (useCaseId) => {
         'technical-resellers': route('sales.technical-resellers')
     }
     return urls[useCaseId] || route('sales.home')
+}
+
+const getDashboardRoute = () => {
+    const user = $page.props.auth.user
+    if (!user) return route('login')
+
+    switch (user.role) {
+        case 'admin':
+            return route('admin.dashboard')
+        case 'reseller':
+            return route('reseller.dashboard')
+        case 'client':
+        default:
+            return route('client.dashboard')
+    }
 }
 
 const selectPlan = (planId) => {

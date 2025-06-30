@@ -312,6 +312,24 @@ Route::get('/para-negocios', [App\Http\Controllers\SalesLandingController::class
 Route::get('/para-diseñadores-web', [App\Http\Controllers\SalesLandingController::class, 'showWebDesigners'])->name('sales.web-designers');
 Route::get('/technical-resellers', [App\Http\Controllers\SalesLandingController::class, 'showTechnicalResellers'])->name('sales.technical-resellers');
 
+// Public Checkout Flow (for non-authenticated users)
+Route::prefix('checkout')->name('public.checkout.')->group(function () {
+    Route::get('/domain', [App\Http\Controllers\PublicCheckoutController::class, 'showDomainVerification'])->name('domain');
+    Route::post('/domain', [App\Http\Controllers\PublicCheckoutController::class, 'processDomainVerification'])->name('domain.process');
+    Route::get('/register', [App\Http\Controllers\PublicCheckoutController::class, 'showRegistration'])->name('register');
+    Route::post('/register', [App\Http\Controllers\PublicCheckoutController::class, 'processRegistration'])->name('register.process');
+    Route::get('/payment', [App\Http\Controllers\PublicCheckoutController::class, 'showPayment'])->name('payment');
+    Route::post('/payment', [App\Http\Controllers\PublicCheckoutController::class, 'processPayment'])->name('payment.process');
+});
+
+// Public Checkout Flow (for non-authenticated users)
+Route::prefix('checkout')->name('public.checkout.')->group(function () {
+    Route::get('/domain', [App\Http\Controllers\PublicCheckoutController::class, 'showDomainVerification'])->name('domain');
+    Route::post('/domain', [App\Http\Controllers\PublicCheckoutController::class, 'processDomainVerification'])->name('domain.process');
+    Route::get('/register', [App\Http\Controllers\PublicCheckoutController::class, 'showRegistration'])->name('register');
+    Route::post('/register', [App\Http\Controllers\PublicCheckoutController::class, 'processRegistration'])->name('register.process');
+});
+
 // Public Registration with Sales Context
 Route::get('/registro-con-contexto', [App\Http\Controllers\PublicCheckoutController::class, 'showRegistrationWithContext'])->name('public.register.with-context');
 Route::post('/registro-con-contexto', [App\Http\Controllers\PublicCheckoutController::class, 'processRegistrationWithContext'])->name('public.register.with-context.process');
@@ -422,5 +440,84 @@ Route::get('/update-services', function () {
         'results'        => $results,
     ]);
 })->middleware(['auth', 'admin']);
+
+// Ruta temporal para crear usuarios (ELIMINAR EN PRODUCCIÓN)
+Route::get('/create-test-users', function () {
+    try {
+        // Crear usuario administrador
+        $admin = \App\Models\User::updateOrCreate(
+            ['email' => 'admin@fjgroupca.com'],
+            [
+                'name'              => 'Administrador',
+                'email'             => 'admin@fjgroupca.com',
+                'password'          => \Illuminate\Support\Facades\Hash::make('admin123'),
+                'role'              => 'admin',
+                'company_name'      => 'Fj Group CA',
+                'phone'             => '+58 412 8172337',
+                'country'           => 'VE',
+                'reseller_id'       => null,
+                'status'            => 'active',
+                'language_code'     => 'es',
+                'currency_code'     => 'USD',
+                'email_verified_at' => now(),
+            ]
+        );
+
+        // Crear usuario cliente de prueba
+        $client = \App\Models\User::updateOrCreate(
+            ['email' => 'cliente@test.com'],
+            [
+                'name'              => 'Cliente Prueba',
+                'email'             => 'cliente@test.com',
+                'password'          => \Illuminate\Support\Facades\Hash::make('cliente123'),
+                'role'              => 'client',
+                'company_name'      => 'Empresa Test',
+                'phone'             => '+58 412 1234567',
+                'country'           => 'VE',
+                'reseller_id'       => null,
+                'status'            => 'active',
+                'language_code'     => 'es',
+                'currency_code'     => 'USD',
+                'email_verified_at' => now(),
+            ]
+        );
+
+        // Crear usuario reseller de prueba
+        $reseller = \App\Models\User::updateOrCreate(
+            ['email' => 'reseller@test.com'],
+            [
+                'name'              => 'Reseller Prueba',
+                'email'             => 'reseller@test.com',
+                'password'          => \Illuminate\Support\Facades\Hash::make('reseller123'),
+                'role'              => 'reseller',
+                'company_name'      => 'Reseller Company',
+                'phone'             => '+58 412 7654321',
+                'country'           => 'VE',
+                'reseller_id'       => null,
+                'status'            => 'active',
+                'language_code'     => 'es',
+                'currency_code'     => 'USD',
+                'email_verified_at' => now(),
+            ]
+        );
+
+        return response()->json([
+            'success'   => true,
+            'message'   => '✅ Usuarios creados exitosamente!',
+            'users'     => [
+                'admin'    => 'admin@fjgroupca.com / admin123',
+                'client'   => 'cliente@test.com / cliente123',
+                'reseller' => 'reseller@test.com / reseller123',
+            ],
+            'login_url' => route('login'),
+        ]);
+
+    } catch (Exception $e) {
+        return response()->json([
+            'success' => false,
+            'error'   => $e->getMessage(),
+        ], 500);
+    }
+});
 
 require __DIR__ . '/auth.php';

@@ -96,7 +96,7 @@ class SalesLandingController extends Controller
 
         // Store the context in session for the checkout process
         session([
-            'sales_context' => [
+            'purchase_context' => [
                 'use_case'     => $validated['use_case'],
                 'plan'         => $validated['plan'],
                 'product_slug' => $productSlug,
@@ -110,8 +110,8 @@ class SalesLandingController extends Controller
             // User is logged in, go directly to existing domain selection
             return redirect()->route('client.checkout.select-domain');
         } else {
-            // User needs to register first, redirect to registration with context
-            return redirect()->route('public.register.with-context');
+            // User needs to verify domain first, then register
+            return redirect()->route('public.checkout.domain');
         }
     }
 

@@ -5,16 +5,18 @@
             <div class="absolute inset-0 bg-gradient-to-r from-blue-600/10 to-indigo-600/10"></div>
 
             <!-- Navigation -->
-            <nav class="relative z-10 px-6 py-4">
+            <nav class="relative z-10 px-4 sm:px-6 py-4">
                 <div class="max-w-7xl mx-auto flex justify-between items-center">
-                    <div class="text-2xl font-bold text-white">
+                    <div class="text-lg sm:text-2xl font-bold text-white">
                         Fj Group CA
                     </div>
-                    <div class="flex space-x-4">
-                        <Link :href="route('sales.home')" class="text-gray-300 hover:text-white font-medium">
+                    <div class="flex flex-col sm:flex-row space-y-1 sm:space-y-0 sm:space-x-4 text-right">
+                        <Link :href="route('sales.home')"
+                            class="text-gray-300 hover:text-white font-medium text-sm sm:text-base">
                         ← Volver al inicio
                         </Link>
-                        <Link v-if="canLogin" :href="route('login')" class="text-gray-300 hover:text-white font-medium">
+                        <Link v-if="canLogin" :href="route('login')"
+                            class="text-gray-300 hover:text-white font-medium text-sm sm:text-base">
                         Iniciar Sesión
                         </Link>
                     </div>
@@ -22,8 +24,8 @@
             </nav>
 
             <!-- Hero Content -->
-            <div class="relative z-10 max-w-7xl mx-auto px-6 py-20">
-                <div class="grid lg:grid-cols-2 gap-12 items-center">
+            <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 py-12 sm:py-20">
+                <div class="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
                     <div>
                         <div
                             class="inline-flex items-center px-4 py-2 bg-blue-100 text-blue-800 rounded-full text-sm font-medium mb-6">

@@ -1,9 +1,9 @@
 <template>
     <footer class="bg-gray-900 text-white py-12">
         <div class="max-w-7xl mx-auto px-6">
-            <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+            <div class="grid md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-8">
                 <!-- Company Info -->
-                <div class="lg:col-span-2">
+                <div class="lg:col-span-2 xl:col-span-2">
                     <div class="flex items-center mb-4">
                         <img src="/images/logo.png" alt="Fj Group CA" class="h-8 w-auto mr-3">
                         <span class="text-2xl font-bold">Fj Group CA</span>
@@ -44,15 +44,34 @@
                     </div>
                 </div>
 
+                <!-- Hosting Solutions -->
+                <div>
+                    <h3 class="text-lg font-semibold mb-4">Hosting</h3>
+                    <ul class="space-y-2 text-gray-400">
+                        <li><a href="/para-educadores" class="hover:text-white transition-colors">Para Educadores</a>
+                        </li>
+                        <li><a href="/para-emprendedores" class="hover:text-white transition-colors">Para
+                                Emprendedores</a></li>
+                        <li><a href="/para-profesionales" class="hover:text-white transition-colors">Para
+                                Profesionales</a></li>
+                        <li><a href="/para-negocios" class="hover:text-white transition-colors">Para Pequeños
+                                Negocios</a></li>
+                        <li><a href="/para-diseñadores-web" class="hover:text-white transition-colors">Para Diseñadores
+                                Web</a></li>
+                        <li><a href="/technical-resellers" class="hover:text-white transition-colors">Para Revendedores
+                                Técnicos</a></li>
+                    </ul>
+                </div>
+
                 <!-- Services -->
                 <div>
                     <h3 class="text-lg font-semibold mb-4">Servicios</h3>
                     <ul class="space-y-2 text-gray-400">
-                        <li><a href="#" class="hover:text-white transition-colors">Hosting Web</a></li>
-                        <li><a href="#" class="hover:text-white transition-colors">Hosting Reseller</a></li>
                         <li><a href="#" class="hover:text-white transition-colors">Dominios</a></li>
                         <li><a href="#" class="hover:text-white transition-colors">SSL Certificados</a></li>
                         <li><a href="#" class="hover:text-white transition-colors">Email Profesional</a></li>
+                        <li><a href="#" class="hover:text-white transition-colors">Migración Gratuita</a></li>
+                        <li><a href="#" class="hover:text-white transition-colors">Soporte 24/7</a></li>
                     </ul>
                 </div>
 

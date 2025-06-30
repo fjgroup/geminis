@@ -75,8 +75,8 @@
       "headline": "Vende Tus Productos en Internet",
       "description": "Convierte tu idea en un negocio rentable con una tienda online que acepta pagos y gestiona inventario automáticamente.",
       "icon": "shopping-cart",
-      "color": "bg-amber-100",
-      "accentColor": "text-amber-900",
+      "color": "bg-brown-custom",
+      "accentColor": "text-brown-custom",
       "benefits": [
         "Tienda online completa y profesional",
         "Acepta pagos con tarjeta y transferencias",

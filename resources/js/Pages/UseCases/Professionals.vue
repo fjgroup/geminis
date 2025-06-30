@@ -5,18 +5,19 @@
             <div class="absolute inset-0 bg-gradient-to-r from-indigo-600/5 to-blue-600/5"></div>
 
             <!-- Navigation -->
-            <nav class="relative z-10 px-6 py-4">
+            <nav class="relative z-10 px-4 sm:px-6 py-4">
                 <div class="max-w-7xl mx-auto flex justify-between items-center">
                     <div class="flex items-center">
-                        <img src="/images/logo.png" alt="Fj Group CA" class="h-8 w-auto mr-3">
-                        <span class="text-2xl font-bold text-gray-900">Fj Group CA</span>
+                        <img src="/images/logo.png" alt="Fj Group CA" class="h-6 sm:h-8 w-auto mr-2 sm:mr-3">
+                        <span class="text-lg sm:text-2xl font-bold text-gray-900">Fj Group CA</span>
                     </div>
-                    <div class="flex space-x-4">
-                        <Link :href="route('sales.home')" class="text-gray-600 hover:text-gray-900 font-medium">
+                    <div class="flex flex-col sm:flex-row space-y-1 sm:space-y-0 sm:space-x-4 text-right">
+                        <Link :href="route('sales.home')"
+                            class="text-gray-600 hover:text-gray-900 font-medium text-sm sm:text-base">
                         ← Volver al inicio
                         </Link>
                         <Link v-if="canLogin" :href="route('login')"
-                            class="text-gray-600 hover:text-gray-900 font-medium">
+                            class="text-gray-600 hover:text-gray-900 font-medium text-sm sm:text-base">
                         Iniciar Sesión
                         </Link>
                     </div>
@@ -24,19 +25,20 @@
             </nav>
 
             <!-- Hero Content -->
-            <div class="relative z-10 max-w-7xl mx-auto px-6 py-20">
-                <div class="grid lg:grid-cols-2 gap-12 items-center">
+            <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 py-12 sm:py-20">
+                <div class="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
                     <div>
                         <div
                             class="inline-flex items-center px-4 py-2 bg-indigo-100 text-indigo-800 rounded-full text-sm font-medium mb-6">
                             👔 Para Profesionales
                         </div>
 
-                        <h1 class="text-5xl md:text-6xl font-bold text-gray-900 mb-6 leading-tight">
+                        <h1
+                            class="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 mb-4 sm:mb-6 leading-tight">
                             Tu Presencia Profesional Online
                         </h1>
 
-                        <p class="text-xl md:text-2xl text-gray-600 mb-8">
+                        <p class="text-lg sm:text-xl md:text-2xl text-gray-600 mb-6 sm:mb-8">
                             Destaca en tu sector con una presencia web profesional. Atrae más clientes y proyecta
                             confianza.
                             <strong>Tu expertise merece una web de calidad.</strong>

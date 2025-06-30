@@ -44,43 +44,33 @@ class PublicCheckoutController extends Controller
         return Inertia::render('PublicCheckout/DomainVerification', [
             'purchaseContext' => $purchaseContext,
             'product'         => $product,
-            'useCaseMessages' => $this->getUseCaseMessages(),
+            'useCaseMessages' => $this->getUseCaseMessages($purchaseContext['use_case'] ?? null),
         ]);
     }
 
     /**
-     * Step 2: Process domain verification
+     * Process domain verification
      */
-    public function processDomainVerification(Request $request): RedirectResponse
+    public function processDomainVerification(Request $request): \Illuminate\Http\RedirectResponse
     {
-        $validated = $request->validate([
-            'domain' => 'required|string|max:255',
-            'action' => 'required|string|in:register,transfer,existing',
-        ]);
-
         $purchaseContext = session('purchase_context');
+
         if (! $purchaseContext) {
             return redirect()->route('sales.home')
-                ->with('error', 'Sesión expirada.');
+                ->with('error', 'Sesión expirada. Por favor, selecciona tu plan nuevamente.');
         }
 
-        // Verify domain availability if registering
-        if ($validated['action'] === 'register') {
-            $domainCheck = $this->nameSiloService->checkDomainAvailability($validated['domain']);
-
-            if ($domainCheck['status'] !== 'available') {
-                return redirect()->back()
-                    ->withErrors(['domain' => 'Este dominio no está disponible para registro.'])
-                    ->withInput();
-            }
-        }
+        $validated = $request->validate([
+            'domain' => 'required|string|max:255',
+            'action' => 'required|string|in:register,existing',
+        ]);
 
         // Store domain info in session
         session([
             'purchase_context' => array_merge($purchaseContext, [
                 'domain'        => $validated['domain'],
                 'domain_action' => $validated['action'],
-                'domain_price'  => $validated['action'] === 'register' ? ($domainCheck['price'] ?? 0) : 0,
+                'domain_price'  => $validated['action'] === 'register' ? 15.00 : 0, // Precio ejemplo
             ]),
         ]);
 
@@ -264,8 +254,16 @@ class PublicCheckoutController extends Controller
             // Log the user in
             Auth::login($user);
 
-            // Keep the sales context for the checkout process
-            session(['sales_context' => $salesContext]);
+            // Convert sales context to purchase context for the checkout flow
+            session([
+                'purchase_context' => [
+                    'use_case'     => $salesContext['use_case'],
+                    'plan'         => $salesContext['plan'] ?? 'professional',
+                    'product_slug' => $salesContext['product_slug'],
+                    'source'       => 'sales_landing',
+                    'user_id'      => $user->id,
+                ],
+            ]);
 
             // Redirect to existing domain selection page
             return redirect()->route('client.checkout.select-domain')
@@ -278,5 +276,36 @@ class PublicCheckoutController extends Controller
                 ->withErrors(['email' => 'Error al crear la cuenta. Por favor, inténtalo de nuevo.'])
                 ->withInput();
         }
+    }
+
+    /**
+     * Get use case specific messages
+     */
+    private function getUseCaseMessages(?string $useCase = null): array
+    {
+        $messages = [
+            'educators'      => [
+                'domain_suggestion'     => 'Ej: miacademia.com, cursosdeingles.com',
+                'registration_title'    => 'Crea tu cuenta de educador',
+                'registration_subtitle' => 'Comienza a enseñar online hoy mismo',
+            ],
+            'entrepreneurs'  => [
+                'domain_suggestion'     => 'Ej: mitienda.com, ventasonline.com',
+                'registration_title'    => 'Crea tu cuenta de emprendedor',
+                'registration_subtitle' => 'Lanza tu negocio online',
+            ],
+            'professionals'  => [
+                'domain_suggestion'     => 'Ej: miprofesion.com, consultoria.com',
+                'registration_title'    => 'Crea tu cuenta profesional',
+                'registration_subtitle' => 'Construye tu presencia online',
+            ],
+            'small-business' => [
+                'domain_suggestion'     => 'Ej: minegocio.com, empresa.com',
+                'registration_title'    => 'Crea tu cuenta empresarial',
+                'registration_subtitle' => 'Digitaliza tu negocio',
+            ],
+        ];
+
+        return $useCase ? ($messages[$useCase] ?? []) : $messages;
     }
 }
