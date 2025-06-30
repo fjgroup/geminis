@@ -1,19 +1,21 @@
 <?php
-
 namespace App\Policies;
 
 use App\Models\ProductType;
 use App\Models\User;
-use Illuminate\Auth\Access\Response;
+use Illuminate\Auth\Access\HandlesAuthorization;
 
 class ProductTypePolicy
 {
+    use HandlesAuthorization;
+
     /**
      * Determine whether the user can view any models.
      */
     public function viewAny(User $user): bool
     {
-        return false;
+        // Solo administradores pueden ver tipos de productos
+        return $user->role === 'admin';
     }
 
     /**
@@ -21,7 +23,8 @@ class ProductTypePolicy
      */
     public function view(User $user, ProductType $productType): bool
     {
-        return false;
+        // Solo administradores pueden ver tipos de productos específicos
+        return $user->role === 'admin';
     }
 
     /**
@@ -29,7 +32,8 @@ class ProductTypePolicy
      */
     public function create(User $user): bool
     {
-        return false;
+        // Solo administradores pueden crear tipos de productos
+        return $user->role === 'admin';
     }
 
     /**
@@ -37,7 +41,8 @@ class ProductTypePolicy
      */
     public function update(User $user, ProductType $productType): bool
     {
-        return false;
+        // Solo administradores pueden actualizar tipos de productos
+        return $user->role === 'admin';
     }
 
     /**
@@ -45,7 +50,13 @@ class ProductTypePolicy
      */
     public function delete(User $user, ProductType $productType): bool
     {
-        return false;
+        // Solo administradores pueden eliminar tipos de productos
+        // Verificar que no haya productos asociados
+        if ($productType->products()->exists()) {
+            return false;
+        }
+
+        return $user->role === 'admin';
     }
 
     /**
@@ -53,7 +64,7 @@ class ProductTypePolicy
      */
     public function restore(User $user, ProductType $productType): bool
     {
-        return false;
+        return $user->role === 'admin';
     }
 
     /**
@@ -61,6 +72,7 @@ class ProductTypePolicy
      */
     public function forceDelete(User $user, ProductType $productType): bool
     {
-        return false;
+        // Solo super administradores pueden eliminar permanentemente
+        return $user->role === 'admin' && $user->email === config('app.super_admin_email');
     }
 }

@@ -43,24 +43,20 @@ use App\Http\Controllers\Client\ClientDashboardController;
 use App\Http\Controllers\Client\ClientFundAdditionController;                               // Added
 use App\Http\Controllers\Client\ClientManualPaymentController;                              // Import the client service controller
 use App\Http\Controllers\Client\ClientServiceController;                                    // Import the client invoice payment controller and alias it
-use App\Http\Controllers\Client\InvoiceController as ClientInvoiceController;               // Import the client invoice controller and alias it
 use App\Http\Controllers\Client\InvoicePaymentController as ClientInvoicePaymentController; // Import the client transaction controller and alias it
-use App\Http\Controllers\Client\PayPalController;                                           // Import the manual payment controller
 use App\Http\Controllers\Client\PayPalPaymentController;                                    // Import the fund addition controller
-use App\Http\Controllers\Client\TransactionController as ClientTransactionController;       // Import the PayPalController
 use App\Http\Controllers\LandingPageController;                                             // Import the new PayPalPaymentController
 use App\Http\Controllers\ProfileController;                                                 // Import the new ProductTypeController
 use App\Http\Controllers\Reseller\ResellerClientController;                                 // Import the new LandingPageController
 use App\Http\Controllers\Reseller\ResellerDashboardController;
-use Illuminate\Foundation\Application; // Added for reseller dashboard
-use Illuminate\Support\Facades\Route;  // Import ApiProductController
+use Illuminate\Support\Facades\Route; // Import ApiProductController
 use Inertia\Inertia;
 
 // Import DomainApiController
 
 // Rutas para la administración
-// Aplicamos el middleware 'admin' para proteger estas rutas
-Route::prefix('admin')->name('admin.')->middleware(['auth', 'verified', 'admin'])->group(function () {
+// Aplicamos múltiples capas de seguridad para proteger estas rutas
+Route::prefix('admin')->name('admin.')->middleware(['auth', 'verified', 'admin', 'admin.security', 'input.sanitize'])->group(function () {
     Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
 
     Route::resource('users', AdminUserController::class);

@@ -1,21 +1,19 @@
 <?php
-
 namespace App\Http\Controllers\Admin;
+
 use App\Http\Controllers\Controller;
-
-use App\Models\User;
-use App\Models\ResellerProfile;
-
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Http\RedirectResponse;
-
 use App\Http\Requests\Admin\StoreUserRequest;
 use App\Http\Requests\Admin\UpdateUserRequest;
-
+use App\Models\ResellerProfile;
+use App\Models\User;
+use App\Traits\AuditLogging;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Hash;
 use Inertia\Inertia;
 
 class UserController extends Controller
 {
+    use AuditLogging;
     /**
      * Display a listing of the resource.
      */
@@ -23,16 +21,15 @@ class UserController extends Controller
     {
         $this->authorize('viewAny', User::class);
 
-
         $users = User::latest()
-            // ->with('reseller') // Opcional: si necesitas mostrar el nombre del revendedor
+        // ->with('reseller') // Opcional: si necesitas mostrar el nombre del revendedor
             ->paginate(10)
-            ->through(fn ($user) => [ // Mapea solo los campos que necesitas
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-                'role' => $user->role,
-                'status' => $user->status,
+            ->through(fn($user) => [ // Mapea solo los campos que necesitas
+                'id'                   => $user->id,
+                'name'                 => $user->name,
+                'email'                => $user->email,
+                'role'                 => $user->role,
+                'status'               => $user->status,
                 // 'company_name' => $user->company_name, // Añadir si se va a mostrar
                 // 'reseller_name' => $user->reseller_id && $user->reseller ? $user->reseller->name : 'N/A', // Ejemplo
                 'created_at_formatted' => $user->created_at ? $user->created_at->format('d/m/Y H:i') : null,
@@ -56,9 +53,9 @@ class UserController extends Controller
         // Aquí podríamos pasar datos adicionales si fueran necesarios (ej: listas para selects)
         // $roles = [['value' => 'admin', 'label' => 'Admin'], ...];
         return Inertia::render('Admin/Users/Create', [
-            'resellers' => $resellers->map(fn ($reseller) => [
+            'resellers' => $resellers->map(fn($reseller) => [
                 'value' => $reseller->id,
-                'label' => $reseller->name . ($reseller->company_name ? " ({$reseller->company_name})" : "")
+                'label' => $reseller->name . ($reseller->company_name ? " ({$reseller->company_name})" : ""),
             ]),
         ]);
     }
@@ -68,27 +65,27 @@ class UserController extends Controller
      */
     public function store(StoreUserRequest $request): RedirectResponse
     {
-        // La autorización principal se maneja en StoreUserRequest
+                                                 // La autorización principal se maneja en StoreUserRequest
         $this->authorize('create', User::class); // Es bueno tenerlo aquí también por claridad
         $validatedData = $request->validated();
         // Asignar el usuario creado a la variable $user
         $user = User::create([
-            'name' => $validatedData['name'],
-            'email' => $validatedData['email'],
-            'password' => Hash::make($validatedData['password']),
-            'role' => $validatedData['role'],
-            'reseller_id' => $validatedData['reseller_id'] ?? null,
-            'company_name' => $validatedData['company_name'] ?? null,
-            'phone_number' => $validatedData['phone_number'] ?? null,
-            'address_line1' => $validatedData['address_line1'] ?? null,
-            'address_line2' => $validatedData['address_line2'] ?? null,
-            'city' => $validatedData['city'] ?? null,
+            'name'           => $validatedData['name'],
+            'email'          => $validatedData['email'],
+            'password'       => Hash::make($validatedData['password']),
+            'role'           => $validatedData['role'],
+            'reseller_id'    => $validatedData['reseller_id'] ?? null,
+            'company_name'   => $validatedData['company_name'] ?? null,
+            'phone_number'   => $validatedData['phone_number'] ?? null,
+            'address_line1'  => $validatedData['address_line1'] ?? null,
+            'address_line2'  => $validatedData['address_line2'] ?? null,
+            'city'           => $validatedData['city'] ?? null,
             'state_province' => $validatedData['state_province'] ?? null,
-            'postal_code' => $validatedData['postal_code'] ?? null,
-            'country' => $validatedData['country'] ?? null,
-            'status' => $validatedData['status'],
-            'language_code' => $validatedData['language_code'] ?? 'es',
-            'currency_code' => $validatedData['currency_code'] ?? 'USD',
+            'postal_code'    => $validatedData['postal_code'] ?? null,
+            'country'        => $validatedData['country'] ?? null,
+            'status'         => $validatedData['status'],
+            'language_code'  => $validatedData['language_code'] ?? 'es',
+            'currency_code'  => $validatedData['currency_code'] ?? 'USD',
         ]);
 
         // Crear ResellerProfile si el rol es reseller y se proporcionan datos
@@ -97,6 +94,12 @@ class UserController extends Controller
             // La validación de $profileData debería estar en StoreUserRequest
             $user->resellerProfile()->create($profileData);
         }
+
+        // Log de auditoría
+        $this->logAdminAction('user_created', $user, [
+            'role'                 => $user->role,
+            'has_reseller_profile' => $user->role === 'reseller' && $request->has('reseller_profile'),
+        ]);
 
         return redirect()->route('admin.users.index')->with('success', 'Usuario creado exitosamente.');
     }
@@ -114,29 +117,29 @@ class UserController extends Controller
      */
     public function update(UpdateUserRequest $request, User $user): RedirectResponse
     {
-        // La autorización principal se maneja en UpdateUserRequest
+                                           // La autorización principal se maneja en UpdateUserRequest
         $this->authorize('update', $user); // Es bueno tenerlo aquí también por claridad
         $validatedData = $request->validated();
 
         $updateData = collect($validatedData)->except('password')->toArray();
 
-        if (!empty($validatedData['password'])) {
+        if (! empty($validatedData['password'])) {
             $updateData['password'] = Hash::make($validatedData['password']);
         }
 
         // Preparamos los datos base para la actualización
         $finalUpdateData = array_merge($updateData, [
-            'company_name' => $validatedData['company_name'] ?? null,
-            'phone_number' => $validatedData['phone_number'] ?? null,
-            'address_line1' => $validatedData['address_line1'] ?? null,
-            'address_line2' => $validatedData['address_line2'] ?? null,
-            'city' => $validatedData['city'] ?? null,
+            'company_name'   => $validatedData['company_name'] ?? null,
+            'phone_number'   => $validatedData['phone_number'] ?? null,
+            'address_line1'  => $validatedData['address_line1'] ?? null,
+            'address_line2'  => $validatedData['address_line2'] ?? null,
+            'city'           => $validatedData['city'] ?? null,
             'state_province' => $validatedData['state_province'] ?? null,
-            'postal_code' => $validatedData['postal_code'] ?? null,
-            'country' => $validatedData['country'] ?? null,
-            'status' => $validatedData['status'],
-            'language_code' => $validatedData['language_code'] ?? 'es',
-            'currency_code' => $validatedData['currency_code'] ?? 'USD',
+            'postal_code'    => $validatedData['postal_code'] ?? null,
+            'country'        => $validatedData['country'] ?? null,
+            'status'         => $validatedData['status'],
+            'language_code'  => $validatedData['language_code'] ?? 'es',
+            'currency_code'  => $validatedData['currency_code'] ?? 'USD',
         ]);
 
         // Lógica para reseller_id al actualizar
@@ -144,7 +147,7 @@ class UserController extends Controller
             $finalUpdateData['reseller_id'] = $validatedData['reseller_id'] ?? $user->reseller_id; // Mantener si no se envía, o permitir cambiar
         } elseif ($validatedData['role'] === 'reseller') {
             $finalUpdateData['reseller_id'] = null; // Un revendedor no tiene un reseller_id padre
-        } else { // admin
+        } else {                                // admin
             $finalUpdateData['reseller_id'] = null;
         }
         $user->update($finalUpdateData);
@@ -178,10 +181,10 @@ class UserController extends Controller
         $resellers = User::where('role', 'reseller')->orderBy('name')->get(['id', 'name', 'company_name']);
 
         return Inertia::render('Admin/Users/Edit', [
-            'user' => $user,
-            'resellers' => $resellers->map(fn ($reseller) => [
+            'user'      => $user,
+            'resellers' => $resellers->map(fn($reseller) => [
                 'value' => $reseller->id,
-                'label' => $reseller->name . ($reseller->company_name ? " ({$reseller->company_name})" : "")
+                'label' => $reseller->name . ($reseller->company_name ? " ({$reseller->company_name})" : ""),
             ]),
         ]);
     }
@@ -192,7 +195,18 @@ class UserController extends Controller
     {
         $this->authorize('delete', $user);
 
+        // Guardar información para auditoría antes de eliminar
+        $userInfo = [
+            'id'    => $user->id,
+            'name'  => $user->name,
+            'email' => $user->email,
+            'role'  => $user->role,
+        ];
+
         $user->delete();
+
+        // Log de auditoría
+        $this->logAdminAction('user_deleted', null, $userInfo);
 
         return redirect()->route('admin.users.index')->with('success', 'User deleted successfully.');
     }

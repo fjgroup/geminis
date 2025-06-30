@@ -1,15 +1,14 @@
 <?php
-
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\ProductType;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log; // Added Log
-use Illuminate\Validation\Rule; // Added Rule
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;        // Added Log
+use Illuminate\Support\Facades\Log; // Added Rule
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
-use Illuminate\Http\RedirectResponse;
 
 class AdminProductTypeController extends Controller
 {
@@ -18,7 +17,7 @@ class AdminProductTypeController extends Controller
      */
     public function index(): InertiaResponse
     {
-        // $this->authorize('viewAny', ProductType::class); // TODO: Implement Policy
+        $this->authorize('viewAny', ProductType::class);
         $productTypes = ProductType::orderBy('name')->paginate(10);
         return Inertia::render('Admin/ProductTypes/Index', ['productTypes' => $productTypes]);
     }
@@ -28,7 +27,7 @@ class AdminProductTypeController extends Controller
      */
     public function create(): InertiaResponse
     {
-        // $this->authorize('create', ProductType::class); // TODO: Implement Policy
+        $this->authorize('create', ProductType::class);
         return Inertia::render('Admin/ProductTypes/Create');
     }
 
@@ -40,15 +39,15 @@ class AdminProductTypeController extends Controller
         // $this->authorize('create', ProductType::class); // TODO: Implement Policy
 
         $validatedData = $request->validate([
-            'name' => 'required|string|max:255',
-            'slug' => 'required|string|alpha_dash|max:255|unique:product_types,slug',
-            'requires_domain' => 'required|boolean',
+            'name'                     => 'required|string|max:255',
+            'slug'                     => 'required|string|alpha_dash|max:255|unique:product_types,slug',
+            'requires_domain'          => 'required|boolean',
             'creates_service_instance' => 'required|boolean',
-            'description' => 'nullable|string|max:5000',
+            'description'              => 'nullable|string|max:5000',
         ]);
 
         // Ensure boolean values are correctly cast from request if not already
-        $validatedData['requires_domain'] = $request->boolean('requires_domain');
+        $validatedData['requires_domain']          = $request->boolean('requires_domain');
         $validatedData['creates_service_instance'] = $request->boolean('creates_service_instance');
 
         ProductType::create($validatedData);
@@ -82,15 +81,15 @@ class AdminProductTypeController extends Controller
         // $this->authorize('update', $productType); // TODO: Implement Policy
 
         $validatedData = $request->validate([
-            'name' => 'required|string|max:255',
-            'slug' => ['required', 'string', 'alpha_dash', 'max:255', Rule::unique('product_types')->ignore($productType->id)],
-            'requires_domain' => 'required|boolean',
+            'name'                     => 'required|string|max:255',
+            'slug'                     => ['required', 'string', 'alpha_dash', 'max:255', Rule::unique('product_types')->ignore($productType->id)],
+            'requires_domain'          => 'required|boolean',
             'creates_service_instance' => 'required|boolean',
-            'description' => 'nullable|string|max:5000',
+            'description'              => 'nullable|string|max:5000',
         ]);
 
         // Ensure boolean values are correctly cast from request
-        $validatedData['requires_domain'] = $request->boolean('requires_domain');
+        $validatedData['requires_domain']          = $request->boolean('requires_domain');
         $validatedData['creates_service_instance'] = $request->boolean('creates_service_instance');
 
         $productType->update($validatedData);

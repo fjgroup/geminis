@@ -14,23 +14,8 @@ use Illuminate\Http\Request;
 
 class ConfigurableOptionController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
-    {
-        // No se usa directamente, las opciones se listan en la vista del grupo
-        abort(404);
-    }
-
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
-    {
-        // No se usa directamente, el formulario se integra en la vista del grupo
-        abort(404);
-    }
+    // Los métodos index() y create() no se utilizan ya que las opciones
+    // se gestionan directamente desde la vista del grupo
 
     /**
      * Store a newly created resource in storage.
@@ -44,23 +29,8 @@ class ConfigurableOptionController extends Controller
             ->with('success', 'Opción configurable creada exitosamente.');
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(ConfigurableOption $configurableOption)
-    {
-        // No se usa directamente
-        abort(404);
-    }
-
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(ConfigurableOption $configurableOption)
-    {
-        // No se usa directamente, el formulario se integra en la vista del grupo
-        abort(404);
-    }
+    // Los métodos show() y edit() no se utilizan ya que las opciones
+    // se gestionan directamente desde la vista del grupo
 
     /**
      * Update the specified resource in storage.

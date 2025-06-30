@@ -18,6 +18,8 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'admin'          => \App\Http\Middleware\EnsureUserIsAdmin::class,
+            'admin.security' => \App\Http\Middleware\AdminSecurityMiddleware::class,
+            'input.sanitize' => \App\Http\Middleware\InputSanitizationMiddleware::class,
             'role.reseller'  => \App\Http\Middleware\EnsureUserIsReseller::class,
             'client'         => \App\Http\Middleware\EnsureUserIsClient::class,
             'cart.ratelimit' => \App\Http\Middleware\CartRateLimitMiddleware::class,
