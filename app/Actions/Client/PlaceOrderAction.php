@@ -3,8 +3,10 @@ namespace App\Actions\Client;
 
 use App\Models\BillingCycle;
 use App\Models\ClientService;
+use App\Models\ConfigurableOption;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
+use App\Models\OrderConfigurableOption;
 use App\Models\Product;
 use App\Models\ProductPricing;
 use App\Models\User;
@@ -129,21 +131,87 @@ class PlaceOrderAction
                     $configurableOptionsPriceAdjustment  = 0.0;
                     $configurableOptionsForServiceNotes  = [];
 
-                    if (isset($item['configurable_options']) && is_array($item['configurable_options'])) {
-                        foreach ($item['configurable_options'] as $groupId => $optionId) {
-                            $group  = $productModel->configurableOptionGroups->find($groupId);
-                            $option = $group ? $group->options->find($optionId) : null;
+                    // Buscar opciones configurables desde la tabla order_configurable_options usando cart_item_id
+                    $cartItemId = $item['cart_item_id'] ?? null;
+                    if ($cartItemId) {
+                        $configurableOptions = OrderConfigurableOption::where('cart_item_id', $cartItemId)
+                            ->where('is_active', true)
+                            ->get();
 
-                            if ($group && $option) {
-                                $configurableOptionsDescriptionArray[] = $group->name . ': ' . $option->name;
-                                $configurableOptionsForServiceNotes[]  = $group->name . ': ' . $option->name;
+                        foreach ($configurableOptions as $configOption) {
+                            $quantity   = $configOption->quantity;
+                            $groupName  = $configOption->group_name;
+                            $optionName = $configOption->option_name;
+                            $totalPrice = $configOption->total_price;
 
-                                $optionPricing = $option->pricings
-                                    ->where('billing_cycle_id', $pricingModel->billing_cycle_id)
-                                    ->first();
-                                if ($optionPricing) {
-                                    $configurableOptionsPriceAdjustment += (float) $optionPricing->price;
-                                    $currentSetupFee += (float) ($optionPricing->setup_fee ?? 0.0);
+                            // Generar descripción para la factura
+                            $description = $groupName . ': ' . $optionName;
+                            if ($quantity > 1) {
+                                $description .= " (Cantidad: {$quantity})";
+                            }
+                            $configurableOptionsDescriptionArray[] = $description;
+
+                            // Generar nota detallada para el servicio
+                            $serviceNote = $this->generateDetailedServiceNote($groupName, $optionName, $quantity);
+                            if ($serviceNote) {
+                                $configurableOptionsForServiceNotes[] = $serviceNote;
+                            }
+
+                            // Sumar al ajuste de precio
+                            $configurableOptionsPriceAdjustment += (float) $totalPrice;
+                        }
+                    }
+
+                    // Fallback: procesar opciones desde la estructura del carrito si no hay cart_item_id
+                    if (empty($configurableOptionsForServiceNotes) && isset($item['configurable_options']) && is_array($item['configurable_options'])) {
+                        foreach ($item['configurable_options'] as $optionId => $optionData) {
+                            // Manejar nueva estructura de opciones configurables con cantidades
+                            if (is_array($optionData) && isset($optionData['option_id'], $optionData['group_id'])) {
+                                $option = ConfigurableOption::with('group')->find($optionData['option_id']);
+                                $group  = $option ? $option->group : null;
+
+                                if ($group && $option) {
+                                    $quantity = $optionData['quantity'] ?? 1;
+
+                                    // Generar descripción detallada para factura
+                                    $description = $group->name . ': ' . $option->name;
+                                    if ($option->option_type === 'quantity' && $quantity > 1) {
+                                        $description .= " (Cantidad: {$quantity})";
+                                    }
+                                    $configurableOptionsDescriptionArray[] = $description;
+
+                                    // Generar nota detallada para el servicio
+                                    $serviceNote = $this->generateDetailedServiceNote($group->name, $option->name, $quantity);
+                                    if ($serviceNote) {
+                                        $configurableOptionsForServiceNotes[] = $serviceNote;
+                                    }
+
+                                    // Calcular ajuste de precio
+                                    $optionPricing = $option->pricings
+                                        ->where('billing_cycle_id', $pricingModel->billing_cycle_id)
+                                        ->first();
+                                    if ($optionPricing) {
+                                        $priceAdjustment = (float) $optionPricing->price * $quantity;
+                                        $configurableOptionsPriceAdjustment += $priceAdjustment;
+                                        $currentSetupFee += (float) ($optionPricing->setup_fee ?? 0.0);
+                                    }
+                                }
+                            } else {
+                                // Mantener compatibilidad con estructura antigua (groupId => optionId)
+                                $group  = $productModel->configurableOptionGroups->find($optionId);
+                                $option = $group ? $group->options->find($optionData) : null;
+
+                                if ($group && $option) {
+                                    $configurableOptionsDescriptionArray[] = $group->name . ': ' . $option->name;
+                                    $configurableOptionsForServiceNotes[]  = $group->name . ': ' . $option->name;
+
+                                    $optionPricing = $option->pricings
+                                        ->where('billing_cycle_id', $pricingModel->billing_cycle_id)
+                                        ->first();
+                                    if ($optionPricing) {
+                                        $configurableOptionsPriceAdjustment += (float) $optionPricing->price;
+                                        $currentSetupFee += (float) ($optionPricing->setup_fee ?? 0.0);
+                                    }
                                 }
                             }
                         }
@@ -323,28 +391,18 @@ class PlaceOrderAction
             }
         }
 
-        if ($itemKeyInAccount === 'primary_service' && $checkConfigOptions && isset($item['configurable_options']) && is_array($item['configurable_options'])) {
-            $product->loadMissing('configurableOptionGroups.options.pricings');
+        // Las opciones configurables ahora se validan cuando se guardan en order_configurable_options
+        // No necesitamos validarlas aquí desde el carrito de sesión
+        if ($itemKeyInAccount === 'primary_service' && $checkConfigOptions && isset($item['cart_item_id'])) {
+            // Validar que existan opciones configurables válidas en la tabla dedicada
+            $cartItemId          = $item['cart_item_id'];
+            $configurableOptions = OrderConfigurableOption::where('cart_item_id', $cartItemId)
+                ->where('is_active', true)
+                ->get();
 
-            foreach ($item['configurable_options'] as $groupId => $optionId) {
-                if (empty($groupId) || empty($optionId) || ! is_numeric($groupId) || ! is_numeric($optionId)) {
-                    throw new Exception("Opción configurable inválida (IDs no numéricos) para '{$productNameForError}'.");
-                }
-
-                $group = $product->configurableOptionGroups->find($groupId);
-                if (! $group) {
-                    throw new Exception("Grupo de opción configurable inválido (ID: {$groupId}) para '{$productNameForError}'.");
-                }
-
-                $option = $group->options->find($optionId);
-                if (! $option) {
-                    throw new Exception("Opción configurable inválida (ID: {$optionId}) para el grupo '{$group->name}' en '{$productNameForError}'.");
-                }
-
-                $optionPricing = $option->pricings->where('billing_cycle_id', $itemBillingCycle->id)->first();
-                if (! $optionPricing) {
-                    Log::debug("No se encontró ConfigurableOptionPricing para la opción {$option->id} ('{$option->name}') y ciclo {$itemBillingCycle->id} en producto '{$productNameForError}'. Se asume precio 0 para esta opción/ciclo.");
-                }
+            // Log para debug - las opciones configurables se validaron al guardarlas
+            if ($configurableOptions->isNotEmpty()) {
+                Log::debug("PlaceOrderAction@validateCartItem: Encontradas {$configurableOptions->count()} opciones configurables válidas para '{$productNameForError}'.");
             }
         }
     }
@@ -427,6 +485,45 @@ class PlaceOrderAction
                     'cycle_multiplier_received' => $billingCycle->cycle_multiplier ?? 'N/A',
                 ]);
                 return $startDate->addMonthsNoOverflow(1);
+        }
+    }
+
+    /**
+     * Generar nota detallada para el servicio basada en las opciones configurables
+     */
+    private function generateDetailedServiceNote(string $groupName, string $optionName, float $quantity): string
+    {
+        // Mapear nombres de grupos a descripciones más específicas
+        $groupMappings = [
+            'Espacio en Disco' => 'GB de espacio web adicional',
+            'vCPU'             => 'vCPU adicionales',
+            'vRam'             => 'GB de RAM adicional',
+            'Memoria RAM'      => 'GB de RAM adicional',
+            'Transferencia'    => 'GB de transferencia adicional',
+            'Seguridad Email'  => 'servicio de seguridad email',
+            'SpamExperts'      => 'protección SpamExperts',
+            'Backup'           => 'servicios de backup adicionales',
+            'SSL'              => 'certificados SSL adicionales',
+        ];
+
+        // Obtener la descripción específica o usar el nombre del grupo como fallback
+        $description = $groupMappings[$groupName] ?? strtolower($groupName);
+
+        // Generar la nota según el tipo de recurso
+        if ($quantity > 1) {
+            // Para cantidades mayores a 1, mostrar la cantidad específica
+            if (str_contains($description, 'GB') || str_contains($description, 'vCPU')) {
+                return "{$quantity} {$description}";
+            } else {
+                return "{$quantity} unidades de {$description}";
+            }
+        } else {
+            // Para cantidad 1, usar descripción simple
+            if (str_contains($description, 'servicio') || str_contains($description, 'protección')) {
+                return ucfirst($description) . " activado";
+            } else {
+                return "1 {$description}";
+            }
         }
     }
 }

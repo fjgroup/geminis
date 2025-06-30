@@ -17,26 +17,27 @@ class ProductConfigurableOptionGroupSeeder extends Seeder
         $optionGroups = ConfigurableOptionGroup::all();
 
         // Configuraciones para cada producto (solo grupos que realmente existen)
+        // TODAS LAS OPCIONES SON OPCIONALES - El cliente puede elegir solo las que necesite
         $productConfigurations = [
-            // Hosting Web Eco (ID 1)
-            1 => [
-                'Espacio en Disco' => ['base_quantity' => 5, 'display_order' => 1, 'is_required' => true],
-                'vCPU'             => ['base_quantity' => 1, 'display_order' => 2, 'is_required' => true],
-                'vRam'             => ['base_quantity' => 1, 'display_order' => 3, 'is_required' => true],
-                'Seguridad Email'  => ['base_quantity' => 0, 'display_order' => 4, 'is_required' => false],
-            ],
-            // Hosting Web Pro (ID 2)
+            // Hosting Web Eco (ID 2)
             2 => [
-                'Espacio en Disco' => ['base_quantity' => 15, 'display_order' => 1, 'is_required' => true],
-                'vCPU'             => ['base_quantity' => 2, 'display_order' => 2, 'is_required' => true],
-                'vRam'             => ['base_quantity' => 2, 'display_order' => 3, 'is_required' => true],
+                'Espacio en Disco' => ['base_quantity' => 5, 'display_order' => 1, 'is_required' => false],
+                'vCPU'             => ['base_quantity' => 1, 'display_order' => 2, 'is_required' => false],
+                'vRam'             => ['base_quantity' => 1, 'display_order' => 3, 'is_required' => false],
                 'Seguridad Email'  => ['base_quantity' => 0, 'display_order' => 4, 'is_required' => false],
             ],
-            // Hosting Web Ultra (ID 3)
+            // Hosting Web Pro (ID 3)
             3 => [
-                'Espacio en Disco' => ['base_quantity' => 50, 'display_order' => 1, 'is_required' => true],
-                'vCPU'             => ['base_quantity' => 4, 'display_order' => 2, 'is_required' => true],
-                'vRam'             => ['base_quantity' => 4, 'display_order' => 3, 'is_required' => true],
+                'Espacio en Disco' => ['base_quantity' => 15, 'display_order' => 1, 'is_required' => false],
+                'vCPU'             => ['base_quantity' => 2, 'display_order' => 2, 'is_required' => false],
+                'vRam'             => ['base_quantity' => 2, 'display_order' => 3, 'is_required' => false],
+                'Seguridad Email'  => ['base_quantity' => 0, 'display_order' => 4, 'is_required' => false],
+            ],
+            // Hosting Web Ultra (ID 4)
+            4 => [
+                'Espacio en Disco' => ['base_quantity' => 50, 'display_order' => 1, 'is_required' => false],
+                'vCPU'             => ['base_quantity' => 4, 'display_order' => 2, 'is_required' => false],
+                'vRam'             => ['base_quantity' => 4, 'display_order' => 3, 'is_required' => false],
                 'Seguridad Email'  => ['base_quantity' => 0, 'display_order' => 4, 'is_required' => false],
             ],
         ];

@@ -508,17 +508,81 @@ const areAllConfigurableOptionsSelected = (product, selections) => {
     if (!product || !product.configurable_option_groups || product.configurable_option_groups.length === 0) {
         return true;
     }
+
     for (const group of product.configurable_option_groups) {
-        if (group.options && group.options.length > 0) {
-            // Asumir que todas las opciones son requeridas si el grupo existe y tiene opciones.
-            // Esta es una simplificación.
-            if (!selections || !selections[group.id]) {
-                console.warn(`Validación de opciones: Opción faltante para el grupo ${group.name} (ID: ${group.id})`);
+        // Solo validar grupos que sean realmente obligatorios
+        const isGroupRequired = group.is_required || (group.pivot && group.pivot.is_required);
+
+        if (isGroupRequired && group.options && group.options.length > 0) {
+            // Verificar si hay al menos una opción seleccionada en este grupo obligatorio
+            let hasSelectedOption = false;
+
+            for (const option of group.options) {
+                if (selections && selections[option.id]) {
+                    hasSelectedOption = true;
+                    break;
+                }
+            }
+
+            if (!hasSelectedOption) {
+                console.warn(`Validación de opciones: Opción faltante para el grupo obligatorio ${group.name} (ID: ${group.id})`);
                 return false;
             }
         }
     }
     return true;
+};
+
+// Función para generar resumen legible de configuración
+const generateConfigurationSummary = (product, selectedOptions) => {
+    console.log('🔧 generateConfigurationSummary llamada con:', {
+        product: product?.name,
+        hasGroups: product?.configurable_option_groups?.length > 0,
+        selectedOptions: selectedOptions,
+        selectedOptionsKeys: Object.keys(selectedOptions || {})
+    });
+
+    if (!product || !product.configurable_option_groups || !selectedOptions) {
+        console.log('🔧 Retornando configuración estándar - datos faltantes');
+        return 'Configuración estándar';
+    }
+
+    const summaryLines = [];
+
+    product.configurable_option_groups.forEach(group => {
+        console.log('🔧 Procesando grupo:', group.name);
+
+        if (group.options) {
+            group.options.forEach(option => {
+                const isSelected = selectedOptions[option.id];
+                const quantity = selectedOptions[`${option.id}_quantity`] || 1;
+
+                console.log(`🔧 Opción ${option.id} (${option.name}):`, {
+                    isSelected,
+                    quantity,
+                    optionType: option.option_type
+                });
+
+                if (isSelected) {
+                    let line = `• ${group.name}: ${option.name}`;
+
+                    if (option.option_type === 'quantity' && quantity > 1) {
+                        line += ` (Cantidad: ${quantity})`;
+                    }
+
+                    summaryLines.push(line);
+                    console.log('🔧 Línea agregada:', line);
+                }
+            });
+        }
+    });
+
+    const result = summaryLines.length > 0
+        ? `Configuración personalizada:\n${summaryLines.join('\n')}`
+        : 'Configuración estándar';
+
+    console.log('🔧 Resumen final generado:', result);
+    return result;
 };
 
 const handleSelectPrimaryService = (productId, pricingId) => {
@@ -546,7 +610,7 @@ const handleSelectPrimaryService = (productId, pricingId) => {
     // Validar opciones requeridas solo si hay opciones configurables
     if (product && product.configurable_option_groups && product.configurable_option_groups.length > 0) {
         if (!areAllConfigurableOptionsSelected(product, productOptionsSelections)) {
-            alert('Por favor, completa todas las opciones configurables requeridas para este plan.');
+            alert('Por favor, completa las opciones configurables obligatorias para este plan. Las demás opciones son opcionales y puedes elegir solo las que necesites.');
             return;
         }
     }
@@ -560,12 +624,27 @@ const handleSelectPrimaryService = (productId, pricingId) => {
     formPrimaryService.calculated_price = finalPrice;
     formPrimaryService.billing_cycle_id = billingCycleId;
 
+    // SOLUCIÓN SIMPLE: Generar resumen legible de configuración
+    console.log('🔧 DEBUG - Generando resumen de configuración:');
+    console.log('- product:', product);
+    console.log('- productOptionsSelections:', productOptionsSelections);
+
+    const configurationSummary = generateConfigurationSummary(product, productOptionsSelections);
+    console.log('- configurationSummary generado:', configurationSummary);
+
+    formPrimaryService.service_notes = configurationSummary;
+
     console.log('💰 Precio final:', finalPrice, '| Ciclo:', billingCycleId);
 
     console.log('🔍 OPCIONES CONFIGURABLES:');
     console.log('- Seleccionadas:', selectedConfigurableOptions.value[productId]);
     console.log('- En formulario:', formPrimaryService.configurable_options);
     console.log('- Total opciones:', Object.keys(formPrimaryService.configurable_options || {}).length);
+
+    console.log('📤 DATOS COMPLETOS A ENVIAR:');
+    console.log('- Formulario completo:', formPrimaryService.data());
+    console.log('- Resumen de configuración:', configurationSummary);
+
     formPrimaryService.post(route('client.cart.account.setPrimaryService'), {
         preserveScroll: true, // Inertia intentará mantener el scroll
         preserveState: false, // Permitir que las props se recarguen y actualicen la página. True puede prevenirlo.
@@ -660,7 +739,7 @@ onMounted(() => {
                         <div>
                             <p class="mb-4 text-lg text-gray-700 dark:text-gray-300">
                                 Añadiendo servicios para: <strong class="text-indigo-600">{{ displayAccountName
-                                }}</strong>
+                                    }}</strong>
                             </p>
 
                             <section>
@@ -675,7 +754,7 @@ onMounted(() => {
                                         <div>
                                             <h4 class="text-lg font-semibold text-gray-800 dark:text-gray-200">{{
                                                 product.name
-                                            }}</h4>
+                                                }}</h4>
                                             <p class="mb-3 text-sm text-gray-600 dark:text-gray-400">{{
                                                 product.description }}
                                             </p>

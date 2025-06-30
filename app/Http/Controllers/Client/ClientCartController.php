@@ -6,6 +6,7 @@ use App\Http\Requests\Client\CartOperationRequest;
 use App\Http\Traits\ClientSecurityTrait;
 use App\Models\ConfigurableOption;
 use App\Models\ConfigurableOptionPricing;
+use App\Models\OrderConfigurableOption;
 use App\Models\Product;
 use App\Models\ProductPricing;
 use Illuminate\Http\JsonResponse;
@@ -165,13 +166,43 @@ class ClientCartController extends Controller
                         }
                         $account['primary_service']['configurable_options_details'] = $enrichedOptions;
 
-                        Log::info('ClientCartController@getCartData: Opciones configurables procesadas.', [
-                            'product_id'      => $product->id,
-                            'total_options'   => count($enrichedOptions),
-                            'options_summary' => array_map(function ($opt) {
-                                return $opt['group_name'] . ': ' . $opt['option_name'] . ' (qty: ' . $opt['quantity'] . ', price: ' . $opt['total_price'] . ')';
-                            }, $enrichedOptions),
+                        Log::info('ClientCartController@getCartData: Opciones configurables procesadas desde carrito.', [
+                            'product_id'    => $product->id,
+                            'total_options' => count($enrichedOptions),
                         ]);
+                    }
+
+                    // Intentar cargar opciones configurables desde la tabla dedicada (nueva implementación)
+                    if (isset($account['primary_service']['cart_item_id'])) {
+                        $configurableOptions = OrderConfigurableOption::where('cart_item_id', $account['primary_service']['cart_item_id'])
+                            ->where('is_active', true)
+                            ->get();
+
+                        if ($configurableOptions->isNotEmpty()) {
+                            $enrichedOptionsFromDB = [];
+
+                            foreach ($configurableOptions as $configOption) {
+                                $enrichedOptionsFromDB[] = [
+                                    'group_id'      => $configOption->configurable_option_group_id,
+                                    'group_name'    => $configOption->group_name,
+                                    'option_id'     => $configOption->configurable_option_id,
+                                    'option_name'   => $configOption->option_name,
+                                    'quantity'      => $configOption->quantity,
+                                    'unit_price'    => $configOption->unit_price,
+                                    'total_price'   => $configOption->total_price,
+                                    'currency_code' => $configOption->currency_code,
+                                ];
+                            }
+
+                            // Sobrescribir con datos de la BD (más confiables)
+                            $account['primary_service']['configurable_options_details'] = $enrichedOptionsFromDB;
+
+                            Log::info('ClientCartController@getCartData: Opciones configurables cargadas desde BD.', [
+                                'product_id'    => $product->id,
+                                'cart_item_id'  => $account['primary_service']['cart_item_id'],
+                                'total_options' => count($enrichedOptionsFromDB),
+                            ]);
+                        }
                     }
                 } else {
                     $account['primary_service']['product_name']  = 'Servicio primario no disponible';
@@ -324,6 +355,14 @@ class ClientCartController extends Controller
         // Aplicar rate limiting
         $this->applyRateLimit('set_service', 15, 1);
 
+        // Debug: Log de datos recibidos
+        Log::info('🔍 setPrimaryServiceForAccount - Datos recibidos:', [
+            'all_request_data' => $request->all(),
+            'service_notes'    => $request->input('service_notes'),
+            'calculated_price' => $request->input('calculated_price'),
+            'billing_cycle_id' => $request->input('billing_cycle_id'),
+        ]);
+
         // Verificar que el usuario puede realizar la acción
         $this->ensureUserCanPerformAction();
 
@@ -392,12 +431,36 @@ class ClientCartController extends Controller
             'pricing_id'       => $pricing->id,
             'calculated_price' => $validatedData['calculated_price'] ?? null,
             'billing_cycle_id' => $validatedData['billing_cycle_id'] ?? null,
+            'service_notes'    => $validatedData['service_notes'] ?? 'Configuración estándar',
         ];
-        if (! empty($validatedData['configurable_options'])) {
-            $validConfigOptions  = [];
+        // SOLUCIÓN CREATIVA: Procesar opciones configurables desde JSON
+        $validConfigOptions      = [];
+        $configurableOptionsData = null;
+
+        // Intentar obtener opciones desde el campo JSON (nueva implementación)
+        if (! empty($validatedData['configurable_options_json'])) {
+            try {
+                $configurableOptionsData = json_decode($validatedData['configurable_options_json'], true);
+                Log::info('🎯 Opciones configurables decodificadas desde JSON:', [
+                    'json_raw'      => $validatedData['configurable_options_json'],
+                    'decoded_data'  => $configurableOptionsData,
+                    'decoded_count' => is_array($configurableOptionsData) ? count($configurableOptionsData) : 0,
+                ]);
+            } catch (\Exception $e) {
+                Log::error('Error decodificando opciones configurables JSON:', ['error' => $e->getMessage()]);
+            }
+        }
+
+        // Fallback: usar el método original si no hay JSON
+        if (empty($configurableOptionsData) && ! empty($validatedData['configurable_options'])) {
+            $configurableOptionsData = $validatedData['configurable_options'];
+            Log::info('🔄 Usando opciones configurables del método original');
+        }
+
+        if (! empty($configurableOptionsData)) {
             $productConfigGroups = $product->configurableOptionGroups->keyBy('id');
 
-            foreach ($validatedData['configurable_options'] as $optionKey => $value) {
+            foreach ($configurableOptionsData as $optionKey => $value) {
                 // Saltar claves de cantidad (terminan en _quantity)
                 if (str_ends_with($optionKey, '_quantity')) {
                     continue;
@@ -514,20 +577,18 @@ class ClientCartController extends Controller
 
         $account['primary_service'] = $primaryServiceData;
 
-        // Log del precio calculado para verificación
-        Log::info('ClientCartController@setPrimaryServiceForAccount: Servicio guardado con precio calculado.', [
-            'product_id'           => $product->id,
-            'pricing_id'           => $pricing->id,
-            'calculated_price'     => $validatedData['calculated_price'] ?? 'No enviado',
-            'billing_cycle_id'     => $validatedData['billing_cycle_id'] ?? 'No enviado',
-            'primary_service_data' => $primaryServiceData,
-        ]);
+        // Guardar opciones configurables en la tabla dedicada
+        if (! empty($validConfigOptions)) {
+            $this->saveConfigurableOptionsToDatabase($validConfigOptions, $primaryServiceData, $pricing, $request);
+        }
 
-        // Debug específico para verificar qué opciones se guardaron
-        Log::info('🔍 DEBUGGING - Opciones guardadas en el carrito:', [
-            'configurable_options_saved' => $primaryServiceData['configurable_options'] ?? 'No guardadas',
-            'configurable_options_count' => count($primaryServiceData['configurable_options'] ?? []),
-            'full_primary_service'       => $primaryServiceData
+        // Log del precio calculado para verificación
+        Log::info('ClientCartController@setPrimaryServiceForAccount: Servicio guardado.', [
+            'product_id'       => $product->id,
+            'pricing_id'       => $pricing->id,
+            'calculated_price' => $validatedData['calculated_price'] ?? 'No enviado',
+            'billing_cycle_id' => $validatedData['billing_cycle_id'] ?? 'No enviado',
+            'service_notes'    => $validatedData['service_notes'] ?? 'Sin notas',
         ]);
 
         $request->session()->put('cart', $cart);
@@ -617,4 +678,68 @@ class ClientCartController extends Controller
     }
 
     // Métodos adicionales del carrito se implementarán según necesidades futuras
+
+    /**
+     * Guardar opciones configurables en la tabla dedicada
+     */
+    private function saveConfigurableOptionsToDatabase(array $validConfigOptions, array $primaryServiceData, $pricing, $request): void
+    {
+        try {
+            // Limpiar opciones anteriores para este cart_item_id
+            OrderConfigurableOption::where('cart_item_id', $primaryServiceData['cart_item_id'])->delete();
+
+            foreach ($validConfigOptions as $optionId => $optionData) {
+                $option = ConfigurableOption::with('group')->find($optionId);
+
+                if (! $option || ! $option->group) {
+                    continue;
+                }
+
+                // Obtener precio unitario
+                $optionPricing = ConfigurableOptionPricing::where('configurable_option_id', $option->id)
+                    ->where('billing_cycle_id', 1) // Usar precio mensual como base
+                    ->first();
+
+                $unitPrice  = $optionPricing ? (float) $optionPricing->price : 0.0;
+                $quantity   = (float) $optionData['quantity'];
+                $totalPrice = $unitPrice * $quantity;
+
+                // Crear registro en la tabla
+                OrderConfigurableOption::create([
+                    'cart_item_id'                 => $primaryServiceData['cart_item_id'],
+                    'product_id'                   => $primaryServiceData['product_id'],
+                    'client_email'                 => Auth::user()->email ?? 'guest@example.com',
+                    'configurable_option_id'       => $option->id,
+                    'configurable_option_group_id' => $option->group->id,
+                    'option_name'                  => $option->name,
+                    'group_name'                   => $option->group->name,
+                    'quantity'                     => $quantity,
+                    'option_value'                 => $optionData['value'],
+                    'unit_price'                   => $unitPrice,
+                    'total_price'                  => $totalPrice,
+                    'currency_code'                => $pricing->currency_code,
+                    'billing_cycle_id'             => $pricing->billing_cycle_id,
+                    'is_active'                    => true,
+                    'metadata'                     => [
+                        'cart_session_id' => $request->session()->getId(),
+                        'created_at_cart' => now()->toISOString(),
+                    ],
+                ]);
+
+                Log::info('OrderConfigurableOption creada:', [
+                    'option_name' => $option->name,
+                    'group_name'  => $option->group->name,
+                    'quantity'    => $quantity,
+                    'unit_price'  => $unitPrice,
+                    'total_price' => $totalPrice,
+                ]);
+            }
+
+        } catch (\Exception $e) {
+            Log::error('Error guardando opciones configurables en BD:', [
+                'error'        => $e->getMessage(),
+                'cart_item_id' => $primaryServiceData['cart_item_id'],
+            ]);
+        }
+    }
 }
