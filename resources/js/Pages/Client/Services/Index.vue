@@ -211,59 +211,8 @@ const getDomainSummary = (services) => {
     };
 };
 
-// Función para obtener el precio de una opción configurable específica
-const getOptionPrice = (optionNote, service) => {
-    // Mapeo de patrones de opciones a precios aproximados
-    const optionPrices = {
-        // Espacio en disco: $0.50 por GB
-        'GB de espacio web adicional': (match) => {
-            const gb = parseFloat(match[1]) || 1;
-            return formatCurrency(gb * 0.50);
-        },
-        // vCPU: $5.00 por vCPU
-        'vCPU adicionales': (match) => {
-            const vcpu = parseFloat(match[1]) || 1;
-            return formatCurrency(vcpu * 5.00);
-        },
-        // RAM: $1.00 por GB
-        'GB de RAM adicional': (match) => {
-            const ram = parseFloat(match[1]) || 1;
-            return formatCurrency(ram * 1.00);
-        },
-        // SpamExperts: $3.00 fijo
-        'servicio de seguridad email activado': () => formatCurrency(3.00),
-        'protección spamexperts activado': () => formatCurrency(3.00),
-    };
-
-    // Buscar coincidencias en el texto de la opción
-    for (const [pattern, priceFunc] of Object.entries(optionPrices)) {
-        if (optionNote.toLowerCase().includes(pattern.toLowerCase())) {
-            // Extraer números del texto para opciones con cantidad
-            const match = optionNote.match(/(\d+(?:\.\d+)?)/);
-            return priceFunc(match);
-        }
-    }
-
-    return '+$0.00'; // Fallback si no se encuentra el patrón
-};
-
-// Función para obtener el precio base del producto
-const getBasePrice = (service) => {
-    if (!service.product || !service.productPricing) {
-        return formatCurrency(0);
-    }
-
-    // Precios base aproximados por producto
-    const basePrices = {
-        'Hosting Web Eco': 10.00,
-        'Hosting Web Pro': 16.00,
-        'Hosting Web Ultra': 22.00,
-        'Registro de Dominio': 6.85,
-    };
-
-    const basePrice = basePrices[service.product.name] || parseFloat(service.productPricing.price || 0);
-    return formatCurrency(basePrice);
-};
+// Las funciones getOptionPrice y getBasePrice ya no son necesarias
+// porque ahora usamos los datos procesados desde el backend
 
 </script>
 
@@ -356,24 +305,54 @@ const getBasePrice = (service) => {
                                                         <div v-if="service.billingCycle" class="text-xs text-gray-500">
                                                             ({{ service.billingCycle.name }})
                                                         </div>
-                                                        <!-- Mostrar opciones configurables si existen -->
-                                                        <div v-if="service.notes && service.notes.trim()"
-                                                            class="mt-2 text-xs">
-                                                            <div class="text-gray-600 font-medium mb-1">Opciones
-                                                                configurables:
-                                                            </div>
-                                                            <div v-for="note in service.notes.split('\n').filter(n => n.trim())"
-                                                                :key="note"
-                                                                class="bg-blue-50 px-2 py-1 rounded mb-1 flex justify-between items-center">
-                                                                <span class="text-blue-700">{{ note.trim() }}</span>
-                                                                <span class="text-green-600 font-semibold">{{
-                                                                    getOptionPrice(note.trim(), service) }}</span>
-                                                            </div>
+
+                                                        <!-- Mostrar indicador de configuraciones adicionales en el servicio base -->
+                                                        <div v-if="!service.is_additional_config && service.has_configurable_options"
+                                                            class="mt-2">
                                                             <div
-                                                                class="bg-gray-100 px-2 py-1 rounded mt-1 flex justify-between items-center text-xs font-semibold">
-                                                                <span class="text-gray-700">Precio base:</span>
-                                                                <span class="text-gray-700">{{ getBasePrice(service)
-                                                                }}</span>
+                                                                class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800">
+                                                                <svg class="w-3 h-3 mr-1" fill="currentColor"
+                                                                    viewBox="0 0 20 20">
+                                                                    <path fill-rule="evenodd"
+                                                                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z"
+                                                                        clip-rule="evenodd"></path>
+                                                                </svg>
+                                                                Con configuraciones adicionales
+                                                            </div>
+                                                        </div>
+
+                                                        <!-- Mostrar detalles de configuraciones adicionales si es un item de configuraciones -->
+                                                        <div v-if="service.is_additional_config && service.configurable_options_details"
+                                                            class="mt-2">
+                                                            <div class="text-xs text-gray-600 mb-2 font-medium">Desglose
+                                                                de
+                                                                configuraciones:</div>
+                                                            <div class="space-y-1">
+                                                                <div v-for="option in service.configurable_options_details"
+                                                                    :key="option.name"
+                                                                    class="bg-blue-50 px-3 py-2 rounded-md border border-blue-200">
+                                                                    <div class="flex justify-between items-center">
+                                                                        <div class="flex-1">
+                                                                            <div
+                                                                                class="text-sm font-medium text-blue-900">
+                                                                                {{ option.quantity }} {{ option.unit }}
+                                                                                de {{
+                                                                                option.name }}
+                                                                            </div>
+                                                                            <div class="text-xs text-blue-700">
+                                                                                {{ formatCurrency(option.unit_price) }}
+                                                                                por {{
+                                                                                option.unit }}
+                                                                            </div>
+                                                                        </div>
+                                                                        <div class="text-right">
+                                                                            <div
+                                                                                class="text-sm font-semibold text-green-700">
+                                                                                {{ formatCurrency(option.price) }}
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     </td>
