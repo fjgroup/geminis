@@ -1,10 +1,9 @@
 <?php
-
 namespace App\Services;
 
+use Exception;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Exception;
 
 class NameSiloService
 {
@@ -15,10 +14,10 @@ class NameSiloService
 
     public function __construct()
     {
-        $this->apiKey = config('services.namesilo.key');
-        $this->apiUrl = config('services.namesilo.url');
+        $this->apiKey     = config('services.namesilo.key');
+        $this->apiUrl     = config('services.namesilo.url');
         $this->apiVersion = config('services.namesilo.version', '1');
-        $this->apiFormat = config('services.namesilo.format', 'json');
+        $this->apiFormat  = config('services.namesilo.format', 'json');
 
         if (empty($this->apiKey)) {
             Log::critical('NameSilo API Key no está configurada en config/services.php o .env.');
@@ -26,12 +25,57 @@ class NameSiloService
         }
     }
 
+    /**
+     * Modo simulación para evitar errores de API durante desarrollo
+     */
+    private function isSimulationMode(): bool
+    {
+        return config('app.env') === 'local' && config('services.namesilo.simulation_mode', true);
+    }
+
+    /**
+     * Simular verificación de dominio para desarrollo
+     */
+    private function simulateDomainCheck(string $domainName): array
+    {
+                        // Simular delay de API real
+        usleep(500000); // 0.5 segundos
+
+        // Dominios que simulamos como no disponibles
+        $unavailableDomains = ['google', 'facebook', 'amazon', 'microsoft', 'test'];
+
+        $domainBase = strtolower(explode('.', $domainName)[0]);
+        $available  = ! in_array($domainBase, $unavailableDomains);
+
+        if ($available) {
+            return [
+                'status'        => 'available',
+                'domain_name'   => $domainName,
+                'price'         => 15.00,
+                'is_premium'    => false,
+                'duration'      => 1,
+                'renewal_price' => 15.00,
+                'message'       => "✅ {$domainName} está disponible para registro (simulación)",
+            ];
+        } else {
+            return [
+                'status'        => 'unavailable',
+                'domain_name'   => $domainName,
+                'price'         => null,
+                'is_premium'    => false,
+                'duration'      => null,
+                'renewal_price' => null,
+                'message'       => "❌ {$domainName} no está disponible (simulación)",
+            ];
+        }
+    }
+
     private function buildUrl(string $operation, array $params = []): string
     {
         $queryParams = array_merge([
             'version' => $this->apiVersion,
-            'type' => $this->apiFormat,
-            'key' => $this->apiKey,
+            'type'    => $this->apiFormat,
+            'key'     => $this->apiKey,
         ], $params);
         $url = rtrim($this->apiUrl, '/') . '/' . trim($operation, '/');
         return $url . '?' . http_build_query($queryParams);
@@ -39,15 +83,20 @@ class NameSiloService
 
     public function checkDomainAvailability(string $domainName): array
     {
-        $url = $this->buildUrl('checkRegisterAvailability', ['domains' => $domainName]);
+        // Modo simulación para evitar errores de API durante desarrollo
+        if ($this->isSimulationMode()) {
+            return $this->simulateDomainCheck($domainName);
+        }
+
+        $url                 = $this->buildUrl('checkRegisterAvailability', ['domains' => $domainName]);
         $defaultErrorMessage = 'No se pudo verificar la disponibilidad del dominio en este momento.';
-        $baseErrorPayload = ['status' => 'error', 'domain_name' => $domainName, 'price' => null, 'is_premium' => false, 'duration' => null, 'renewal_price' => null, 'message' => $defaultErrorMessage];
+        $baseErrorPayload    = ['status' => 'error', 'domain_name' => $domainName, 'price' => null, 'is_premium' => false, 'duration' => null, 'renewal_price' => null, 'message' => $defaultErrorMessage];
 
         try {
-            $response = Http::timeout(10)->get($url);
+            $response     = Http::timeout(10)->get($url);
             $responseBody = $response->body();
 
-            if (!$response->successful()) {
+            if (! $response->successful()) {
                 Log::error("NameSilo API: Falla HTTP en checkRegisterAvailability para {$domainName}. Status: {$response->status()}", [
                     'url' => $url, 'response_body' => $responseBody,
                 ]);
@@ -55,7 +104,7 @@ class NameSiloService
             }
 
             $data = $response->json();
-            if (!$data) {
+            if (! $data) {
                 Log::error("NameSilo API: Respuesta JSON vacía o inválida para checkRegisterAvailability {$domainName}", [
                     'url' => $url, 'response_body' => $responseBody,
                 ]);
@@ -64,13 +113,13 @@ class NameSiloService
 
             $reply = $data['reply'] ?? null;
 
-            if (!$reply || !isset($reply['code'])) {
+            if (! $reply || ! isset($reply['code'])) {
                 Log::error("NameSilo API: 'reply' o 'reply.code' no encontrado en respuesta para checkRegisterAvailability {$domainName}", ['response_data' => $data, 'response_body' => $responseBody]);
                 return array_merge($baseErrorPayload, ['message' => 'Respuesta inesperada del registrador (faltan campos reply o code).']);
             }
 
-            $replyCode = (string)$reply['code'];
-            $replyDetail = $reply['detail'] ?? 'Operación procesada.';
+            $replyCode          = (string) $reply['code'];
+            $replyDetail        = $reply['detail'] ?? 'Operación procesada.';
             $domainFromResponse = null;
 
             if ($replyCode === '300') {
@@ -83,7 +132,7 @@ class NameSiloService
                         $domainFromResponse = $details['domain'];
                     } else {
                         Log::warning("NameSilo API (available): La clave 'domain' (nombre) no es un string o no existe dentro del objeto 'available.domain'.", [
-                            'details_object' => $details, 'reply' => $reply, 'response_body' => $responseBody
+                            'details_object' => $details, 'reply' => $reply, 'response_body' => $responseBody,
                         ]);
                         return array_merge($baseErrorPayload, ['message' => 'Error al parsear nombre de dominio disponible desde el registrador (E300ADNP).']);
                     }
@@ -92,36 +141,36 @@ class NameSiloService
                         Log::warning("NameSilo API (available): Nombre de dominio en respuesta ('{$domainFromResponse}') no coincide con solicitado ('{$domainName}'). Se usará el de la respuesta.", ['reply' => $reply]);
                     }
 
-                    $price = isset($details['price']) ? (float)$details['price'] : null;
-                    $isPremium = isset($details['premium']) ? (((int)$details['premium'] === 1) || $details['premium'] === true || $details['premium'] === '1') : false;
-                    $duration = isset($details['duration']) ? (int)$details['duration'] : null;
-                    $renewalPrice = isset($details['renew']) ? (float)$details['renew'] : null;
+                    $price        = isset($details['price']) ? (float) $details['price'] : null;
+                    $isPremium    = isset($details['premium']) ? (((int) $details['premium'] === 1) || $details['premium'] === true || $details['premium'] === '1') : false;
+                    $duration     = isset($details['duration']) ? (int) $details['duration'] : null;
+                    $renewalPrice = isset($details['renew']) ? (float) $details['renew'] : null;
 
                     return [
-                        'status' => 'available', 'domain_name' => $domainFromResponse,
-                        'price' => $price, 'is_premium' => $isPremium, 'duration' => $duration, 'renewal_price' => $renewalPrice,
+                        'status'  => 'available', 'domain_name' => $domainFromResponse,
+                        'price'   => $price, 'is_premium'       => $isPremium, 'duration' => $duration, 'renewal_price' => $renewalPrice,
                         'message' => $replyDetail === 'success' || $replyDetail === 'Operación procesada.' ? "¡El dominio {$domainFromResponse} está disponible!" : $replyDetail,
                     ];
-                // Caso: Dominio no disponible (la clave es el TLD, ej. $reply['unavailable']['example.com'])
-                // O, si solo se consultó uno, puede ser $reply['unavailable']['domain'] (string)
+                    // Caso: Dominio no disponible (la clave es el TLD, ej. $reply['unavailable']['example.com'])
+                    // O, si solo se consultó uno, puede ser $reply['unavailable']['domain'] (string)
                 } elseif (isset($reply['unavailable']['domain'])) {
                     $unavailableDomainData = $reply['unavailable']['domain'];
-                     if (is_string($unavailableDomainData)) {
+                    if (is_string($unavailableDomainData)) {
                         $domainFromResponse = $unavailableDomainData;
-                    } elseif ((is_object($unavailableDomainData) || is_array($unavailableDomainData)) && isset(((array)$unavailableDomainData)['domain'])) {
-                        $domainFromResponse = ((array)$unavailableDomainData)['domain'];
+                    } elseif ((is_object($unavailableDomainData) || is_array($unavailableDomainData)) && isset(((array) $unavailableDomainData)['domain'])) {
+                        $domainFromResponse = ((array) $unavailableDomainData)['domain'];
                     } else {
                         $domainFromResponse = $domainName;
                         Log::warning("NameSilo API (unavailable): Estructura de nombre de dominio inesperada.", ['data' => $unavailableDomainData, 'response_body' => $responseBody]);
                     }
                     return ['status' => 'unavailable', 'domain_name' => $domainFromResponse, 'price' => null, 'is_premium' => false, 'duration' => null, 'renewal_price' => null, 'message' => $replyDetail === 'success' || $replyDetail === 'Operación procesada.' ? "El dominio {$domainFromResponse} no está disponible." : $replyDetail];
-                // Caso: Dominio inválido
+                    // Caso: Dominio inválido
                 } elseif (isset($reply['invalid']['domain'])) {
                     $invalidDomainData = $reply['invalid']['domain'];
                     if (is_string($invalidDomainData)) {
                         $domainFromResponse = $invalidDomainData;
-                    } elseif ((is_object($invalidDomainData) || is_array($invalidDomainData)) && isset(((array)$invalidDomainData)['domain'])) {
-                        $domainFromResponse = ((array)$invalidDomainData)['domain'];
+                    } elseif ((is_object($invalidDomainData) || is_array($invalidDomainData)) && isset(((array) $invalidDomainData)['domain'])) {
+                        $domainFromResponse = ((array) $invalidDomainData)['domain'];
                     } else {
                         $domainFromResponse = $domainName;
                         Log::warning("NameSilo API (invalid): Estructura de nombre de dominio inesperada.", ['data' => $invalidDomainData, 'response_body' => $responseBody]);
@@ -133,9 +182,9 @@ class NameSiloService
                 return array_merge($baseErrorPayload, ['message' => 'Respuesta del registrador no concluyente (E300Parse).']);
 
             } elseif (in_array($replyCode, ['280', '256'])) {
-                 return ['status' => 'invalid', 'domain_name' => $domainName, 'price' => null, 'is_premium' => false, 'duration' => null, 'renewal_price' => null, 'message' => $replyDetail . " (Dominio: {$domainName})"];
+                return ['status' => 'invalid', 'domain_name' => $domainName, 'price' => null, 'is_premium' => false, 'duration' => null, 'renewal_price' => null, 'message' => $replyDetail . " (Dominio: {$domainName})"];
             } elseif ($replyCode === '266') {
-                 return ['status' => 'unavailable', 'domain_name' => $domainName, 'price' => null, 'is_premium' => false, 'duration' => null, 'renewal_price' => null, 'message' => $replyDetail === 'success' || $replyDetail === 'Operación procesada.' ? "El dominio {$domainName} ya está en tu cuenta o no se puede registrar." : $replyDetail];
+                return ['status' => 'unavailable', 'domain_name' => $domainName, 'price' => null, 'is_premium' => false, 'duration' => null, 'renewal_price' => null, 'message' => $replyDetail === 'success' || $replyDetail === 'Operación procesada.' ? "El dominio {$domainName} ya está en tu cuenta o no se puede registrar." : $replyDetail];
             } else {
                 Log::error("NameSilo API: Error en checkRegisterAvailability para {$domainName}. Code: {$replyCode}", ['detail' => $replyDetail, 'reply' => $reply, 'response_body' => $responseBody]);
                 return array_merge($baseErrorPayload, ['message' => "Error del registrador ({$replyCode}): {$replyDetail}"]);
@@ -148,14 +197,14 @@ class NameSiloService
 
     public function getTldPricingInfo(array $tldsToQuery = []): array
     {
-        $url = $this->buildUrl('getPrices');
+        $url          = $this->buildUrl('getPrices');
         $errorPayload = [];
 
         try {
-            $response = Http::timeout(20)->get($url);
+            $response     = Http::timeout(20)->get($url);
             $responseBody = $response->body();
 
-            if (!$response->successful()) {
+            if (! $response->successful()) {
                 Log::error("NameSilo API: Falla HTTP en getPrices. Status: {$response->status()}", [
                     'url' => $url, 'response_body' => $responseBody,
                 ]);
@@ -163,7 +212,7 @@ class NameSiloService
             }
 
             $data = $response->json();
-            if (!$data) {
+            if (! $data) {
                 Log::error("NameSilo API: Respuesta JSON vacía o inválida para getPrices", [
                     'url' => $url, 'response_body' => $responseBody,
                 ]);
@@ -172,20 +221,20 @@ class NameSiloService
 
             $reply = $data['reply'] ?? null;
 
-            if (!$reply || !isset($reply['code'])) {
+            if (! $reply || ! isset($reply['code'])) {
                 Log::error("NameSilo API: 'reply' o 'reply.code' no encontrado en respuesta para getPrices", ['response_data' => $data, 'response_body' => $responseBody]);
                 return $errorPayload;
             }
 
-            $replyCode = (string)($reply['code'] ?? 'unknown');
+            $replyCode   = (string) ($reply['code'] ?? 'unknown');
             $replyDetail = $reply['detail'] ?? 'No hay detalle.';
 
             if ($replyCode === '300') {
-                $parsedPrices = [];
+                $parsedPrices          = [];
                 $normalizedTldsToQuery = array_map('strtolower', $tldsToQuery);
 
                 foreach ($reply as $tldKey => $prices) {
-                    if (!is_array($prices) || !isset($prices['registration']) || !isset($prices['renew']) || !isset($prices['transfer'])) {
+                    if (! is_array($prices) || ! isset($prices['registration']) || ! isset($prices['renew']) || ! isset($prices['transfer'])) {
                         continue;
                     }
 
@@ -193,11 +242,11 @@ class NameSiloService
 
                     if (empty($normalizedTldsToQuery) || in_array($cleanTld, $normalizedTldsToQuery)) {
                         $parsedPrices[$cleanTld] = [
-                            'tld' => $cleanTld,
+                            'tld'          => $cleanTld,
                             'registration' => (float) $prices['registration'],
-                            'renewal' => (float) $prices['renew'],
-                            'transfer' => (float) $prices['transfer'],
-                            'currency' => 'USD',
+                            'renewal'      => (float) $prices['renew'],
+                            'transfer'     => (float) $prices['transfer'],
+                            'currency'     => 'USD',
                         ];
                     }
                 }

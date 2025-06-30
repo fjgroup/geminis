@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
@@ -15,13 +14,33 @@ class VerifyEmailController extends Controller
     public function __invoke(EmailVerificationRequest $request): RedirectResponse
     {
         if ($request->user()->hasVerifiedEmail()) {
-            return redirect()->intended(route('dashboard', absolute: false).'?verified=1');
+            // Check if user has pending purchase context
+            $pendingUser = session('pending_user');
+            if ($pendingUser && $pendingUser['id'] == $request->user()->id) {
+                // Restore purchase context and redirect to payment
+                session(['purchase_context' => $pendingUser['purchase_context']]);
+                session()->forget('pending_user');
+                return redirect()->route('public.checkout.payment')
+                    ->with('success', '¡Email verificado exitosamente! Ahora puedes continuar con tu compra.');
+            }
+
+            return redirect()->intended(route('dashboard', absolute: false) . '?verified=1');
         }
 
         if ($request->user()->markEmailAsVerified()) {
             event(new Verified($request->user()));
         }
 
-        return redirect()->intended(route('dashboard', absolute: false).'?verified=1');
+        // Check if user has pending purchase context
+        $pendingUser = session('pending_user');
+        if ($pendingUser && $pendingUser['id'] == $request->user()->id) {
+            // Restore purchase context and redirect to payment
+            session(['purchase_context' => $pendingUser['purchase_context']]);
+            session()->forget('pending_user');
+            return redirect()->route('public.checkout.payment')
+                ->with('success', '¡Email verificado exitosamente! Ahora puedes continuar con tu compra.');
+        }
+
+        return redirect()->intended(route('dashboard', absolute: false) . '?verified=1');
     }
 }

@@ -13,7 +13,7 @@
                     </div>
                     <div class="flex space-x-2 sm:space-x-4">
                         <!-- Si está autenticado, mostrar Dashboard -->
-                        <Link v-if="$page.props.auth.user" :href="getDashboardRoute()"
+                        <Link v-if="auth?.user" :href="getDashboardRoute()"
                             class="text-gray-600 hover:text-gray-900 font-medium text-sm sm:text-base">
                         Dashboard
                         </Link>
@@ -23,7 +23,7 @@
                         Iniciar Sesión
                         </Link>
                         <!-- Botón de registro solo si no está autenticado -->
-                        <Link v-if="canRegister && !$page.props.auth.user" :href="route('register')"
+                        <Link v-if="canRegister && !auth?.user" :href="route('register')"
                             class="bg-blue-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-blue-700 font-medium text-sm sm:text-base">
                         Registrarse
                         </Link>
@@ -239,7 +239,7 @@
                 </div>
 
                 <div class="text-center">
-                    <button
+                    <button @click="selectUseCase('web-designers')"
                         class="bg-white text-purple-600 px-8 py-4 rounded-xl text-lg font-semibold hover:bg-gray-100 transform hover:scale-105 transition-all duration-200 shadow-lg">
                         {{ salesData.forDesigners.cta }}
                     </button>
@@ -319,6 +319,231 @@
 
         <!-- WhatsApp Button -->
         <WhatsAppButton />
+
+        <!-- Modal de Selección de Planes -->
+        <div v-if="showPlanModal"
+            class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div class="bg-white rounded-2xl max-w-5xl w-full max-h-[90vh] overflow-y-auto">
+                <div class="p-8">
+                    <div class="text-center mb-8">
+                        <h2 class="text-3xl font-bold text-gray-900 mb-2">Planes Simples, Resultados Extraordinarios
+                        </h2>
+                        <p class="text-gray-600">Elige el plan perfecto para tu proyecto. Puedes cambiar cuando quieras.
+                        </p>
+                        <button @click="showPlanModal = false"
+                            class="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <div class="grid md:grid-cols-3 gap-6">
+                        <!-- Plan Emprendedor -->
+                        <div class="bg-white rounded-xl p-6 border border-gray-200 relative">
+                            <div class="text-center mb-6">
+                                <h3 class="text-2xl font-bold text-gray-900 mb-2">Emprendedor</h3>
+                                <p class="text-gray-600 mb-4">Perfecto para comenzar tu presencia online</p>
+                                <div class="flex items-center justify-center">
+                                    <span class="text-4xl font-bold text-gray-900">$10</span>
+                                    <span class="text-gray-600 ml-2">/ mes</span>
+                                </div>
+                            </div>
+
+                            <ul class="space-y-3 mb-8">
+                                <li class="flex items-center text-gray-700">
+                                    <svg class="w-5 h-5 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd"
+                                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                            clip-rule="evenodd"></path>
+                                    </svg>
+                                    Sitio web profesional incluido
+                                </li>
+                                <li class="flex items-center text-gray-700">
+                                    <svg class="w-5 h-5 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd"
+                                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                            clip-rule="evenodd"></path>
+                                    </svg>
+                                    Dominio gratis el primer año
+                                </li>
+                                <li class="flex items-center text-gray-700">
+                                    <svg class="w-5 h-5 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd"
+                                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                            clip-rule="evenodd"></path>
+                                    </svg>
+                                    Email profesional (tu@tunegocio.com)
+                                </li>
+                                <li class="flex items-center text-gray-700">
+                                    <svg class="w-5 h-5 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd"
+                                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                            clip-rule="evenodd"></path>
+                                    </svg>
+                                    Certificado de seguridad SSL
+                                </li>
+                                <li class="flex items-center text-gray-700">
+                                    <svg class="w-5 h-5 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd"
+                                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                            clip-rule="evenodd"></path>
+                                    </svg>
+                                    Soporte por WhatsApp
+                                </li>
+                            </ul>
+
+                            <button @click="selectPlanFromModal('starter')"
+                                class="w-full bg-gray-800 hover:bg-gray-900 text-white py-3 rounded-lg font-semibold transition-colors">
+                                Comenzar Ahora
+                            </button>
+                        </div>
+
+                        <!-- Plan Profesional -->
+                        <div class="bg-white rounded-xl p-6 border-2 border-blue-500 relative scale-105">
+                            <div
+                                class="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-blue-500 text-white px-4 py-1 rounded-full text-sm font-medium">
+                                Más Popular
+                            </div>
+
+                            <div class="text-center mb-6">
+                                <h3 class="text-2xl font-bold text-gray-900 mb-2">Profesional</h3>
+                                <p class="text-gray-600 mb-4">Para negocios que quieren crecer en serio</p>
+                                <div class="flex items-center justify-center">
+                                    <span class="text-4xl font-bold text-gray-900">$16</span>
+                                    <span class="text-gray-600 ml-2">/ mes</span>
+                                </div>
+                            </div>
+
+                            <ul class="space-y-3 mb-8">
+                                <li class="flex items-center text-gray-700">
+                                    <svg class="w-5 h-5 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd"
+                                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                            clip-rule="evenodd"></path>
+                                    </svg>
+                                    Todo lo del plan Emprendedor
+                                </li>
+                                <li class="flex items-center text-gray-700">
+                                    <svg class="w-5 h-5 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd"
+                                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                            clip-rule="evenodd"></path>
+                                    </svg>
+                                    Tienda online básica incluida
+                                </li>
+                                <li class="flex items-center text-gray-700">
+                                    <svg class="w-5 h-5 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd"
+                                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                            clip-rule="evenodd"></path>
+                                    </svg>
+                                    Hasta 5 páginas personalizadas
+                                </li>
+                                <li class="flex items-center text-gray-700">
+                                    <svg class="w-5 h-5 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd"
+                                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                            clip-rule="evenodd"></path>
+                                    </svg>
+                                    Integración con redes sociales
+                                </li>
+                                <li class="flex items-center text-gray-700">
+                                    <svg class="w-5 h-5 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd"
+                                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                            clip-rule="evenodd"></path>
+                                    </svg>
+                                    Estadísticas de visitantes
+                                </li>
+                                <li class="flex items-center text-gray-700">
+                                    <svg class="w-5 h-5 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd"
+                                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                            clip-rule="evenodd"></path>
+                                    </svg>
+                                    Respaldos automáticos diarios
+                                </li>
+                            </ul>
+
+                            <button @click="selectPlanFromModal('professional')"
+                                class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-semibold transition-colors">
+                                Elegir Profesional
+                            </button>
+                        </div>
+
+                        <!-- Plan Negocio -->
+                        <div class="bg-white rounded-xl p-6 border border-gray-200 relative">
+                            <div class="text-center mb-6">
+                                <h3 class="text-2xl font-bold text-gray-900 mb-2">Negocio</h3>
+                                <p class="text-gray-600 mb-4">Para empresas que buscan resultados serios</p>
+                                <div class="flex items-center justify-center">
+                                    <span class="text-4xl font-bold text-gray-900">$22</span>
+                                    <span class="text-gray-600 ml-2">/ mes</span>
+                                </div>
+                            </div>
+
+                            <ul class="space-y-3 mb-8">
+                                <li class="flex items-center text-gray-700">
+                                    <svg class="w-5 h-5 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd"
+                                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                            clip-rule="evenodd"></path>
+                                    </svg>
+                                    Todo lo del plan Profesional
+                                </li>
+                                <li class="flex items-center text-gray-700">
+                                    <svg class="w-5 h-5 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd"
+                                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                            clip-rule="evenodd"></path>
+                                    </svg>
+                                    Tienda online avanzada
+                                </li>
+                                <li class="flex items-center text-gray-700">
+                                    <svg class="w-5 h-5 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd"
+                                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                            clip-rule="evenodd"></path>
+                                    </svg>
+                                    Academia virtual incluida
+                                </li>
+                                <li class="flex items-center text-gray-700">
+                                    <svg class="w-5 h-5 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd"
+                                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                            clip-rule="evenodd"></path>
+                                    </svg>
+                                    Páginas ilimitadas
+                                </li>
+                                <li class="flex items-center text-gray-700">
+                                    <svg class="w-5 h-5 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd"
+                                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                            clip-rule="evenodd"></path>
+                                    </svg>
+                                    Chat en vivo con clientes
+                                </li>
+                                <li class="flex items-center text-gray-700">
+                                    <svg class="w-5 h-5 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd"
+                                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                            clip-rule="evenodd"></path>
+                                    </svg>
+                                    Soporte prioritario por teléfono
+                                </li>
+                            </ul>
+
+                            <button @click="selectPlanFromModal('business')"
+                                class="w-full bg-gray-800 hover:bg-gray-900 text-white py-3 rounded-lg font-semibold transition-colors">
+                                Impulsar Mi Negocio
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </template>
 
@@ -358,6 +583,8 @@ const props = defineProps({
 
 const selectedUseCase = ref(null)
 const selectedPlan = ref(null)
+const showPlanModal = ref(false)
+const showPlanModal = ref(false)
 
 const scrollToUseCases = () => {
     document.getElementById('use-cases').scrollIntoView({
@@ -367,9 +594,7 @@ const scrollToUseCases = () => {
 
 const selectUseCase = (useCaseId) => {
     selectedUseCase.value = useCaseId
-    document.getElementById('pricing').scrollIntoView({
-        behavior: 'smooth'
-    })
+    showPlanModal.value = true
 }
 
 const getUseCasePageUrl = (useCaseId) => {
@@ -385,7 +610,7 @@ const getUseCasePageUrl = (useCaseId) => {
 }
 
 const getDashboardRoute = () => {
-    const user = $page.props.auth.user
+    const user = props.auth?.user
     if (!user) return route('login')
 
     switch (user.role) {
@@ -395,6 +620,7 @@ const getDashboardRoute = () => {
             return route('reseller.dashboard')
         case 'client':
         default:
+            // Ahora usar ruta normal
             return route('client.dashboard')
     }
 }
@@ -403,10 +629,45 @@ const selectPlan = (planId) => {
     selectedPlan.value = planId
 
     if (!selectedUseCase.value) {
-        // If no use case selected, scroll back to use cases
+        // If no use case selected, show alert and scroll back to use cases
+        alert('Por favor, primero selecciona para qué quieres usar tu sitio web en la sección anterior.')
         scrollToUseCases()
         return
     }
+
+    // Start purchase flow
+    const form = document.createElement('form')
+    form.method = 'POST'
+    form.action = route('sales.start-purchase')
+
+    // Add CSRF token
+    const csrfInput = document.createElement('input')
+    csrfInput.type = 'hidden'
+    csrfInput.name = '_token'
+    csrfInput.value = document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+    form.appendChild(csrfInput)
+
+    // Add use case
+    const useCaseInput = document.createElement('input')
+    useCaseInput.type = 'hidden'
+    useCaseInput.name = 'use_case'
+    useCaseInput.value = selectedUseCase.value
+    form.appendChild(useCaseInput)
+
+    // Add plan
+    const planInput = document.createElement('input')
+    planInput.type = 'hidden'
+    planInput.name = 'plan'
+    planInput.value = planId
+    form.appendChild(planInput)
+
+    document.body.appendChild(form)
+    form.submit()
+}
+
+const selectPlanFromModal = (planId) => {
+    selectedPlan.value = planId
+    showPlanModal.value = false
 
     // Start purchase flow
     const form = document.createElement('form')

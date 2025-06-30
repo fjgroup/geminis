@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
@@ -20,7 +19,7 @@ class AuthenticatedSessionController extends Controller
     {
         return Inertia::render('Auth/Login', [
             'canResetPassword' => Route::has('password.request'),
-            'status' => session('status'),
+            'status'           => session('status'),
         ]);
     }
 
@@ -38,11 +37,17 @@ class AuthenticatedSessionController extends Controller
         if ($user->role === 'admin') {
             return redirect(route('admin.dashboard', absolute: false));
         } elseif ($user->role === 'client') {
-            return redirect(route('client.dashboard', absolute: false));
+            // Verificar si el email está verificado
+            if (! is_null($user->email_verified_at)) {
+                return redirect(route('client.dashboard', absolute: false));
+            } else {
+                // Redirigir a verificación de email
+                return redirect(route('verification.notice'));
+            }
         } elseif ($user->role === 'reseller') {
-            return redirect(route('reseller.dashboard', absolute: false)); // Asumiendo una ruta 'reseller.dashboard'
+            return redirect(route('reseller.dashboard', absolute: false));
         } else {
-            return redirect()->intended(route('dashboard', absolute: false)); // Redirección por defecto
+            return redirect()->intended(route('sales.home', absolute: false));
         }
     }
 

@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
@@ -13,10 +12,22 @@ class EmailVerificationPromptController extends Controller
     /**
      * Display the email verification prompt.
      */
-    public function __invoke(Request $request): RedirectResponse|Response
+    public function __invoke(Request $request): RedirectResponse | Response
     {
-        return $request->user()->hasVerifiedEmail()
-                    ? redirect()->intended(route('dashboard', absolute: false))
-                    : Inertia::render('Auth/VerifyEmail', ['status' => session('status')]);
+        if ($request->user()->hasVerifiedEmail()) {
+            // Redirigir según el rol del usuario
+            $user = $request->user();
+            if ($user->role === 'admin') {
+                return redirect()->intended(route('admin.dashboard', absolute: false));
+            } elseif ($user->role === 'client') {
+                return redirect()->intended(route('client.dashboard', absolute: false));
+            } elseif ($user->role === 'reseller') {
+                return redirect()->intended(route('reseller.dashboard', absolute: false));
+            } else {
+                return redirect()->intended(route('sales.home', absolute: false));
+            }
+        }
+
+        return Inertia::render('Auth/VerifyEmailCustom', ['status' => session('status')]);
     }
 }

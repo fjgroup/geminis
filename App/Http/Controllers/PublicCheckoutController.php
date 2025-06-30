@@ -24,7 +24,7 @@ class PublicCheckoutController extends Controller
     /**
      * Step 1: Domain verification for public users
      */
-    public function showDomainVerification(Request $request): InertiaResponse
+    public function showDomainVerification(Request $request): InertiaResponse | \Illuminate\Http\RedirectResponse
     {
         $purchaseContext = session('purchase_context');
 
@@ -80,7 +80,7 @@ class PublicCheckoutController extends Controller
     /**
      * Step 3: User registration
      */
-    public function showRegistration(Request $request): InertiaResponse
+    public function showRegistration(Request $request): InertiaResponse | \Illuminate\Http\RedirectResponse
     {
         $purchaseContext = session('purchase_context');
 
@@ -116,33 +116,37 @@ class PublicCheckoutController extends Controller
         }
 
         try {
-            // Create the user
+            // Create the user without email verification
             $user = User::create([
-                'name'          => $validated['name'],
-                'email'         => $validated['email'],
-                'password'      => Hash::make($validated['password']),
-                'role'          => 'client',
-                'company_name'  => $validated['company_name'],
-                'phone'         => $validated['phone'],
-                'country'       => $validated['country'],
-                'reseller_id'   => null,
-                'status'        => 'active',
-                'language_code' => 'es',
-                'currency_code' => 'USD',
+                'name'              => $validated['name'],
+                'email'             => $validated['email'],
+                'password'          => Hash::make($validated['password']),
+                'role'              => 'client',
+                'company_name'      => $validated['company_name'],
+                'phone'             => $validated['phone'],
+                'country'           => $validated['country'],
+                'reseller_id'       => null,
+                'status'            => 'active',
+                'language_code'     => 'es',
+                'currency_code'     => 'USD',
+                'email_verified_at' => null, // No auto-verificar, enviar email
             ]);
 
-            // Log the user in
-            Auth::login($user);
+            // Send email verification
+            $user->sendEmailVerificationNotification();
 
-            // Store user ID in purchase context
+            // Store user info in session for later login after verification
             session([
-                'purchase_context' => array_merge($purchaseContext, [
-                    'user_id' => $user->id,
-                ]),
+                'pending_user' => [
+                    'id'               => $user->id,
+                    'email'            => $user->email,
+                    'purchase_context' => $purchaseContext,
+                ],
             ]);
 
-            // Redirect to payment
-            return redirect()->route('public.checkout.payment');
+            // Redirect to verification notice page
+            return redirect()->route('verification.notice')
+                ->with('success', '¡Cuenta creada exitosamente! Hemos enviado un enlace de verificación a tu email. Por favor, revisa tu bandeja de entrada y haz clic en el enlace para continuar con tu compra.');
 
         } catch (\Exception $e) {
             Log::error('Error creating user during public checkout: ' . $e->getMessage());
@@ -156,7 +160,7 @@ class PublicCheckoutController extends Controller
     /**
      * Step 5: Payment page
      */
-    public function showPayment(Request $request): InertiaResponse
+    public function showPayment(Request $request): InertiaResponse | \Illuminate\Http\RedirectResponse
     {
         $purchaseContext = session('purchase_context');
 
@@ -201,7 +205,7 @@ class PublicCheckoutController extends Controller
     /**
      * Show registration page with sales context
      */
-    public function showRegistrationWithContext(Request $request): InertiaResponse
+    public function showRegistrationWithContext(Request $request): InertiaResponse | \Illuminate\Http\RedirectResponse
     {
         $salesContext = session('sales_context');
 
@@ -238,17 +242,18 @@ class PublicCheckoutController extends Controller
         try {
             // Create the user
             $user = User::create([
-                'name'          => $validated['name'],
-                'email'         => $validated['email'],
-                'password'      => Hash::make($validated['password']),
-                'role'          => 'client',
-                'company_name'  => $validated['company_name'],
-                'phone'         => $validated['phone'],
-                'country'       => $validated['country'],
-                'reseller_id'   => null,
-                'status'        => 'active',
-                'language_code' => 'es',
-                'currency_code' => 'USD',
+                'name'              => $validated['name'],
+                'email'             => $validated['email'],
+                'password'          => Hash::make($validated['password']),
+                'role'              => 'client',
+                'company_name'      => $validated['company_name'],
+                'phone'             => $validated['phone'],
+                'country'           => $validated['country'],
+                'reseller_id'       => null,
+                'status'            => 'active',
+                'language_code'     => 'es',
+                'currency_code'     => 'USD',
+                'email_verified_at' => now(), // Auto-verificar email para flujo de compra
             ]);
 
             // Log the user in
@@ -266,7 +271,7 @@ class PublicCheckoutController extends Controller
             ]);
 
             // Redirect to existing domain selection page
-            return redirect()->route('client.checkout.select-domain')
+            return redirect()->route('client.checkout.selectDomain')
                 ->with('success', '¡Cuenta creada exitosamente! Ahora selecciona tu dominio.');
 
         } catch (\Exception $e) {

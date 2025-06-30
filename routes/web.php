@@ -154,7 +154,7 @@ Route::middleware(['auth', 'verified', 'role.reseller'])->prefix('reseller-panel
 });
 
 // Rutas para el área de cliente
-Route::prefix('client')->name('client.')->middleware(['auth', 'verified'])->group(function () { // Added 'verified' middleware
+Route::prefix('client')->name('client.')->middleware(['auth', 'verified'])->group(function () { // Restored security middleware
                                                                                                     // Ruta para el dashboard de cliente
     Route::get('/', [ClientDashboardController::class, 'index'])->name('dashboard');                // Route for client dashboard
 
@@ -314,6 +314,19 @@ Route::get('/technical-resellers', [App\Http\Controllers\SalesLandingController:
 
 // Public Checkout Flow (for non-authenticated users)
 Route::prefix('checkout')->name('public.checkout.')->group(function () {
+    // Ruta para iniciar flujo público con contexto de prueba
+    Route::get('/start', function () {
+        session([
+            'purchase_context' => [
+                'use_case'     => 'entrepreneurs',
+                'plan'         => 'professional',
+                'product_slug' => 'hosting-web',
+                'source'       => 'direct_access',
+            ],
+        ]);
+        return redirect()->route('public.checkout.domain');
+    })->name('start');
+
     Route::get('/domain', [App\Http\Controllers\PublicCheckoutController::class, 'showDomainVerification'])->name('domain');
     Route::post('/domain', [App\Http\Controllers\PublicCheckoutController::class, 'processDomainVerification'])->name('domain.process');
     Route::get('/register', [App\Http\Controllers\PublicCheckoutController::class, 'showRegistration'])->name('register');
@@ -322,17 +335,14 @@ Route::prefix('checkout')->name('public.checkout.')->group(function () {
     Route::post('/payment', [App\Http\Controllers\PublicCheckoutController::class, 'processPayment'])->name('payment.process');
 });
 
-// Public Checkout Flow (for non-authenticated users)
-Route::prefix('checkout')->name('public.checkout.')->group(function () {
-    Route::get('/domain', [App\Http\Controllers\PublicCheckoutController::class, 'showDomainVerification'])->name('domain');
-    Route::post('/domain', [App\Http\Controllers\PublicCheckoutController::class, 'processDomainVerification'])->name('domain.process');
-    Route::get('/register', [App\Http\Controllers\PublicCheckoutController::class, 'showRegistration'])->name('register');
-    Route::post('/register', [App\Http\Controllers\PublicCheckoutController::class, 'processRegistration'])->name('register.process');
-});
-
 // Public Registration with Sales Context
 Route::get('/registro-con-contexto', [App\Http\Controllers\PublicCheckoutController::class, 'showRegistrationWithContext'])->name('public.register.with-context');
 Route::post('/registro-con-contexto', [App\Http\Controllers\PublicCheckoutController::class, 'processRegistrationWithContext'])->name('public.register.with-context.process');
+
+// Special email verification route for purchase flow
+Route::get('/verify-purchase-email/{id}/{hash}', [App\Http\Controllers\PublicCheckoutController::class, 'verifyPurchaseEmail'])
+    ->middleware(['signed', 'throttle:6,1'])
+    ->name('verification.verify.purchase');
 
 // Reseller Panel Routes (uses same admin panel but with reseller context)
 Route::prefix('reseller')->name('reseller.')->middleware(['auth', 'verified', 'admin.or.reseller', 'inject.context'])->group(function () {
@@ -519,5 +529,56 @@ Route::get('/create-test-users', function () {
         ], 500);
     }
 });
+
+// Ruta temporal para verificar estado del usuario (ELIMINAR EN PRODUCCIÓN)
+Route::get('/check-user-status', function () {
+    if (! \Illuminate\Support\Facades\Auth::check()) {
+        return response()->json([
+            'authenticated' => false,
+            'message'       => 'Usuario no autenticado',
+        ]);
+    }
+
+    $user = \Illuminate\Support\Facades\Auth::user();
+    return response()->json([
+        'authenticated'               => true,
+        'user'                        => [
+            'id'                => $user->id,
+            'name'              => $user->name,
+            'email'             => $user->email,
+            'role'              => $user->role,
+            'email_verified_at' => $user->email_verified_at,
+            'created_at'        => $user->created_at,
+        ],
+        'can_access_client_dashboard' => ! is_null($user->email_verified_at),
+        'dashboard_url'               => route('client.dashboard'),
+    ]);
+});
+
+// Ruta temporal para dashboard de cliente sin verificación (ELIMINAR EN PRODUCCIÓN)
+Route::get('/client-dashboard-temp', function () {
+    if (! \Illuminate\Support\Facades\Auth::check()) {
+        return redirect()->route('login');
+    }
+
+    $user = \Illuminate\Support\Facades\Auth::user();
+    if ($user->role !== 'client') {
+        return redirect()->route('login');
+    }
+
+    return \Inertia\Inertia::render('Client/Dashboard', [
+        'user'    => $user,
+        'message' => 'Dashboard temporal - Email verificado: ' . ($user->email_verified_at ? 'Sí' : 'No'),
+    ]);
+})->name('client.dashboard.temp');
+
+// Ruta temporal para logout rápido (ELIMINAR EN PRODUCCIÓN)
+Route::get('/logout-quick', function () {
+    \Illuminate\Support\Facades\Auth::logout();
+    request()->session()->invalidate();
+    request()->session()->regenerateToken();
+
+    return redirect()->route('login')->with('message', 'Sesión cerrada exitosamente');
+})->name('logout.quick');
 
 require __DIR__ . '/auth.php';

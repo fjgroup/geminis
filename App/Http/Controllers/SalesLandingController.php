@@ -108,7 +108,7 @@ class SalesLandingController extends Controller
         // Check if user is authenticated
         if (Auth::check()) {
             // User is logged in, go directly to existing domain selection
-            return redirect()->route('client.checkout.select-domain');
+            return redirect()->route('client.checkout.selectDomain');
         } else {
             // User needs to verify domain first, then register
             return redirect()->route('public.checkout.domain');
