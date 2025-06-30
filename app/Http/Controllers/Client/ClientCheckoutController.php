@@ -284,12 +284,51 @@ class ClientCheckoutController extends Controller
             'first_product_sample'      => $mainServiceProducts->first(),
         ]);
 
+        // Obtener datos para cálculos en el frontend
+        $discountPercentages = \App\Models\DiscountPercentage::with(['product', 'billingCycle'])
+            ->where('is_active', true)
+            ->get()
+            ->map(function ($discount) {
+                return [
+                    'product_id'       => $discount->product_id,
+                    'billing_cycle_id' => $discount->billing_cycle_id,
+                    'percentage'       => (float) $discount->percentage,
+                    'name'             => $discount->name,
+                    'description'      => $discount->description,
+                ];
+            })
+            ->keyBy(function ($discount) {
+                return "{$discount['product_id']}-{$discount['billing_cycle_id']}";
+            });
+
+        // Obtener precios de opciones configurables (SOLO MENSUALES - ciclo 1)
+        $configurableOptionPrices = \App\Models\ConfigurableOptionPricing::with(['option', 'billingCycle'])
+            ->where('is_active', true)
+            ->where('billing_cycle_id', 1) // Solo precios mensuales
+            ->get()
+            ->map(function ($pricing) {
+                return [
+                    'option_id'        => $pricing->configurable_option_id,
+                    'billing_cycle_id' => $pricing->billing_cycle_id,
+                    'price'            => (float) $pricing->price,
+                    'setup_fee'        => (float) $pricing->setup_fee,
+                    'currency_code'    => $pricing->currency_code,
+                ];
+            })
+            ->keyBy('option_id')
+            ->map(function ($pricing) {
+                // Crear estructura simple: option_id => {1: pricing_data}
+                return [1 => $pricing];
+            });
+
         try {
             return Inertia::render('Client/Checkout/SelectServicesPage', [
-                'initialCart'         => $cart,
-                'mainServiceProducts' => $mainServiceProducts,
-                'sslProducts'         => $sslProducts,
-                'licenseProducts'     => $licenseProducts,
+                'initialCart'              => $cart,
+                'mainServiceProducts'      => $mainServiceProducts,
+                'sslProducts'              => $sslProducts,
+                'licenseProducts'          => $licenseProducts,
+                'discountPercentages'      => $discountPercentages,
+                'configurableOptionPrices' => $configurableOptionPrices,
             ]);
         } catch (\Exception $e) {
             Log::error('ClientCheckoutController@showSelectServicesPage: Error al renderizar página.', [

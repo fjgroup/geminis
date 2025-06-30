@@ -1,14 +1,17 @@
 <script setup>
-import { ref, computed, onMounted, watchEffect } from 'vue'; // Importar watchEffect
+import { ref, computed, onMounted, watchEffect, watch } from 'vue'; // Importar watchEffect
 import { Head, Link, useForm, router } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import CartSummary from '@/Components/Client/CartSummary.vue';
+import axios from 'axios';
 
 const props = defineProps({
     initialCart: Object,
     mainServiceProducts: Array,
     sslProducts: Array,
     licenseProducts: Array,
+    discountPercentages: Object,      // Descuentos por producto y ciclo
+    configurableOptionPrices: Object, // Precios de opciones configurables
 });
 
 const formPrimaryService = useForm({
@@ -21,6 +24,12 @@ const formAdditionalService = useForm({ product_id: null, pricing_id: null });
 const currentCart = ref(null); // Se inicializará con watchEffect
 const currentSelectedMainProduct = ref(null);
 const selectedConfigurableOptions = ref({});
+
+// Estado para precios dinámicos por producto y ciclo
+const dynamicPricesCache = ref({});
+
+// Estado para controlar la expansión de las opciones configurables
+const expandedConfigSections = ref({});
 
 // Computed para asegurar que selectedConfigurableOptions esté siempre inicializado
 const safeSelectedOptions = computed(() => {
@@ -160,7 +169,168 @@ const formatResourceValue = (key, value) => {
     return value;
 };
 
-// Función para calcular precio con descuento
+// ===== CALCULADORA DINÁMICA DE PRECIOS =====
+
+// Función para calcular precio dinámico completo
+const calculateDynamicPrice = (productId, billingCycleId, configurableOptions = {}) => {
+    // 1. Obtener precio base del producto
+    const product = props.mainServiceProducts?.find(p => p.id === productId);
+    if (!product) return { total: 0, breakdown: {} };
+
+    const pricing = product.pricings?.find(p => p.billing_cycle.id === billingCycleId);
+    if (!pricing) return { total: 0, breakdown: {} };
+
+    const basePrice = parseFloat(pricing.price) || 0;
+
+    // 2. Calcular precio de recursos base incluidos
+    let baseResourcesTotal = 0;
+    const baseResourcesDetails = [];
+
+    if (product.configurable_option_groups) {
+        for (const group of product.configurable_option_groups) {
+            const baseQuantity = parseFloat(group.base_quantity) || 0;
+
+            if (baseQuantity > 0 && group.options && group.options.length > 0) {
+                const option = group.options[0]; // Primera opción del grupo
+                const optionPrices = props.configurableOptionPrices?.[option.id];
+
+                if (optionPrices) {
+                    // Usar precio mensual (ciclo 1) y multiplicar por duración del ciclo
+                    const monthlyPricing = optionPrices[1]; // Siempre usar precio mensual
+                    if (monthlyPricing) {
+                        const monthlyUnitPrice = parseFloat(monthlyPricing.price) || 0;
+
+                        // Obtener duración del ciclo en meses
+                        const product = props.mainServiceProducts?.find(p => p.id === productId);
+                        const pricing = product?.pricings?.find(p => p.billing_cycle.id === billingCycleId);
+                        const cycleDurationMonths = pricing ? Math.round(pricing.billing_cycle.days / 30) : 1;
+
+                        // Calcular precio total para el ciclo
+                        const unitPriceForCycle = monthlyUnitPrice * cycleDurationMonths;
+                        const lineTotal = unitPriceForCycle * baseQuantity;
+                        baseResourcesTotal += lineTotal;
+
+                        baseResourcesDetails.push({
+                            group_name: group.name,
+                            option_name: option.name,
+                            base_quantity: baseQuantity,
+                            unit_price: unitPriceForCycle,
+                            line_total: lineTotal,
+                            monthly_price: monthlyUnitPrice,
+                            cycle_months: cycleDurationMonths
+                        });
+                    } else {
+                        console.warn(`❌ No hay precio mensual para opción ${option.id}`);
+                    }
+                } else {
+                    console.warn(`❌ No hay precios para opción ${option.id}`);
+                }
+            }
+        }
+    }
+
+    // 3. Calcular precio de opciones configurables adicionales
+    let configurableOptionsTotal = 0;
+    const configurableOptionsDetails = [];
+
+    for (const [optionId, quantity] of Object.entries(configurableOptions)) {
+        const optionPrices = props.configurableOptionPrices?.[optionId];
+        if (optionPrices && quantity > 0) {
+            // Usar precio mensual (ciclo 1) y multiplicar por duración del ciclo
+            const monthlyPricing = optionPrices[1]; // Siempre usar precio mensual
+            if (monthlyPricing) {
+                const monthlyUnitPrice = parseFloat(monthlyPricing.price) || 0;
+
+                // Obtener duración del ciclo en meses
+                const product = props.mainServiceProducts?.find(p => p.id === productId);
+                const pricing = product?.pricings?.find(p => p.billing_cycle.id === billingCycleId);
+                const cycleDurationMonths = pricing ? Math.round(pricing.billing_cycle.days / 30) : 1;
+
+                // Calcular precio total para el ciclo
+                const unitPriceForCycle = monthlyUnitPrice * cycleDurationMonths;
+                const lineTotal = unitPriceForCycle * parseFloat(quantity);
+                configurableOptionsTotal += lineTotal;
+
+                configurableOptionsDetails.push({
+                    option_id: optionId,
+                    quantity: parseFloat(quantity),
+                    unit_price: unitPriceForCycle,
+                    line_total: lineTotal,
+                    monthly_price: monthlyUnitPrice,
+                    cycle_months: cycleDurationMonths
+                });
+            }
+        }
+    }
+
+    // 4. Calcular subtotal
+    const subtotal = basePrice + baseResourcesTotal + configurableOptionsTotal;
+
+    // 5. Aplicar descuento
+    const discountKey = `${productId}-${billingCycleId}`;
+    const discount = props.discountPercentages?.[discountKey];
+    const discountPercentage = discount ? parseFloat(discount.percentage) : 0;
+    const discountAmount = subtotal * (discountPercentage / 100);
+
+    // 6. Calcular total final
+    const total = subtotal - discountAmount;
+
+    return {
+        total: Math.round(total * 100) / 100,
+        breakdown: {
+            base_price: basePrice,
+            base_resources: {
+                total: baseResourcesTotal,
+                details: baseResourcesDetails
+            },
+            configurable_options: {
+                total: configurableOptionsTotal,
+                details: configurableOptionsDetails
+            },
+            subtotal: subtotal,
+            discount: {
+                percentage: discountPercentage,
+                amount: discountAmount,
+                name: discount?.name || 'Sin descuento'
+            }
+        }
+    };
+};
+
+// Función para obtener precio dinámico con opciones personalizadas
+const getDynamicPriceWithOptions = (productId, billingCycleId) => {
+    // Obtener opciones configurables del producto
+    const configurableOptions = {};
+
+    // Buscar opciones del producto específico
+    const productOptions = selectedConfigurableOptions.value[productId];
+    if (productOptions) {
+        // Procesar opciones del producto
+        for (const [key, value] of Object.entries(productOptions)) {
+            if (key.endsWith('_quantity') && value > 0) {
+                // Es una cantidad: extraer el option_id
+                const optionId = key.replace('_quantity', '');
+                configurableOptions[optionId] = parseFloat(value);
+            } else if (value === true) {
+                // Es un checkbox activado: cantidad = 1
+                configurableOptions[key] = 1;
+            }
+        }
+    }
+
+    console.log(`🧮 Calculando precio para producto ${productId}, ciclo ${billingCycleId}:`, configurableOptions);
+
+    // Calcular precio con las opciones configurables
+    const result = calculateDynamicPrice(productId, billingCycleId, configurableOptions);
+
+    // Guardar en cache para evitar recálculos innecesarios
+    const cacheKey = `${productId}-${billingCycleId}-${JSON.stringify(configurableOptions)}`;
+    dynamicPricesCache.value[cacheKey] = result;
+
+    return result.total;
+};
+
+// Función para calcular precio con descuento (LEGACY - mantenida para compatibilidad)
 const calculatePriceWithDiscount = (basePrice, productId, billingCycleId) => {
     const discount = getDiscountPercentage(productId, billingCycleId);
     return basePrice * (1 - discount / 100);
@@ -176,6 +346,112 @@ const getDiscountPercentage = (productId, billingCycleId) => {
     if (!pricing || !pricing.discount_percentage) return 0;
 
     return pricing.discount_percentage.percentage || 0;
+};
+
+// Debug: Mostrar datos recibidos
+console.log('=== DATOS PARA CALCULADORA ===');
+console.log('Productos:', props.mainServiceProducts);
+console.log('Descuentos:', props.discountPercentages);
+console.log('Precios opciones:', props.configurableOptionPrices);
+
+// Debug específico: Verificar precios por ciclo
+if (props.configurableOptionPrices) {
+    console.log('=== VERIFICACIÓN PRECIOS POR CICLO ===');
+    Object.keys(props.configurableOptionPrices).forEach(optionId => {
+        const optionPrices = props.configurableOptionPrices[optionId];
+        console.log(`Opción ${optionId}:`, optionPrices);
+
+        // Verificar que tenga precios para todos los ciclos (1-6)
+        for (let cycleId = 1; cycleId <= 6; cycleId++) {
+            if (optionPrices[cycleId]) {
+                console.log(`  Ciclo ${cycleId}: $${optionPrices[cycleId].price}`);
+            } else {
+                console.warn(`  ❌ Falta precio para ciclo ${cycleId}`);
+            }
+        }
+    });
+}
+
+// Test de la calculadora
+onMounted(() => {
+    if (props.mainServiceProducts && props.mainServiceProducts.length > 0) {
+        const testProduct = props.mainServiceProducts[0];
+        if (testProduct.pricings && testProduct.pricings.length > 0) {
+            // Test ciclo mensual
+            const testPricing = testProduct.pricings[0];
+            const result = calculateDynamicPrice(testProduct.id, testPricing.billing_cycle.id);
+            console.log('=== TEST CALCULADORA ===');
+            console.log('Producto:', testProduct.name);
+            console.log('Ciclo:', testPricing.billing_cycle.name);
+            console.log('Resultado:', result);
+
+            // Test todos los ciclos
+            console.log('=== TEST TODOS LOS CICLOS (USANDO PRECIOS MENSUALES) ===');
+            testProduct.pricings.forEach(pricing => {
+                const result = calculateDynamicPrice(testProduct.id, pricing.billing_cycle.id);
+                const months = Math.round(pricing.billing_cycle.days / 30);
+
+                console.log(`${pricing.billing_cycle.name} (${months} meses):`);
+                console.log(`  💰 Subtotal: $${result.breakdown.subtotal}`);
+
+                if (result.breakdown.discount.percentage > 0) {
+                    console.log(`  🎯 Descuento: ${result.breakdown.discount.percentage}% (-$${result.breakdown.discount.amount})`);
+                    console.log(`  🏆 TOTAL CON DESCUENTO: $${result.total}`);
+                } else {
+                    console.log(`  🏆 TOTAL (sin descuento): $${result.total}`);
+                }
+
+                if (result.breakdown.base_resources.details.length > 0) {
+                    console.log(`  📦 Recursos base:`, result.breakdown.base_resources.details.map(r =>
+                        `${r.group_name}: $${r.monthly_price} x ${r.cycle_months} meses = $${r.unit_price}`
+                    ));
+                }
+            });
+        }
+    }
+});
+
+// Watcher para actualizar precios cuando cambien las opciones configurables
+
+watch(selectedConfigurableOptions, (newOptions) => {
+    console.log('🔄 Opciones configurables cambiaron:', newOptions);
+    console.log('🔍 currentSelectedMainProduct:', currentSelectedMainProduct.value);
+
+    // Limpiar cache de precios para forzar recálculo
+    dynamicPricesCache.value = {};
+
+    // Buscar qué producto tiene opciones modificadas
+    for (const [productId, productOptions] of Object.entries(newOptions)) {
+        const product = props.mainServiceProducts?.find(p => p.id == productId);
+        if (product && productOptions && Object.keys(productOptions).length > 0) {
+            console.log('💰 Recalculando precios para producto ID:', productId, 'Nombre:', product.name);
+            console.log('📝 Opciones del producto:', productOptions);
+
+            // Mostrar precios actualizados para todos los ciclos
+            if (product.pricings && product.pricings.length > 0) {
+                console.log('💲 PRECIOS ACTUALIZADOS CON PERSONALIZACIONES:');
+                product.pricings.forEach(pricing => {
+                    const newPrice = getDynamicPriceWithOptions(product.id, pricing.billing_cycle.id);
+                    const months = Math.round(pricing.billing_cycle.days / 30);
+                    console.log(`  ${pricing.billing_cycle.name} (${months} meses): $${newPrice}`);
+                });
+            }
+
+            // Solo procesar el primer producto con cambios
+            break;
+        }
+    }
+}, { deep: true });
+
+// Función para toggle de expansión de opciones configurables
+const toggleConfigSection = (productId) => {
+    expandedConfigSections.value[productId] = !expandedConfigSections.value[productId];
+    console.log(`🔄 Toggle sección configuración producto ${productId}:`, expandedConfigSections.value[productId]);
+};
+
+// Función para verificar si una sección está expandida
+const isConfigSectionExpanded = (productId) => {
+    return expandedConfigSections.value[productId] || false;
 };
 
 const selectMainProductForConfiguration = (product) => {
@@ -219,11 +495,12 @@ const handleSelectPrimaryService = (productId, pricingId) => {
     formPrimaryService.pricing_id = pricingId;
 
     const product = props.mainServiceProducts.find(p => p.id === productId);
+
+    // Obtener opciones configurables seleccionadas
+    const productOptionsSelections = selectedConfigurableOptions.value[productId] || {};
+
     if (currentSelectedMainProduct.value && currentSelectedMainProduct.value.id === productId &&
         product && product.configurable_option_groups && product.configurable_option_groups.length > 0) {
-
-        const productOptionsSelections = selectedConfigurableOptions.value[productId] || {};
-        // console.log(`Opciones seleccionadas para producto ${productId}:`, JSON.parse(JSON.stringify(productOptionsSelections)));
 
         if (!areAllConfigurableOptionsSelected(product, productOptionsSelections)) {
             alert('Por favor, completa todas las opciones configurables requeridas para este plan.');
@@ -233,6 +510,19 @@ const handleSelectPrimaryService = (productId, pricingId) => {
     } else {
         formPrimaryService.configurable_options = {};
     }
+
+    // Calcular precio dinámico final y enviarlo
+    const pricing = product?.pricings?.find(p => p.id === pricingId);
+    const billingCycleId = pricing?.billing_cycle?.id;
+    const finalPrice = getDynamicPriceWithOptions(productId, billingCycleId);
+
+    // Agregar información de precio calculado
+    formPrimaryService.calculated_price = finalPrice;
+    formPrimaryService.billing_cycle_id = billingCycleId;
+
+    console.log('💰 Precio calculado dinámicamente:', finalPrice);
+    console.log('🔄 Ciclo de facturación ID:', billingCycleId);
+    console.log('📝 Opciones configurables:', productOptionsSelections);
 
     console.log('Datos formPrimaryService ANTES POST:', JSON.parse(JSON.stringify(formPrimaryService.data())));
     formPrimaryService.post(route('client.cart.account.setPrimaryService'), {
@@ -323,13 +613,13 @@ onMounted(() => {
 
         <div class="py-12">
             <div class="mx-auto max-w-7xl sm:px-6 lg:px-8">
-                <div class="grid grid-cols-1 gap-8 md:grid-cols-3">
-                    <div class="p-6 space-y-8 bg-white shadow-sm md:col-span-2 dark:bg-gray-800 sm:rounded-lg">
+                <div class="grid grid-cols-1 gap-8 md:grid-cols-10">
+                    <div class="p-6 space-y-8 bg-white shadow-sm md:col-span-6 dark:bg-gray-800 sm:rounded-lg">
 
                         <div>
                             <p class="mb-4 text-lg text-gray-700 dark:text-gray-300">
                                 Añadiendo servicios para: <strong class="text-indigo-600">{{ displayAccountName
-                                }}</strong>
+                                    }}</strong>
                             </p>
 
                             <section>
@@ -344,7 +634,7 @@ onMounted(() => {
                                         <div>
                                             <h4 class="text-lg font-semibold text-gray-800 dark:text-gray-200">{{
                                                 product.name
-                                            }}</h4>
+                                                }}</h4>
                                             <p class="mb-3 text-sm text-gray-600 dark:text-gray-400">{{
                                                 product.description }}
                                             </p>
@@ -380,12 +670,12 @@ onMounted(() => {
                                                                 pricing.billing_cycle.name }}</span>
                                                         <div class="flex flex-col items-center space-y-1">
                                                             <div class="text-center">
-                                                                <!-- Precio con descuento -->
+                                                                <!-- Precio calculado dinámicamente -->
                                                                 <span
                                                                     class="text-xl font-bold text-indigo-600 dark:text-indigo-400">
                                                                     {{
-                                                                        formatCurrency(calculatePriceWithDiscount(pricing.price,
-                                                                            product.id, pricing.billing_cycle.id),
+                                                                        formatCurrency(getDynamicPriceWithOptions(product.id,
+                                                                            pricing.billing_cycle.id),
                                                                             pricing.currency_code) }}
                                                                 </span>
                                                                 <!-- Precio original tachado si hay descuento -->
@@ -417,147 +707,182 @@ onMounted(() => {
                                         <!-- Sección de configuración (ahora siempre visible si hay opciones) -->
                                         <div v-if="product.configurable_option_groups && product.configurable_option_groups.length > 0"
                                             class="p-4 mt-6 space-y-4 border border-purple-200 rounded-lg bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 dark:border-purple-700">
-                                            <div class="flex items-center mb-4 space-x-2">
-                                                <svg class="w-5 h-5 text-purple-600 dark:text-purple-400" fill="none"
-                                                    stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
-                                                </svg>
-                                                <h5 class="text-lg font-semibold text-purple-800 dark:text-purple-200">
-                                                    Configura
-                                                    y Potencia tu servicio</h5>
-                                            </div>
-                                            <p class="mb-4 text-sm text-purple-700 dark:text-purple-300">
-                                                Personaliza tu plan agregando recursos adicionales según tus
-                                                necesidades.
-                                            </p>
+                                            <!-- Encabezado clickeable para expandir/contraer -->
+                                            <div @click="toggleConfigSection(product.id)"
+                                                class="flex items-center justify-between p-4 mb-6 transition-all duration-200 rounded-lg cursor-pointer hover:bg-purple-100/50 dark:hover:bg-purple-900/40">
+                                                <div class="flex items-center space-x-3">
+                                                    <svg class="text-purple-600 w-7 h-7 dark:text-purple-400"
+                                                        fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                            stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                                                    </svg>
+                                                    <h5 class="text-2xl font-bold text-purple-800 dark:text-purple-200">
+                                                        Configura y Potencia tu servicio</h5>
 
-                                            <div v-for="group in product.configurable_option_groups" :key="group.id"
-                                                class="p-4 bg-white border border-purple-200 rounded-lg dark:border-purple-600 dark:bg-gray-800">
-                                                <div class="flex items-center justify-between mb-3">
-                                                    <div>
-                                                        <label
-                                                            class="text-sm font-medium text-gray-800 dark:text-gray-300">
-                                                            {{ group.name }}
-                                                            <span v-if="group.is_required" class="text-red-500">*</span>
-                                                        </label>
-                                                        <!-- Mostrar cantidad base si existe -->
-                                                        <div v-if="group.base_quantity"
-                                                            class="mt-1 text-xs text-blue-600 dark:text-blue-400">
-                                                            Incluido: {{ group.base_quantity }} {{
-                                                                group.name.toLowerCase() }}
-                                                        </div>
-                                                    </div>
-                                                    <span v-if="group.is_required"
-                                                        class="px-2 py-1 text-xs text-yellow-600 bg-yellow-100 rounded">
-                                                        Obligatorio
-                                                    </span>
+                                                    <!-- Icono de expansión -->
+                                                    <svg class="w-6 h-6 text-purple-600 transition-transform duration-200 dark:text-purple-400"
+                                                        :class="{ 'rotate-180': isConfigSectionExpanded(product.id) }"
+                                                        fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                            stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                                    </svg>
                                                 </div>
 
-                                                <p v-if="group.description"
-                                                    class="mb-3 text-xs text-gray-500 dark:text-gray-400">
-                                                    {{ group.description }}
+                                                <!-- Indicador de precio actualizado -->
+                                                <div
+                                                    class="px-4 py-3 text-right bg-purple-100 rounded-lg dark:bg-purple-900/30">
+                                                    <div
+                                                        class="mb-1 text-sm font-medium text-purple-600 dark:text-purple-400">
+                                                        Precio personalizado:
+                                                    </div>
+                                                    <div
+                                                        class="text-2xl font-bold text-purple-800 dark:text-purple-200">
+                                                        {{ formatCurrency(getDynamicPriceWithOptions(product.id, 1),
+                                                            'USD') }}<span class="text-lg">/mes</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Texto cuando está contraído -->
+                                            <div v-show="!isConfigSectionExpanded(product.id)" class="py-4 text-center">
+                                                <p class="text-lg font-medium text-purple-600 dark:text-purple-400">
+                                                    👆 Haz clic arriba para personalizar tu servicio
+                                                </p>
+                                            </div>
+
+                                            <!-- Contenido expandible -->
+                                            <div v-show="isConfigSectionExpanded(product.id)"
+                                                class="transition-all duration-300">
+                                                <p
+                                                    class="mb-6 text-lg leading-relaxed text-purple-700 dark:text-purple-300">
+                                                    Personaliza tu plan agregando recursos adicionales según tus
+                                                    necesidades. Los precios se actualizan automáticamente.
                                                 </p>
 
-                                                <div v-if="group.options && group.options.length > 0" class="space-y-3">
-                                                    <div v-for="option in group.options" :key="option.id"
-                                                        class="flex items-center justify-between p-3 transition-colors border border-gray-200 rounded-lg bg-gray-50 dark:bg-gray-700 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600">
-                                                        <div class="flex-1">
-                                                            <div class="flex items-center space-x-3">
-                                                                <!-- Checkbox para opciones no obligatorias -->
-                                                                <input
-                                                                    v-if="option.option_type === 'checkbox' || !group.is_required"
-                                                                    :id="`option_${option.id}`" type="checkbox"
-                                                                    v-model="safeSelectedOptions[product.id][option.id]"
-                                                                    class="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500">
-
-                                                                <!-- Radio button para opciones obligatorias -->
-                                                                <input v-else-if="group.is_required"
-                                                                    :id="`option_${option.id}`" type="radio"
-                                                                    :name="`group_${group.id}`" :value="option.id"
-                                                                    v-model="safeSelectedOptions[product.id][group.id]"
-                                                                    class="w-4 h-4 text-purple-600 border-gray-300 focus:ring-purple-500">
-
-                                                                <label :for="`option_${option.id}`"
-                                                                    class="flex-1 cursor-pointer">
-                                                                    <div
-                                                                        class="text-sm font-medium text-gray-900 dark:text-gray-100">
-                                                                        {{ option.name }}
-                                                                    </div>
-                                                                    <div v-if="option.description"
-                                                                        class="text-xs text-gray-500">
-                                                                        {{ option.description }}
-                                                                    </div>
-                                                                    <div class="text-xs text-gray-400">
-                                                                        Tipo: {{ getOptionTypeLabel(option.option_type)
-                                                                        }}
-                                                                        <span
-                                                                            v-if="option.min_value || option.max_value">
-                                                                            ({{ option.min_value || 0 }} - {{
-                                                                                option.max_value
-                                                                                || '∞' }})
-                                                                        </span>
-                                                                    </div>
-                                                                    <!-- Mostrar precio si existe -->
-                                                                    <div v-if="option.pricings && option.pricings.length > 0"
-                                                                        class="text-xs font-medium text-green-600 dark:text-green-400">
-                                                                        {{ formatCurrency(option.pricings[0].price,
-                                                                            option.pricings[0].currency_code) }}
-                                                                        <span
-                                                                            v-if="option.option_type === 'quantity'">por
-                                                                            unidad</span>
-                                                                        / {{ option.pricings[0].billing_cycle.name }}
-                                                                    </div>
-                                                                </label>
-                                                            </div>
-
-                                                            <!-- Input de cantidad para opciones de tipo quantity -->
-                                                            <div v-if="option.option_type === 'quantity' && (selectedConfigurableOptions[product.id][option.id] || group.is_required)"
-                                                                class="mt-2 ml-7">
-                                                                <label
-                                                                    class="block mb-1 text-xs font-medium text-gray-700">
-                                                                    Cantidad:
-                                                                </label>
-                                                                <input type="number" :min="option.min_value || 1"
-                                                                    :max="option.max_value || 999"
-                                                                    v-model="selectedConfigurableOptions[product.id][`${option.id}_quantity`]"
-                                                                    class="w-24 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-purple-500 focus:border-purple-500">
+                                                <div v-for="group in product.configurable_option_groups" :key="group.id"
+                                                    class="p-6 bg-white border border-purple-200 shadow-sm rounded-xl dark:border-purple-600 dark:bg-gray-800">
+                                                    <div class="flex items-center justify-between mb-4">
+                                                        <div>
+                                                            <label
+                                                                class="text-xl font-bold text-gray-800 dark:text-gray-200">
+                                                                {{ group.name }}
+                                                                <span v-if="group.is_required"
+                                                                    class="text-red-500">*</span>
+                                                            </label>
+                                                            <!-- Mostrar cantidad base si existe -->
+                                                            <div v-if="group.base_quantity"
+                                                                class="mt-2 text-sm font-medium text-blue-600 dark:text-blue-400">
+                                                                ✅ Incluido: {{ group.base_quantity }} {{
+                                                                    group.name.toLowerCase() }}
                                                             </div>
                                                         </div>
+                                                        <span v-if="group.is_required"
+                                                            class="px-3 py-1 text-sm font-medium text-yellow-700 bg-yellow-100 rounded-full">
+                                                            Obligatorio
+                                                        </span>
+                                                    </div>
 
-                                                        <!-- Precio de la opción -->
-                                                        <div class="ml-4 text-right">
-                                                            <div v-if="getOptionPricing(option, product)"
-                                                                class="text-sm">
-                                                                <div
-                                                                    class="font-medium text-gray-900 dark:text-gray-100">
-                                                                    {{ formatCurrency(getOptionPricing(option,
-                                                                        product).price)
-                                                                    }}
+                                                    <p v-if="group.description"
+                                                        class="mb-4 text-base leading-relaxed text-gray-600 dark:text-gray-400">
+                                                        {{ group.description }}
+                                                    </p>
+
+                                                    <div v-if="group.options && group.options.length > 0"
+                                                        class="space-y-4">
+                                                        <div v-for="option in group.options" :key="option.id"
+                                                            class="flex items-center justify-between p-4 transition-all border border-gray-200 rounded-xl bg-gray-50 dark:bg-gray-700 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600 hover:shadow-md">
+                                                            <div class="flex-1">
+                                                                <div class="flex items-center space-x-3">
+                                                                    <!-- Checkbox para opciones no obligatorias -->
+                                                                    <input
+                                                                        v-if="option.option_type === 'checkbox' || !group.is_required"
+                                                                        :id="`option_${option.id}`" type="checkbox"
+                                                                        v-model="safeSelectedOptions[product.id][option.id]"
+                                                                        class="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500">
+
+                                                                    <!-- Radio button para opciones obligatorias -->
+                                                                    <input v-else-if="group.is_required"
+                                                                        :id="`option_${option.id}`" type="radio"
+                                                                        :name="`group_${group.id}`" :value="option.id"
+                                                                        v-model="safeSelectedOptions[product.id][group.id]"
+                                                                        class="w-4 h-4 text-purple-600 border-gray-300 focus:ring-purple-500">
+
+                                                                    <label :for="`option_${option.id}`"
+                                                                        class="flex-1 cursor-pointer">
+                                                                        <div
+                                                                            class="mb-2 text-lg font-bold text-gray-900 dark:text-gray-100">
+                                                                            {{ option.name }}
+                                                                        </div>
+                                                                        <div v-if="option.description"
+                                                                            class="mb-2 text-sm leading-relaxed text-gray-600 dark:text-gray-400">
+                                                                            {{ option.description }}
+                                                                        </div>
+                                                                        <div
+                                                                            class="text-sm text-gray-500 dark:text-gray-500">
+                                                                            📋 {{ getOptionTypeLabel(option.option_type)
+                                                                            }}
+                                                                            <span
+                                                                                v-if="option.min_value || option.max_value"
+                                                                                class="px-2 py-1 ml-2 text-xs bg-gray-100 rounded dark:bg-gray-600">
+                                                                                {{ option.min_value || 0 }} - {{
+                                                                                    option.max_value || '∞' }}
+                                                                            </span>
+                                                                        </div>
+                                                                    </label>
                                                                 </div>
-                                                                <div class="text-xs text-gray-500">
-                                                                    {{ option.option_type === 'quantity' ? '/ unidad' :
-                                                                        '' }}
-                                                                </div>
-                                                                <div v-if="getOptionPricing(option, product).setup_fee > 0"
-                                                                    class="text-xs text-gray-400">
-                                                                    Setup: {{ formatCurrency(getOptionPricing(option,
-                                                                        product).setup_fee) }}
+
+                                                                <!-- Input de cantidad para opciones de tipo quantity -->
+                                                                <div v-if="option.option_type === 'quantity' && (selectedConfigurableOptions[product.id][option.id] || group.is_required)"
+                                                                    class="mt-4 ml-8">
+                                                                    <label
+                                                                        class="block mb-2 text-sm font-medium text-purple-700 dark:text-purple-300">
+                                                                        📊 Cantidad adicional:
+                                                                    </label>
+                                                                    <input type="number" :min="option.min_value || 1"
+                                                                        :max="option.max_value || 999"
+                                                                        v-model="selectedConfigurableOptions[product.id][`${option.id}_quantity`]"
+                                                                        class="w-32 px-3 py-2 text-lg font-medium bg-white border-2 border-purple-300 rounded-lg focus:ring-purple-500 focus:border-purple-500 dark:bg-gray-700 dark:border-purple-600">
                                                                 </div>
                                                             </div>
-                                                            <div v-else class="text-xs text-gray-400">
-                                                                Sin precio
+
+                                                            <!-- Precio de la opción -->
+                                                            <div
+                                                                class="px-4 py-3 ml-4 text-right rounded-lg bg-green-50 dark:bg-green-900/20">
+                                                                <div v-if="getOptionPricing(option, product)"
+                                                                    class="text-center">
+                                                                    <div
+                                                                        class="text-xl font-bold text-green-700 dark:text-green-400">
+                                                                        {{ formatCurrency(getOptionPricing(option,
+                                                                            product).price) }}
+                                                                    </div>
+                                                                    <div
+                                                                        class="text-sm font-medium text-green-600 dark:text-green-500">
+                                                                        <span
+                                                                            v-if="option.option_type === 'quantity'">por
+                                                                            unidad / mes</span>
+                                                                        <span v-else>por servicio / mes</span>
+                                                                    </div>
+                                                                    <div v-if="getOptionPricing(option, product).setup_fee > 0"
+                                                                        class="mt-1 text-xs text-gray-500">
+                                                                        Setup: {{
+                                                                            formatCurrency(getOptionPricing(option,
+                                                                                product).setup_fee) }}
+                                                                    </div>
+                                                                </div>
+                                                                <div v-else class="text-sm text-center text-gray-400">
+                                                                    Sin precio
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     </div>
-                                                </div>
 
-                                                <div v-else class="text-xs italic text-gray-400">
-                                                    No hay opciones disponibles para este grupo.
+                                                    <div v-else class="text-xs italic text-gray-400">
+                                                        No hay opciones disponibles para este grupo.
+                                                    </div>
                                                 </div>
                                             </div>
+                                            <!-- Fin del contenido expandible -->
                                         </div>
-
 
                                     </div>
                                     <p v-if="formPrimaryService.errors.product_id" class="text-sm text-red-500">
@@ -677,7 +1002,7 @@ onMounted(() => {
                         </div>
                     </div>
 
-                    <div class="md:col-span-1">
+                    <div class="md:col-span-4">
                         <div class="sticky top-6">
                             <CartSummary ref="cartSummaryComp" />
                         </div>
