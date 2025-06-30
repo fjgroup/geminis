@@ -5,7 +5,6 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Client\CartOperationRequest;
 use App\Http\Traits\ClientSecurityTrait;
 use App\Models\ConfigurableOption;
-use App\Models\ConfigurableOptionGroup;
 use App\Models\ConfigurableOptionPricing;
 use App\Models\Product;
 use App\Models\ProductPricing;
@@ -107,19 +106,72 @@ class ClientCartController extends Controller
                         ]);
                     }
 
-                    // Enriquecer detalles de opciones configurables para mostrar en el resumen
+                    // Enriquecer detalles de opciones configurables con precios y cantidades
                     if (isset($account['primary_service']['configurable_options']) && is_array($account['primary_service']['configurable_options'])) {
                         $enrichedOptions = [];
-                        foreach ($account['primary_service']['configurable_options'] as $groupId => $optionId) {
-                            $group  = ConfigurableOptionGroup::find($groupId);
-                            $option = ConfigurableOption::find($optionId);
-                            if ($group && $option && $option->group_id == $group->id) {
-                                $enrichedOptions[] = ['group_id' => $group->id, 'group_name' => $group->name, 'option_id' => $option->id, 'option_name' => $option->name];
+                        $billingCycleId  = $account['primary_service']['billing_cycle_id'] ?? $pricing->billing_cycle_id;
+
+                        foreach ($account['primary_service']['configurable_options'] as $optionId => $optionData) {
+                            $option = ConfigurableOption::with('group')->find($optionId);
+
+                            if ($option && $option->group) {
+                                // Obtener precio de la opción
+                                $optionPricing = ConfigurableOptionPricing::where('configurable_option_id', $option->id)
+                                    ->where('billing_cycle_id', 1) // Usar precio mensual como base
+                                    ->first();
+
+                                               // Determinar cantidad desde la estructura guardada
+                                $quantity = 1; // Por defecto
+                                if (is_array($optionData)) {
+                                    // Nueva estructura: ['option_id' => X, 'group_id' => Y, 'value' => Z, 'quantity' => Q]
+                                    $quantity = isset($optionData['quantity']) ? (int) $optionData['quantity'] : 1;
+                                } else {
+                                    // Estructura simple: optionId => value
+                                    $quantity = is_numeric($optionData) ? (int) $optionData : 1;
+                                }
+
+                                $unitPrice  = $optionPricing ? (float) $optionPricing->price : 0.0;
+                                $totalPrice = $unitPrice * $quantity;
+
+                                $enrichedOptions[] = [
+                                    'group_id'      => $option->group->id,
+                                    'group_name'    => $option->group->name,
+                                    'option_id'     => $option->id,
+                                    'option_name'   => $option->name,
+                                    'quantity'      => $quantity,
+                                    'unit_price'    => $unitPrice,
+                                    'total_price'   => $totalPrice,
+                                    'currency_code' => $pricing->currency_code,
+                                ];
+
+                                Log::debug('ClientCartController@getCartData: Opción configurada enriquecida.', [
+                                    'option_name' => $option->name,
+                                    'quantity'    => $quantity,
+                                    'unit_price'  => $unitPrice,
+                                    'total_price' => $totalPrice,
+                                ]);
                             } else {
-                                $enrichedOptions[] = ['group_id' => $groupId, 'group_name' => "ID Grupo: {$groupId}", 'option_id' => $optionId, 'option_name' => "ID Opción: {$optionId}"];
+                                $enrichedOptions[] = [
+                                    'group_id'      => 'unknown',
+                                    'group_name'    => "Opción no encontrada",
+                                    'option_id'     => $optionId,
+                                    'option_name'   => "ID: {$optionId}",
+                                    'quantity'      => 1,
+                                    'unit_price'    => 0.0,
+                                    'total_price'   => 0.0,
+                                    'currency_code' => $pricing->currency_code,
+                                ];
                             }
                         }
                         $account['primary_service']['configurable_options_details'] = $enrichedOptions;
+
+                        Log::info('ClientCartController@getCartData: Opciones configurables procesadas.', [
+                            'product_id'      => $product->id,
+                            'total_options'   => count($enrichedOptions),
+                            'options_summary' => array_map(function ($opt) {
+                                return $opt['group_name'] . ': ' . $opt['option_name'] . ' (qty: ' . $opt['quantity'] . ', price: ' . $opt['total_price'] . ')';
+                            }, $enrichedOptions),
+                        ]);
                     }
                 } else {
                     $account['primary_service']['product_name']  = 'Servicio primario no disponible';
@@ -285,6 +337,13 @@ class ClientCartController extends Controller
             'validated_data'       => $validatedData,
         ]);
 
+        // Debug específico para opciones configurables
+        Log::info('🔍 DEBUGGING - Opciones configurables recibidas:', [
+            'configurable_options_raw'   => $validatedData['configurable_options'] ?? 'No recibidas',
+            'configurable_options_count' => count($validatedData['configurable_options'] ?? []),
+            'configurable_options_keys'  => array_keys($validatedData['configurable_options'] ?? [])
+        ]);
+
         $cart              = session('cart', $this->initializeCart()); // Usar session()
         $activeIndex       = $this->getActiveAccountIndex();           // Sin $request
         $activeAccountData = null;
@@ -338,9 +397,14 @@ class ClientCartController extends Controller
             $validConfigOptions  = [];
             $productConfigGroups = $product->configurableOptionGroups->keyBy('id');
 
-            foreach ($validatedData['configurable_options'] as $optionId => $value) {
-                // Buscar la opción para obtener su grupo
-                $option = ConfigurableOption::with('group')->find($optionId);
+            foreach ($validatedData['configurable_options'] as $optionKey => $value) {
+                // Saltar claves de cantidad (terminan en _quantity)
+                if (str_ends_with($optionKey, '_quantity')) {
+                    continue;
+                }
+
+                $optionId = (int) $optionKey;
+                $option   = ConfigurableOption::with('group')->find($optionId);
 
                 if (! $option) {
                     continue; // Saltar opciones que no existen
@@ -368,26 +432,32 @@ class ClientCartController extends Controller
                         break;
 
                     case 'quantity':
-                        // Para quantity, validar rango y guardar cantidad
-                        $quantity = (int) $value;
-                        if ($quantity > 0) {
-                            if ($option->min_value && $quantity < $option->min_value) {
-                                return back()->withInput()->withErrors([
-                                    'configurable_options.' . $optionId => "La cantidad mínima para '{$option->name}' es {$option->min_value}.",
-                                ]);
-                            }
-                            if ($option->max_value && $quantity > $option->max_value) {
-                                return back()->withInput()->withErrors([
-                                    'configurable_options.' . $optionId => "La cantidad máxima para '{$option->name}' es {$option->max_value}.",
-                                ]);
-                            }
+                        // Para quantity, buscar la cantidad en la clave separada
+                        if ($value) {
+                            $quantityKey = $optionId . '_quantity';
+                            $quantity    = isset($validatedData['configurable_options'][$quantityKey])
+                            ? (int) $validatedData['configurable_options'][$quantityKey]
+                            : 1;
 
-                            $validConfigOptions[$optionId] = [
-                                'option_id' => $option->id,
-                                'group_id'  => $group->id,
-                                'value'     => $quantity,
-                                'quantity'  => $quantity,
-                            ];
+                            if ($quantity > 0) {
+                                if ($option->min_value && $quantity < $option->min_value) {
+                                    return back()->withInput()->withErrors([
+                                        'configurable_options.' . $optionId => "La cantidad mínima para '{$option->name}' es {$option->min_value}.",
+                                    ]);
+                                }
+                                if ($option->max_value && $quantity > $option->max_value) {
+                                    return back()->withInput()->withErrors([
+                                        'configurable_options.' . $optionId => "La cantidad máxima para '{$option->name}' es {$option->max_value}.",
+                                    ]);
+                                }
+
+                                $validConfigOptions[$optionId] = [
+                                    'option_id' => $option->id,
+                                    'group_id'  => $group->id,
+                                    'value'     => $quantity,
+                                    'quantity'  => $quantity,
+                                ];
+                            }
                         }
                         break;
 
@@ -451,6 +521,13 @@ class ClientCartController extends Controller
             'calculated_price'     => $validatedData['calculated_price'] ?? 'No enviado',
             'billing_cycle_id'     => $validatedData['billing_cycle_id'] ?? 'No enviado',
             'primary_service_data' => $primaryServiceData,
+        ]);
+
+        // Debug específico para verificar qué opciones se guardaron
+        Log::info('🔍 DEBUGGING - Opciones guardadas en el carrito:', [
+            'configurable_options_saved' => $primaryServiceData['configurable_options'] ?? 'No guardadas',
+            'configurable_options_count' => count($primaryServiceData['configurable_options'] ?? []),
+            'full_primary_service'       => $primaryServiceData
         ]);
 
         $request->session()->put('cart', $cart);

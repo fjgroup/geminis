@@ -194,12 +194,13 @@ const cartCurrency = computed(() => {
                                     <div>
                                         <span class="font-medium">{{ account.domain_info.product_name }}</span>
                                         <span v-if="account.domain_info.billing_cycle_name"
-                                              class="ml-2 px-2 py-1 text-xs font-semibold text-purple-800 bg-purple-100 rounded-full">
+                                            class="ml-2 px-2 py-1 text-xs font-semibold text-purple-800 bg-purple-100 rounded-full">
                                             {{ account.domain_info.billing_cycle_name.toUpperCase() }}
                                         </span>
                                     </div>
                                     <span class="font-medium text-lg">
-                                        {{ formatCurrency(account.domain_info.override_price || account.domain_info.price ||
+                                        {{ formatCurrency(account.domain_info.override_price ||
+                                            account.domain_info.price ||
                                             0, account.domain_info.currency_code || cartCurrency) }}
                                     </span>
                                 </div>
@@ -209,12 +210,13 @@ const cartCurrency = computed(() => {
                                     <div>
                                         <span>(Solo registro de nombre de dominio)</span>
                                         <span v-if="account.domain_info.billing_cycle_name"
-                                              class="ml-2 px-2 py-1 text-xs font-semibold text-purple-800 bg-purple-100 rounded-full">
+                                            class="ml-2 px-2 py-1 text-xs font-semibold text-purple-800 bg-purple-100 rounded-full">
                                             {{ account.domain_info.billing_cycle_name.toUpperCase() }}
                                         </span>
                                     </div>
                                     <span v-if="account.domain_info.price" class="font-medium text-lg">
-                                        {{ formatCurrency(account.domain_info.override_price || account.domain_info.price ||
+                                        {{ formatCurrency(account.domain_info.override_price ||
+                                            account.domain_info.price ||
                                             0, account.domain_info.currency_code || cartCurrency) }}
                                     </span>
                                 </div>
@@ -237,7 +239,7 @@ const cartCurrency = computed(() => {
                                     <div>
                                         <span class="font-medium">{{ account.primary_service.product_name }}</span>
                                         <span v-if="account.primary_service.billing_cycle_name"
-                                              class="ml-2 px-2 py-1 text-xs font-semibold text-blue-800 bg-blue-100 rounded-full">
+                                            class="ml-2 px-2 py-1 text-xs font-semibold text-blue-800 bg-blue-100 rounded-full">
                                             {{ account.primary_service.billing_cycle_name.toUpperCase() }}
                                         </span>
                                     </div>
@@ -262,22 +264,54 @@ const cartCurrency = computed(() => {
                             </button>
                         </div>
                     </div>
-                    <!-- Mostrar Opciones Configurables Seleccionadas (Básico) -->
-                    <div v-if="account.primary_service.configurable_options && Object.keys(account.primary_service.configurable_options).length > 0"
-                        class="mt-1 ml-6 text-xs text-gray-500">
-                        <p class="font-medium">Opciones Config.:</p>
-                        <ul class="list-disc list-inside">
-                            <li v-if="account.primary_service.configurable_options_details"
-                                v-for="detail in account.primary_service.configurable_options_details"
-                                :key="detail.group_id + '_' + detail.option_id">
-                                {{ detail.group_name }}: {{ detail.option_name }}
-                            </li>
-                            <!-- Fallback si solo están los IDs crudos (configurable_options pero no details) -->
-                            <li v-else v-for="(optionValue, groupKey) in account.primary_service.configurable_options"
-                                :key="groupKey">
-                                Grupo ID {{ groupKey }}: Opción ID {{ optionValue }}
-                            </li>
-                        </ul>
+                    <!-- Mostrar Opciones Configurables como productos individuales -->
+                    <div v-if="account.primary_service.configurable_options_details && account.primary_service.configurable_options_details.length > 0"
+                        class="mt-3 ml-3 space-y-2">
+                        <p class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">📦 Recursos Adicionales:
+                        </p>
+                        <!-- Debug: mostrar datos recibidos -->
+                        <!-- <pre class="text-xs bg-gray-100 p-2 rounded mb-2">{{ JSON.stringify(account.primary_service.configurable_options_details, null, 2) }}</pre> -->
+                        <div v-for="detail in account.primary_service.configurable_options_details"
+                            :key="detail.group_id + '_' + detail.option_id"
+                            class="flex justify-between items-center p-2 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-200 dark:border-blue-700">
+                            <div class="flex-1">
+                                <div class="text-sm font-medium text-blue-800 dark:text-blue-200">
+                                    {{ detail.group_name }}
+                                </div>
+                                <div class="text-xs text-blue-600 dark:text-blue-300">
+                                    {{ detail.option_name }}
+                                    <span v-if="detail.quantity && detail.quantity > 1"
+                                        class="ml-1 px-1 py-0.5 bg-blue-200 dark:bg-blue-800 rounded text-xs">
+                                        Cantidad: {{ detail.quantity }}
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <div v-if="detail.unit_price"
+                                    class="text-sm font-semibold text-blue-700 dark:text-blue-300">
+                                    {{ formatCurrency(detail.total_price || detail.unit_price,
+                                        account.primary_service.currency_code || cartCurrency) }}
+                                </div>
+                                <div v-if="detail.unit_price && detail.quantity > 1"
+                                    class="text-xs text-blue-500 dark:text-blue-400">
+                                    {{ formatCurrency(detail.unit_price, account.primary_service.currency_code ||
+                                        cartCurrency) }} × {{ detail.quantity }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Fallback: Mostrar opciones configurables básicas si no hay detalles enriquecidos -->
+                    <div v-else-if="account.primary_service.configurable_options && Object.keys(account.primary_service.configurable_options).length > 0"
+                        class="mt-3 ml-3 space-y-1">
+                        <p class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">⚙️ Configuraciones:</p>
+                        <!-- Debug: mostrar opciones básicas -->
+                        <!-- <pre class="text-xs bg-yellow-100 p-2 rounded mb-2">{{ JSON.stringify(account.primary_service.configurable_options, null, 2) }}</pre> -->
+                        <div v-for="(optionValue, optionKey) in account.primary_service.configurable_options"
+                            :key="optionKey"
+                            class="text-xs text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 p-2 rounded">
+                            <span class="font-medium">{{ optionKey }}:</span> {{ optionValue }}
+                        </div>
                     </div>
                 </div>
 
@@ -290,7 +324,7 @@ const cartCurrency = computed(() => {
                                 <div>
                                     <span class="font-medium">{{ service.product_name }}</span>
                                     <span v-if="service.billing_cycle_name"
-                                          class="ml-2 px-2 py-1 text-xs font-semibold text-green-800 bg-green-100 rounded-full">
+                                        class="ml-2 px-2 py-1 text-xs font-semibold text-green-800 bg-green-100 rounded-full">
                                         {{ service.billing_cycle_name.toUpperCase() }}
                                     </span>
                                 </div>

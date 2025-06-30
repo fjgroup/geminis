@@ -90,6 +90,35 @@ watchEffect(() => {
             activeDomainName.value = 'Cuenta Activa (sin dominio)'; // Mensaje más claro
             console.log('SelectServicesPage: watchEffect - Cuenta activa sin nombre de dominio.');
         }
+
+        // Inicializar opciones configurables desde el carrito existente
+        if (activeAccount && activeAccount.primary_service) {
+            const productId = activeAccount.primary_service.product_id;
+
+            // Asegurar que el producto tenga su objeto inicializado
+            if (!selectedConfigurableOptions.value[productId]) {
+                selectedConfigurableOptions.value[productId] = {};
+            }
+
+            // Si hay opciones configurables guardadas, reconstruir la estructura del frontend
+            if (activeAccount.primary_service.configurable_options) {
+                console.log('🔄 Reconstruyendo opciones configurables desde carrito:', {
+                    productId,
+                    saved_options: activeAccount.primary_service.configurable_options
+                });
+
+                // Reconstruir opciones desde la estructura guardada
+                Object.entries(activeAccount.primary_service.configurable_options).forEach(([optionId, optionData]) => {
+                    if (typeof optionData === 'object' && optionData !== null) {
+                        // Nueva estructura: {option_id, group_id, value, quantity}
+                        selectedConfigurableOptions.value[productId][optionId] = optionData.value === true || optionData.value > 0;
+                        if (optionData.quantity && optionData.quantity > 1) {
+                            selectedConfigurableOptions.value[productId][`${optionId}_quantity`] = optionData.quantity;
+                        }
+                    }
+                });
+            }
+        }
     } else {
         activeDomainName.value = 'N/A (Carrito no disponible o sin cuenta activa)';
         console.log('SelectServicesPage: watchEffect - Carrito no disponible o sin cuenta activa.');
@@ -329,7 +358,7 @@ const getDynamicPriceWithOptions = (productId, billingCycleId) => {
         }
     }
 
-    console.log(`🧮 Calculando precio para producto ${productId}, ciclo ${billingCycleId}:`, configurableOptions);
+    // console.log(`🧮 Calculando precio para producto ${productId}, ciclo ${billingCycleId}:`, configurableOptions);
 
     // Calcular precio con las opciones configurables
     const result = calculateDynamicPrice(productId, billingCycleId, configurableOptions);
@@ -493,8 +522,7 @@ const areAllConfigurableOptionsSelected = (product, selections) => {
 };
 
 const handleSelectPrimaryService = (productId, pricingId) => {
-    console.log('--- handleSelectPrimaryService INVOCADO ---');
-    console.log('Producto ID:', productId, 'Pricing ID:', pricingId);
+    console.log('🚀 Seleccionando servicio - Producto:', productId, 'Pricing:', pricingId);
 
     if (!pricingId) {
         console.error('ERROR CRÍTICO: pricingId es nulo/indefinido.');
@@ -510,16 +538,17 @@ const handleSelectPrimaryService = (productId, pricingId) => {
     // Obtener opciones configurables seleccionadas
     const productOptionsSelections = selectedConfigurableOptions.value[productId] || {};
 
-    if (currentSelectedMainProduct.value && currentSelectedMainProduct.value.id === productId &&
-        product && product.configurable_option_groups && product.configurable_option_groups.length > 0) {
+    console.log('🔍 Opciones para producto', productId, ':', productOptionsSelections);
 
+    // SIEMPRE asignar las opciones configurables, incluso si no hay producto seleccionado actualmente
+    formPrimaryService.configurable_options = productOptionsSelections;
+
+    // Validar opciones requeridas solo si hay opciones configurables
+    if (product && product.configurable_option_groups && product.configurable_option_groups.length > 0) {
         if (!areAllConfigurableOptionsSelected(product, productOptionsSelections)) {
             alert('Por favor, completa todas las opciones configurables requeridas para este plan.');
             return;
         }
-        formPrimaryService.configurable_options = productOptionsSelections;
-    } else {
-        formPrimaryService.configurable_options = {};
     }
 
     // Calcular precio dinámico final y enviarlo
@@ -531,18 +560,12 @@ const handleSelectPrimaryService = (productId, pricingId) => {
     formPrimaryService.calculated_price = finalPrice;
     formPrimaryService.billing_cycle_id = billingCycleId;
 
-    console.log('💰 Precio calculado dinámicamente:', finalPrice);
-    console.log('🔄 Ciclo de facturación ID:', billingCycleId);
-    console.log('📝 Opciones configurables:', productOptionsSelections);
-    console.log('📊 Datos completos del formulario:', {
-        product_id: formPrimaryService.product_id,
-        pricing_id: formPrimaryService.pricing_id,
-        calculated_price: formPrimaryService.calculated_price,
-        billing_cycle_id: formPrimaryService.billing_cycle_id,
-        configurable_options: formPrimaryService.configurable_options
-    });
+    console.log('💰 Precio final:', finalPrice, '| Ciclo:', billingCycleId);
 
-    console.log('Datos formPrimaryService ANTES POST:', JSON.parse(JSON.stringify(formPrimaryService.data())));
+    console.log('🔍 OPCIONES CONFIGURABLES:');
+    console.log('- Seleccionadas:', selectedConfigurableOptions.value[productId]);
+    console.log('- En formulario:', formPrimaryService.configurable_options);
+    console.log('- Total opciones:', Object.keys(formPrimaryService.configurable_options || {}).length);
     formPrimaryService.post(route('client.cart.account.setPrimaryService'), {
         preserveScroll: true, // Inertia intentará mantener el scroll
         preserveState: false, // Permitir que las props se recarguen y actualicen la página. True puede prevenirlo.
@@ -637,7 +660,7 @@ onMounted(() => {
                         <div>
                             <p class="mb-4 text-lg text-gray-700 dark:text-gray-300">
                                 Añadiendo servicios para: <strong class="text-indigo-600">{{ displayAccountName
-                                    }}</strong>
+                                }}</strong>
                             </p>
 
                             <section>
@@ -652,7 +675,7 @@ onMounted(() => {
                                         <div>
                                             <h4 class="text-lg font-semibold text-gray-800 dark:text-gray-200">{{
                                                 product.name
-                                                }}</h4>
+                                            }}</h4>
                                             <p class="mb-3 text-sm text-gray-600 dark:text-gray-400">{{
                                                 product.description }}
                                             </p>
@@ -853,36 +876,38 @@ onMounted(() => {
                                                                 <!-- Input de cantidad movido a la columna 3 -->
                                                             </div>
 
-                                                            <!-- Columna 2: Precio destacado en el centro -->
-                                                            <div
-                                                                class="px-6 py-4 text-center rounded-lg bg-green-50 dark:bg-green-900/20">
-                                                                <div v-if="getOptionPricing(option, product)">
-                                                                    <div
-                                                                        class="text-3xl font-bold text-green-700 dark:text-green-400">
-                                                                        {{ formatCurrency(getOptionPricing(option,
-                                                                            product).price) }}
+                                                            <!-- Columna 2: Precio destacado más a la derecha -->
+                                                            <div class="flex justify-end">
+                                                                <div
+                                                                    class="px-6 py-4 text-right rounded-lg bg-green-50 dark:bg-green-900/20">
+                                                                    <div v-if="getOptionPricing(option, product)">
+                                                                        <div
+                                                                            class="text-3xl font-bold text-green-700 dark:text-green-400">
+                                                                            {{ formatCurrency(getOptionPricing(option,
+                                                                                product).price) }}
+                                                                        </div>
+                                                                        <div
+                                                                            class="text-base font-medium text-green-600 dark:text-green-500">
+                                                                            <span
+                                                                                v-if="option.option_type === 'quantity'">por
+                                                                                unidad / mes</span>
+                                                                            <span v-else>por servicio / mes</span>
+                                                                        </div>
+                                                                        <div v-if="getOptionPricing(option, product).setup_fee > 0"
+                                                                            class="mt-2 text-sm text-gray-500">
+                                                                            Setup: {{
+                                                                                formatCurrency(getOptionPricing(option,
+                                                                                    product).setup_fee) }}
+                                                                        </div>
                                                                     </div>
-                                                                    <div
-                                                                        class="text-base font-medium text-green-600 dark:text-green-500">
-                                                                        <span
-                                                                            v-if="option.option_type === 'quantity'">por
-                                                                            unidad / mes</span>
-                                                                        <span v-else>por servicio / mes</span>
+                                                                    <div v-else class="text-base text-gray-400">
+                                                                        Sin precio
                                                                     </div>
-                                                                    <div v-if="getOptionPricing(option, product).setup_fee > 0"
-                                                                        class="mt-2 text-sm text-gray-500">
-                                                                        Setup: {{
-                                                                            formatCurrency(getOptionPricing(option,
-                                                                                product).setup_fee) }}
-                                                                    </div>
-                                                                </div>
-                                                                <div v-else class="text-base text-gray-400">
-                                                                    Sin precio
                                                                 </div>
                                                             </div>
 
-                                                            <!-- Columna 3: Input de cantidad -->
-                                                            <div class="flex justify-center">
+                                                            <!-- Columna 3: Input de cantidad centrado cuando está activo -->
+                                                            <div class="flex items-center justify-center">
                                                                 <div v-if="option.option_type === 'quantity' && (selectedConfigurableOptions[product.id][option.id] || group.is_required)"
                                                                     class="text-center">
                                                                     <label
@@ -892,7 +917,11 @@ onMounted(() => {
                                                                     <input type="number" :min="option.min_value || 1"
                                                                         :max="option.max_value || 999"
                                                                         v-model="selectedConfigurableOptions[product.id][`${option.id}_quantity`]"
-                                                                        class="w-32 px-3 py-2 text-lg font-medium bg-white border-2 border-purple-300 rounded-lg focus:ring-purple-500 focus:border-purple-500 dark:bg-gray-700 dark:border-purple-600">
+                                                                        class="w-32 px-3 py-2 text-lg font-medium text-center bg-white border-2 border-purple-300 rounded-lg focus:ring-purple-500 focus:border-purple-500 dark:bg-gray-700 dark:border-purple-600">
+                                                                </div>
+                                                                <div v-else-if="option.option_type === 'quantity'"
+                                                                    class="text-sm text-center text-gray-400">
+                                                                    <span>Selecciona para configurar</span>
                                                                 </div>
                                                             </div>
                                                         </div>
