@@ -41,11 +41,10 @@ const deleteProduct = (productId, productName) => {
                     Gestionar Productos
                 </h2>
 
-                <Link :href="route('admin.products.create')">
-                <PrimaryButton class="flex items-center">
-                    <PlusIcon class="w-5 h-5 mr-2" />
-                    Crear Producto
-                </PrimaryButton>
+                <Link :href="route('admin.products.create')"
+                    class="inline-flex items-center px-4 py-2 text-xs font-semibold tracking-widest text-gray-700 uppercase transition bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-25">
+                <PlusIcon class="w-4 h-4 mr-2" />
+                CREAR PRODUCTO
                 </Link>
             </div>
         </template>
@@ -94,40 +93,41 @@ const deleteProduct = (productId, productName) => {
                                         <td
                                             class="px-6 py-4 text-sm text-gray-900 whitespace-nowrap dark:text-gray-100">
                                             {{
-                                            product.id }}</td>
+                                                product.id }}</td>
                                         <td
                                             class="px-6 py-4 text-sm text-gray-900 whitespace-nowrap dark:text-gray-100">
                                             {{
-                                            product.name }}</td>
+                                                product.name }}</td>
                                         <td
                                             class="px-6 py-4 text-sm text-gray-500 whitespace-nowrap dark:text-gray-400">
                                             {{
-                                            product.slug }}</td>
+                                                product.slug }}</td>
                                         <td
                                             class="px-6 py-4 text-sm text-gray-500 whitespace-nowrap dark:text-gray-400">
                                             {{
-                                            product.type }}</td>
+                                                product.type }}</td>
                                         <td
                                             class="px-6 py-4 text-sm text-gray-500 whitespace-nowrap dark:text-gray-400">
                                             {{
-                                            product.owner_name || 'N/A' }}</td>
+                                                product.owner_name || 'N/A' }}</td>
                                         <td
                                             class="px-6 py-4 text-sm text-gray-500 whitespace-nowrap dark:text-gray-400">
-                                            <span class="inline-block w-3 h-3 rounded-full"
-                                                :class="{
-                                                    'bg-green-500': product.status === 'active',
-                                                    'bg-red-500': product.status === 'inactive',
-                                                    'bg-blue-500': product.status === 'hidden',
-                                                }" :title="product.status">
+                                            <span class="inline-block w-3 h-3 rounded-full" :class="{
+                                                'bg-green-500': product.status === 'active',
+                                                'bg-red-500': product.status === 'inactive',
+                                                'bg-blue-500': product.status === 'hidden',
+                                            }" :title="product.status">
                                             </span>
                                         </td>
                                         <td class="px-6 py-4 text-sm font-medium text-right whitespace-nowrap">
                                             <!-- <Link :href="route('admin.products.show', product.id)" class="mr-2 text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300">Ver</Link> -->
-                                            <Link :href="route('admin.products.edit', product.id)" class="inline-flex items-center px-2 py-1 text-sm font-medium text-indigo-600 rounded-md hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                                                <PencilSquareIcon class="w-4 h-4 mr-1" />
-                                                Editar
+                                            <Link :href="route('admin.products.edit', product.id)"
+                                                class="inline-flex items-center px-2 py-1 text-sm font-medium text-indigo-600 rounded-md hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                            <PencilSquareIcon class="w-4 h-4 mr-1" />
+                                            Editar
                                             </Link>
-                                            <button @click="deleteProduct(product.id, product.name)" class="inline-flex items-center px-2 py-1 ml-2 text-sm font-medium text-red-600 rounded-md hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+                                            <button @click="deleteProduct(product.id, product.name)"
+                                                class="inline-flex items-center px-2 py-1 ml-2 text-sm font-medium text-red-600 rounded-md hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
                                                 <TrashIcon class="w-4 h-4 mr-1" />
                                                 Eliminar
                                             </button>

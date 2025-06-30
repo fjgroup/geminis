@@ -112,6 +112,16 @@ const isActiveDashboard = computed(() => {
                         </div>
 
                         <div class="hidden sm:ms-6 sm:flex sm:items-center">
+                            <!-- Botón Volver al Admin (solo visible durante impersonation) -->
+                            <div v-if="$page.props.impersonating_admin" class="mr-4">
+                                <form @submit.prevent="$inertia.post(route('admin.stop-impersonation'))" class="inline">
+                                    <button type="submit"
+                                        class="inline-flex items-center px-4 py-2 bg-red-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-red-700 focus:bg-red-700 active:bg-red-900 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition ease-in-out duration-150">
+                                        🔙 Volver al Admin
+                                    </button>
+                                </form>
+                            </div>
+
                             <!-- Settings Dropdown -->
                             <div class="relative ms-3">
                                 <Dropdown align="right" width="48">
@@ -120,6 +130,10 @@ const isActiveDashboard = computed(() => {
                                             <button type="button"
                                                 class="inline-flex items-center px-3 py-2 text-sm font-medium leading-4 text-gray-500 transition duration-150 ease-in-out bg-white border border-transparent rounded-md hover:text-gray-700 focus:outline-none">
                                                 <span class="mr-2">{{ $page.props.auth.user?.name }}</span>
+                                                <span v-if="$page.props.impersonating_admin"
+                                                    class="px-2 py-1 text-xs bg-red-100 text-red-800 rounded-full mr-2">
+                                                    Modo Admin
+                                                </span>
                                                 <span
                                                     v-if="$page.props.auth.user?.role === 'client' && typeof $page.props.auth.user?.balance !== 'undefined' && $page.props.auth.user?.formatted_balance"
                                                     class="text-xs text-green-600">

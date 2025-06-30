@@ -90,6 +90,15 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'verified', 'admin']
     Route::post('/client-services/{client_service}/retry-provisioning', [AdminClientServiceController::class, 'retryProvisioning'])
         ->name('client-services.retryProvisioning');
 
+    // Ruta para que el admin ingrese al panel del cliente
+    Route::get('/client-services/{client_service}/impersonate', [AdminClientServiceController::class, 'impersonateClient'])
+        ->name('client-services.impersonate');
+
+    // Ruta para volver al panel de admin desde impersonation
+    // Protegida por middleware admin con excepción de seguridad para impersonation
+    Route::post('/stop-impersonation', [AdminClientServiceController::class, 'stopImpersonation'])
+        ->name('stop-impersonation');
+
     // Rutas para Facturas de Administración
     Route::resource('invoices', AdminInvoiceController::class);
     Route::post('/invoices/{invoice}/activate-services', [AdminInvoiceController::class, 'activateServices'])->name('invoices.activateServices');
@@ -129,6 +138,12 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'verified', 'admin']
     // Discount Percentages Route
     Route::resource('discount-percentages', DiscountPercentageController::class);
 });
+
+// Ruta especial para volver al panel de admin desde impersonation
+// Esta ruta NO está dentro del grupo admin para permitir que los clientes impersonados puedan usarla
+Route::post('/admin/stop-impersonation', [AdminClientServiceController::class, 'stopImpersonation'])
+    ->middleware(['auth', 'verified'])
+    ->name('admin.stop-impersonation');
 
 // Rutas para el Panel de Revendedor
 Route::middleware(['auth', 'verified', 'role.reseller'])->prefix('reseller-panel')->name('reseller.')->group(function () {
@@ -312,5 +327,59 @@ Route::middleware('auth')->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
+
+// Ruta temporal para actualizar servicios
+Route::get('/update-services', function () {
+    $services = \App\Models\ClientService::with(['product', 'productPricing.billingCycle'])
+        ->whereHas('product')
+        ->whereHas('productPricing')
+        ->get();
+
+    $pricingCalculator = app(\App\Services\PricingCalculatorService::class);
+    $updated           = 0;
+    $results           = [];
+
+    foreach ($services as $service) {
+        try {
+            $priceCalculation = $pricingCalculator->calculateProductPrice(
+                $service->product_id,
+                $service->billing_cycle_id,
+                []
+            );
+
+            $newBillingAmount = $priceCalculation['total'];
+            $oldBillingAmount = $service->billing_amount;
+
+            $results[] = [
+                'id'         => $service->id,
+                'product'    => $service->product->name,
+                'old_amount' => $oldBillingAmount,
+                'new_amount' => $newBillingAmount,
+                'updated'    => false,
+            ];
+
+            if (abs($newBillingAmount - $oldBillingAmount) > 0.01) {
+                $service->billing_amount = $newBillingAmount;
+                $service->save();
+                $results[count($results) - 1]['updated'] = true;
+                $updated++;
+            }
+
+        } catch (\Exception $e) {
+            $results[] = [
+                'id'      => $service->id,
+                'product' => $service->product->name ?? 'Unknown',
+                'error'   => $e->getMessage(),
+            ];
+        }
+    }
+
+    return response()->json([
+        'message'        => 'Services updated successfully',
+        'updated_count'  => $updated,
+        'total_services' => $services->count(),
+        'results'        => $results,
+    ]);
+})->middleware(['auth', 'admin']);
 
 require __DIR__ . '/auth.php';

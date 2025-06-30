@@ -10,6 +10,7 @@ use App\Models\OrderConfigurableOption;
 use App\Models\Product;
 use App\Models\ProductPricing;
 use App\Models\User;
+use App\Services\PricingCalculatorService;
 use Exception;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
@@ -124,41 +125,52 @@ class PlaceOrderAction
                     }
 
                     $quantity        = $item['quantity'] ?? 1;
-                    $baseUnitPrice   = (float) $pricingModel->price;
                     $currentSetupFee = (float) ($pricingModel->setup_fee ?? 0.0);
 
                     $configurableOptionsDescriptionArray = [];
-                    $configurableOptionsPriceAdjustment  = 0.0;
                     $configurableOptionsForServiceNotes  = [];
+
+                    // Preparar opciones configurables para el PricingCalculatorService
+                    $configurableOptionsForCalculation = [];
 
                     // Buscar opciones configurables desde la tabla order_configurable_options usando cart_item_id
                     $cartItemId = $item['cart_item_id'] ?? null;
+                    Log::info('PlaceOrderAction - Buscando opciones configurables:', [
+                        'cart_item_id' => $cartItemId,
+                        'product_id'   => $productModel->id,
+                    ]);
+
                     if ($cartItemId) {
                         $configurableOptions = OrderConfigurableOption::where('cart_item_id', $cartItemId)
                             ->where('is_active', true)
                             ->get();
 
+                        Log::info('PlaceOrderAction - Opciones encontradas:', [
+                            'count'   => $configurableOptions->count(),
+                            'options' => $configurableOptions->toArray(),
+                        ]);
+
                         foreach ($configurableOptions as $configOption) {
-                            $quantity   = $configOption->quantity;
-                            $groupName  = $configOption->group_name;
-                            $optionName = $configOption->option_name;
-                            $totalPrice = $configOption->total_price;
+                            $optionQuantity = $configOption->quantity;
+                            $groupName      = $configOption->group_name;
+                            $optionName     = $configOption->option_name;
+                            $optionId       = $configOption->option_id;
 
                             // Generar descripción para la factura
                             $description = $groupName . ': ' . $optionName;
-                            if ($quantity > 1) {
-                                $description .= " (Cantidad: {$quantity})";
+                            if ($optionQuantity > 1) {
+                                $description .= " (Cantidad: {$optionQuantity})";
                             }
                             $configurableOptionsDescriptionArray[] = $description;
 
                             // Generar nota detallada para el servicio
-                            $serviceNote = $this->generateDetailedServiceNote($groupName, $optionName, $quantity);
+                            $serviceNote = $this->generateDetailedServiceNote($groupName, $optionName, $optionQuantity);
                             if ($serviceNote) {
                                 $configurableOptionsForServiceNotes[] = $serviceNote;
                             }
 
-                            // Sumar al ajuste de precio
-                            $configurableOptionsPriceAdjustment += (float) $totalPrice;
+                            // Agregar a las opciones para el calculador
+                            $configurableOptionsForCalculation[$optionId] = $optionQuantity;
                         }
                     }
 
@@ -186,13 +198,14 @@ class PlaceOrderAction
                                         $configurableOptionsForServiceNotes[] = $serviceNote;
                                     }
 
-                                    // Calcular ajuste de precio
+                                    // Agregar a las opciones para el calculador
+                                    $configurableOptionsForCalculation[$option->id] = $quantity;
+
+                                    // Calcular setup fee adicional
                                     $optionPricing = $option->pricings
                                         ->where('billing_cycle_id', $pricingModel->billing_cycle_id)
                                         ->first();
                                     if ($optionPricing) {
-                                        $priceAdjustment = (float) $optionPricing->price * $quantity;
-                                        $configurableOptionsPriceAdjustment += $priceAdjustment;
                                         $currentSetupFee += (float) ($optionPricing->setup_fee ?? 0.0);
                                     }
                                 }
@@ -205,11 +218,13 @@ class PlaceOrderAction
                                     $configurableOptionsDescriptionArray[] = $group->name . ': ' . $option->name;
                                     $configurableOptionsForServiceNotes[]  = $group->name . ': ' . $option->name;
 
+                                    // Agregar a las opciones para el calculador
+                                    $configurableOptionsForCalculation[$option->id] = 1;
+
                                     $optionPricing = $option->pricings
                                         ->where('billing_cycle_id', $pricingModel->billing_cycle_id)
                                         ->first();
                                     if ($optionPricing) {
-                                        $configurableOptionsPriceAdjustment += (float) $optionPricing->price;
                                         $currentSetupFee += (float) ($optionPricing->setup_fee ?? 0.0);
                                     }
                                 }
@@ -217,8 +232,36 @@ class PlaceOrderAction
                         }
                     }
 
-                    $finalUnitPrice = $baseUnitPrice + $configurableOptionsPriceAdjustment;
+                    // Usar PricingCalculatorService CON las opciones configurables
+                    $pricingCalculator = app(PricingCalculatorService::class);
+
+                    // Log para verificar que las opciones se están pasando
+                    Log::info('PlaceOrderAction - Opciones configurables para cálculo:', [
+                        'product_id'           => $productModel->id,
+                        'billing_cycle_id'     => $pricingModel->billing_cycle_id,
+                        'configurable_options' => $configurableOptionsForCalculation,
+                    ]);
+
+                    $priceCalculation = $pricingCalculator->calculateProductPrice(
+                        $productModel->id,
+                        $pricingModel->billing_cycle_id,
+                        $configurableOptionsForCalculation // INCLUIR las opciones configurables
+                    );
+
+                    $finalUnitPrice = $priceCalculation['total'];
                     $itemTotalPrice = ($finalUnitPrice * $quantity) + $currentSetupFee;
+
+                    // Debug: Log del cálculo de precios
+                    Log::info('PlaceOrderAction - Cálculo de precios:', [
+                        'product_id'                 => $productModel->id,
+                        'product_name'               => $productModel->name,
+                        'price_calculation'          => $priceCalculation,
+                        'final_unit_price'           => $finalUnitPrice,
+                        'quantity'                   => $quantity,
+                        'setup_fee'                  => $currentSetupFee,
+                        'item_total_price'           => $itemTotalPrice,
+                        'configurable_options_count' => count($configurableOptionsDescriptionArray),
+                    ]);
 
                     $description = $productModel->name;
                     if ($pricingModel->billingCycle) {
@@ -237,6 +280,39 @@ class PlaceOrderAction
                         'item_type'   => $productModel->productType?->slug ?? 'hosting_service',
                     ]);
                     $currentSubtotal += $itemTotalPrice;
+
+                    // Crear items separados para cada opción configurable del usuario
+                    if ($cartItemId) {
+                        $configurableOptions = OrderConfigurableOption::where('cart_item_id', $cartItemId)
+                            ->where('is_active', true)
+                            ->get();
+
+                        foreach ($configurableOptions as $configOption) {
+                            $optionDescription = $configOption->group_name . ': ' . $configOption->option_name;
+                            if ($configOption->quantity > 1) {
+                                $optionDescription .= " (Cantidad: {$configOption->quantity})";
+                            }
+                            if ($domainNameForService) {
+                                $optionDescription .= ' - ' . $domainNameForService;
+                            }
+
+                            $optionTotalPrice = (float) $configOption->total_price;
+
+                            $invoiceItemsCollection[] = new InvoiceItem([
+                                'product_id'         => $productModel->id,
+                                'product_pricing_id' => $pricingModel->id,
+                                'description'        => $optionDescription,
+                                'quantity'           => 1,
+                                'unit_price'         => $optionTotalPrice,
+                                'setup_fee'          => 0,
+                                'total_price'        => $optionTotalPrice,
+                                'taxable'            => $productModel->taxable ?? true,
+                                'domain_name'        => $domainNameForService,
+                                'item_type'          => 'configurable_option',
+                            ]);
+                            $currentSubtotal += $optionTotalPrice;
+                        }
+                    }
                     $clientServicesCollection[] = new ClientService([
                         'client_id'            => $client->id, 'product_id'             => $productModel->id,
                         'product_pricing_id'   => $pricingModel->id, 'billing_cycle_id' => $pricingModel->billing_cycle_id,
@@ -293,6 +369,15 @@ class PlaceOrderAction
             if ($invoice->tax1_rate > 0) {$invoice->tax1_amount = round($currentSubtotal * ($invoice->tax1_rate / 100), 2);}
             if ($invoice->tax2_rate > 0) {$invoice->tax2_amount = round($currentSubtotal * ($invoice->tax2_rate / 100), 2);}
             $invoice->total_amount = round($currentSubtotal + $invoice->tax1_amount + $invoice->tax2_amount, 2);
+
+            // Debug: Log del cálculo final de la factura
+            Log::info('PlaceOrderAction - Totales de factura:', [
+                'subtotal'     => $invoice->subtotal,
+                'tax1_amount'  => $invoice->tax1_amount,
+                'tax2_amount'  => $invoice->tax2_amount,
+                'total_amount' => $invoice->total_amount,
+                'items_count'  => count($invoiceItemsCollection),
+            ]);
 
             $invoice->save();
             if (! empty($invoiceItemsCollection)) {$invoice->items()->saveMany($invoiceItemsCollection);}

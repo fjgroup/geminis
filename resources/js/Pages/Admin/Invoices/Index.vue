@@ -5,7 +5,7 @@ import Pagination from '@/Components/UI/Pagination.vue'; // Asumiendo que tienes
 import { format } from 'date-fns'; // Para formateo de fechas
 import { computed } from 'vue';
 import Alert from '@/Components/UI/Alert.vue';
-import { CheckCircleIcon, XCircleIcon } from '@heroicons/vue/24/outline';
+import { CheckCircleIcon, XCircleIcon, PlusIcon } from '@heroicons/vue/24/outline';
 
 defineProps({
     invoices: Object, // Inertia pasa un objeto paginado
@@ -109,9 +109,16 @@ const rejectFundAddition = (transaction) => {
 
     <AdminLayout>
         <template #header>
-            <h2 class="text-xl font-semibold leading-tight text-gray-800 dark:text-gray-200">
-                Gestión de Facturas
-            </h2>
+            <div class="flex items-center justify-between">
+                <h2 class="text-xl font-semibold leading-tight text-gray-800 dark:text-gray-200">
+                    Gestión de Facturas
+                </h2>
+                <Link :href="route('admin.invoices.create')"
+                    class="inline-flex items-center px-4 py-2 text-xs font-semibold tracking-widest text-gray-700 uppercase transition bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-25">
+                <PlusIcon class="w-4 h-4 mr-2" />
+                CREAR FACTURA
+                </Link>
+            </div>
         </template>
 
         <div v-if="flashSuccess || flashError || flashInfo" class="max-w-full px-4 pt-6 mx-auto sm:px-6 lg:px-8">
@@ -123,12 +130,7 @@ const rejectFundAddition = (transaction) => {
         <div class="py-12">
             <div class="max-w-full px-4 mx-auto sm:px-6 lg:px-8">
                 <div class="p-6 overflow-hidden bg-white shadow-sm dark:bg-gray-900 sm:rounded-lg">
-                    <div class="mb-4">
-                        <Link :href="route('admin.invoices.create')"
-                            class="inline-flex items-center px-4 py-2 text-xs font-semibold tracking-widest text-white uppercase transition bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 active:bg-blue-800 focus:outline-none focus:border-blue-900 focus:ring focus:ring-blue-300 disabled:opacity-25">
-                        Crear Factura Manual
-                        </Link>
-                    </div>
+
 
                     <div class="overflow-x-auto">
                         <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
@@ -165,7 +167,7 @@ const rejectFundAddition = (transaction) => {
                                     <td
                                         class="px-4 py-3 text-sm font-medium text-gray-900 whitespace-nowrap dark:text-white">
                                         {{
-                                        invoice.invoice_number }}</td>
+                                            invoice.invoice_number }}</td>
                                     <td class="px-4 py-3 text-sm text-gray-500 whitespace-nowrap dark:text-gray-300">{{
                                         invoice.client ? invoice.client.name : 'N/A' }}</td>
                                     <td class="px-4 py-3 text-sm text-gray-500 whitespace-nowrap dark:text-gray-300">{{
@@ -255,7 +257,7 @@ const rejectFundAddition = (transaction) => {
                                     </td>
                                     <td class="px-4 py-3 text-sm text-gray-500 whitespace-nowrap dark:text-gray-300">
                                         {{ transaction.payment_method ? transaction.payment_method.name :
-                                        (transaction.gateway_slug || 'N/A') }}
+                                            (transaction.gateway_slug || 'N/A') }}
                                     </td>
                                     <td class="px-4 py-3 text-sm text-gray-500 whitespace-nowrap dark:text-gray-300">
                                         {{ formatDate(transaction.transaction_date) }}

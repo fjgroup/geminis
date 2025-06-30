@@ -44,6 +44,7 @@ const deleteMethod = () => {
 
 <template>
     <AdminLayout title="Métodos de Pago">
+
         <Head title="Gestionar Métodos de Pago" />
 
         <template #header>
@@ -51,11 +52,10 @@ const deleteMethod = () => {
                 <h2 class="text-xl font-semibold leading-tight text-gray-800">
                     Métodos de Pago
                 </h2>
-                <Link :href="route('admin.payment-methods.create')">
-                    <PrimaryButton class="flex items-center">
-                        <PlusIcon class="w-5 h-5 mr-2" />
-                        Crear Método de Pago
-                    </PrimaryButton>
+                <Link :href="route('admin.payment-methods.create')"
+                    class="inline-flex items-center px-4 py-2 text-xs font-semibold tracking-widest text-gray-700 uppercase transition bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-25">
+                <PlusIcon class="w-4 h-4 mr-2" />
+                CREAR MÉTODO
                 </Link>
             </div>
         </template>
@@ -71,35 +71,53 @@ const deleteMethod = () => {
                             <table class="min-w-full divide-y divide-gray-200">
                                 <thead class="bg-gray-50">
                                     <tr>
-                                        <th class="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">Nombre</th>
-                                        <th class="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">Banco</th>
-                                        <th class="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">Nº Cuenta</th>
-                                        <th class="px-6 py-3 text-xs font-medium tracking-wider text-center text-gray-500 uppercase">Activo</th>
-                                        <th class="px-6 py-3 text-xs font-medium tracking-wider text-right text-gray-500 uppercase">Acciones</th>
+                                        <th
+                                            class="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                                            Nombre</th>
+                                        <th
+                                            class="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                                            Banco</th>
+                                        <th
+                                            class="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                                            Nº Cuenta</th>
+                                        <th
+                                            class="px-6 py-3 text-xs font-medium tracking-wider text-center text-gray-500 uppercase">
+                                            Activo</th>
+                                        <th
+                                            class="px-6 py-3 text-xs font-medium tracking-wider text-right text-gray-500 uppercase">
+                                            Acciones</th>
                                     </tr>
                                 </thead>
                                 <tbody class="bg-white divide-y divide-gray-200">
                                     <tr v-if="paymentMethods.length === 0">
-                                        <td colspan="5" class="px-6 py-4 text-sm text-center text-gray-500 whitespace-nowrap">
+                                        <td colspan="5"
+                                            class="px-6 py-4 text-sm text-center text-gray-500 whitespace-nowrap">
                                             No hay métodos de pago registrados.
                                         </td>
                                     </tr>
                                     <tr v-for="method in paymentMethods" :key="method.id">
-                                        <td class="px-6 py-4 text-sm text-gray-900 whitespace-nowrap">{{ method.name }}</td>
-                                        <td class="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">{{ method.bank_name }}</td>
-                                        <td class="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">{{ method.account_number }}</td>
+                                        <td class="px-6 py-4 text-sm text-gray-900 whitespace-nowrap">{{ method.name }}
+                                        </td>
+                                        <td class="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">{{
+                                            method.bank_name }}
+                                        </td>
+                                        <td class="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">{{
+                                            method.account_number
+                                        }}</td>
                                         <td class="px-6 py-4 text-sm text-center text-gray-500 whitespace-nowrap">
                                             <span class="inline-flex px-2 text-xs font-semibold leading-5 rounded-full"
-                                                  :class="method.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'">
+                                                :class="method.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'">
                                                 {{ method.is_active ? 'Sí' : 'No' }}
                                             </span>
                                         </td>
                                         <td class="px-6 py-4 text-sm font-medium text-right whitespace-nowrap">
-                                            <Link :href="route('admin.payment-methods.edit', { payment_method: method.id })" class="text-indigo-600 hover:text-indigo-900">
-                                                <SecondaryButton class="flex items-center">
-                                                    <PencilSquareIcon class="w-4 h-4 mr-1" />
-                                                    Editar
-                                                </SecondaryButton>
+                                            <Link
+                                                :href="route('admin.payment-methods.edit', { payment_method: method.id })"
+                                                class="text-indigo-600 hover:text-indigo-900">
+                                            <SecondaryButton class="flex items-center">
+                                                <PencilSquareIcon class="w-4 h-4 mr-1" />
+                                                Editar
+                                            </SecondaryButton>
                                             </Link>
                                             <DangerButton @click="confirmDeleteMethod(method)" class="ml-2">
                                                 <span class="flex items-center">
@@ -122,13 +140,15 @@ const deleteMethod = () => {
                 Eliminar Método de Pago
             </template>
             <template #content>
-                ¿Estás seguro de que deseas eliminar el método de pago "{{ methodToDelete?.name }}"? Esta acción no se puede deshacer.
+                ¿Estás seguro de que deseas eliminar el método de pago "{{ methodToDelete?.name }}"? Esta acción no se
+                puede deshacer.
             </template>
             <template #footer>
                 <SecondaryButton @click="closeModal">
                     Cancelar
                 </SecondaryButton>
-                <DangerButton class="ml-3" @click="deleteMethod" :class="{ 'opacity-25': router.processing }" :disabled="router.processing">
+                <DangerButton class="ml-3" @click="deleteMethod" :class="{ 'opacity-25': router.processing }"
+                    :disabled="router.processing">
                     Eliminar
                 </DangerButton>
             </template>

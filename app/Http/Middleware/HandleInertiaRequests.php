@@ -1,10 +1,9 @@
 <?php
-
 namespace App\Http\Middleware;
 
 use Illuminate\Http\Request;
 use Inertia\Middleware;
-use Illuminate\Support\Facades\Log; // Added Log facade
+// Added Log facade
 
 class HandleInertiaRequests extends Middleware
 {
@@ -31,14 +30,16 @@ class HandleInertiaRequests extends Middleware
     public function share(Request $request): array
     {
         return [
-            ...parent::share($request), // Usar el operador de propagación
-            'auth' => [
+             ...parent::share($request), // Usar el operador de propagación
+            'auth'                => [
                 'user' => $request->user(), // Volver a la forma simple de pasar el objeto user completo
             ],
-            'flash' => [
-                'success' => fn () => $request->session()->get('success'),
-                'error' => fn () => $request->session()->get('error'),
+            'flash'               => [
+                'success' => fn() => $request->session()->get('success'),
+                'error'   => fn()   => $request->session()->get('error'),
             ],
+            // Información de impersonation para mostrar botón "Volver al Admin"
+            'impersonating_admin' => fn() => $request->session()->has('impersonating_admin_id'),
             // Puedes añadir Ziggy aquí si lo necesitas y no está en parent::share
             // 'ziggy' => fn () => [
             //     ...(new Ziggy)->toArray(),

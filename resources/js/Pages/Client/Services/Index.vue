@@ -211,6 +211,60 @@ const getDomainSummary = (services) => {
     };
 };
 
+// Función para obtener el precio de una opción configurable específica
+const getOptionPrice = (optionNote, service) => {
+    // Mapeo de patrones de opciones a precios aproximados
+    const optionPrices = {
+        // Espacio en disco: $0.50 por GB
+        'GB de espacio web adicional': (match) => {
+            const gb = parseFloat(match[1]) || 1;
+            return formatCurrency(gb * 0.50);
+        },
+        // vCPU: $5.00 por vCPU
+        'vCPU adicionales': (match) => {
+            const vcpu = parseFloat(match[1]) || 1;
+            return formatCurrency(vcpu * 5.00);
+        },
+        // RAM: $1.00 por GB
+        'GB de RAM adicional': (match) => {
+            const ram = parseFloat(match[1]) || 1;
+            return formatCurrency(ram * 1.00);
+        },
+        // SpamExperts: $3.00 fijo
+        'servicio de seguridad email activado': () => formatCurrency(3.00),
+        'protección spamexperts activado': () => formatCurrency(3.00),
+    };
+
+    // Buscar coincidencias en el texto de la opción
+    for (const [pattern, priceFunc] of Object.entries(optionPrices)) {
+        if (optionNote.toLowerCase().includes(pattern.toLowerCase())) {
+            // Extraer números del texto para opciones con cantidad
+            const match = optionNote.match(/(\d+(?:\.\d+)?)/);
+            return priceFunc(match);
+        }
+    }
+
+    return '+$0.00'; // Fallback si no se encuentra el patrón
+};
+
+// Función para obtener el precio base del producto
+const getBasePrice = (service) => {
+    if (!service.product || !service.productPricing) {
+        return formatCurrency(0);
+    }
+
+    // Precios base aproximados por producto
+    const basePrices = {
+        'Hosting Web Eco': 10.00,
+        'Hosting Web Pro': 16.00,
+        'Hosting Web Ultra': 22.00,
+        'Registro de Dominio': 6.85,
+    };
+
+    const basePrice = basePrices[service.product.name] || parseFloat(service.productPricing.price || 0);
+    return formatCurrency(basePrice);
+};
+
 </script>
 
 <template>
@@ -301,6 +355,26 @@ const getDomainSummary = (services) => {
                                                         </div>
                                                         <div v-if="service.billingCycle" class="text-xs text-gray-500">
                                                             ({{ service.billingCycle.name }})
+                                                        </div>
+                                                        <!-- Mostrar opciones configurables si existen -->
+                                                        <div v-if="service.notes && service.notes.trim()"
+                                                            class="mt-2 text-xs">
+                                                            <div class="text-gray-600 font-medium mb-1">Opciones
+                                                                configurables:
+                                                            </div>
+                                                            <div v-for="note in service.notes.split('\n').filter(n => n.trim())"
+                                                                :key="note"
+                                                                class="bg-blue-50 px-2 py-1 rounded mb-1 flex justify-between items-center">
+                                                                <span class="text-blue-700">{{ note.trim() }}</span>
+                                                                <span class="text-green-600 font-semibold">{{
+                                                                    getOptionPrice(note.trim(), service) }}</span>
+                                                            </div>
+                                                            <div
+                                                                class="bg-gray-100 px-2 py-1 rounded mt-1 flex justify-between items-center text-xs font-semibold">
+                                                                <span class="text-gray-700">Precio base:</span>
+                                                                <span class="text-gray-700">{{ getBasePrice(service)
+                                                                }}</span>
+                                                            </div>
                                                         </div>
                                                     </td>
                                                     <td class="px-6 py-4 whitespace-nowrap">

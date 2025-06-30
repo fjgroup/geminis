@@ -129,7 +129,7 @@ class AdminClientServiceController extends Controller
             'product.productType',
             'productPricing.billingCycle',
             'reseller',
-            'server',
+            // 'server', // Comentado hasta que se implemente el modelo Server
         ]);
 
         return Inertia::render('Admin/ClientServices/Show', [
@@ -144,7 +144,7 @@ class AdminClientServiceController extends Controller
                 'product'         => $clientService->product,
                 'product_pricing' => $clientService->productPricing,
                 'reseller'        => $clientService->reseller,
-                'server'          => $clientService->server,
+                // 'server'          => $clientService->server, // Comentado hasta que se implemente el modelo Server
             ],
         ]);
     }
@@ -360,5 +360,94 @@ class AdminClientServiceController extends Controller
 
         return redirect()->route('admin.client-services.edit', $clientService->id)
             ->with('success', 'Se ha encolado el reintento de aprovisionamiento para el servicio.');
+    }
+
+    /**
+     * Permitir al admin ingresar al panel del cliente (impersonation)
+     */
+    public function impersonateClient(ClientService $clientService): RedirectResponse
+    {
+        // Verificar que el usuario actual es admin
+        if (! Auth::check() || Auth::user()->role !== 'admin') {
+            abort(403, 'No tienes permisos para realizar esta acción.');
+        }
+
+        // Obtener el cliente del servicio
+        $client = $clientService->client;
+
+        if (! $client) {
+            return redirect()->back()->with('error', 'No se pudo encontrar el cliente asociado a este servicio.');
+        }
+
+        // TODO: En el futuro, validar que si el admin es un reseller,
+        // solo pueda acceder a clientes de su propiedad
+        // if (Auth::user()->role === 'reseller') {
+        //     if ($client->reseller_id !== Auth::id()) {
+        //         abort(403, 'No tienes permisos para acceder al panel de este cliente.');
+        //     }
+        // }
+
+        // Guardar el ID del admin original en la sesión para poder volver
+        session(['impersonating_admin_id' => Auth::id()]);
+
+        // Hacer login como el cliente
+        Auth::login($client);
+
+        // Log de la acción para auditoría
+        Log::info('Admin impersonation started', [
+            'admin_id'     => session('impersonating_admin_id'),
+            'admin_email'  => User::find(session('impersonating_admin_id'))->email,
+            'client_id'    => $client->id,
+            'client_email' => $client->email,
+            'service_id'   => $clientService->id,
+            'timestamp'    => now(),
+        ]);
+
+        return redirect()->route('client.dashboard')
+            ->with('success', 'Has ingresado al panel del cliente. Puedes volver al panel de admin cuando termines.');
+    }
+
+    /**
+     * Volver al panel de admin desde impersonation
+     */
+    public function stopImpersonation(Request $request): RedirectResponse
+    {
+        // Verificar que hay una sesión de impersonation activa
+        if (! session()->has('impersonating_admin_id')) {
+            return redirect()->route('client.dashboard')
+                ->with('error', 'No hay una sesión de impersonation activa.');
+        }
+
+        $adminId       = session('impersonating_admin_id');
+        $currentClient = Auth::user();
+
+        // Buscar el admin original
+        $admin = User::find($adminId);
+
+        if (! $admin || $admin->role !== 'admin') {
+            // Limpiar la sesión y redirigir al login
+            session()->forget('impersonating_admin_id');
+            Auth::logout();
+            return redirect()->route('login')
+                ->with('error', 'No se pudo encontrar el administrador original. Por favor, inicia sesión nuevamente.');
+        }
+
+        // Log de la acción para auditoría
+        Log::info('Admin impersonation ended', [
+            'admin_id'     => $adminId,
+            'admin_email'  => $admin->email,
+            'client_id'    => $currentClient->id,
+            'client_email' => $currentClient->email,
+            'timestamp'    => now(),
+        ]);
+
+        // Limpiar la sesión de impersonation
+        session()->forget('impersonating_admin_id');
+
+        // Hacer login como el admin original
+        Auth::login($admin);
+
+        return redirect()->route('admin.client-services.index')
+            ->with('success', 'Has vuelto al panel de administración.');
     }
 }

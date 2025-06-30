@@ -29,64 +29,124 @@ const showingNavigationDropdown = ref(false);
 
         <Head :title="title" />
 
-        <div class="min-h-screen bg-gray-100">
-            <nav class="bg-white border-b border-gray-100">
-                <!-- Primary Navigation Menu -->
-                <div class="px-4 mx-auto max-w-7xl sm:px-6 lg:px-8">
-                    <div class="flex justify-between h-16">
-                        <div class="flex">
-                            <!-- Logo -->
-                            <div class="flex items-center shrink-0">
-                                <Link :href="route('admin.dashboard')">
-                                <!-- <ApplicationLogo class="block w-auto text-gray-800 fill-current h-9" /> -->
-                                <span class="text-xl font-semibold text-gray-800">Dashboard</span>
-                                </Link>
-                            </div>
+        <div class="min-h-screen bg-gray-100 flex">
+            <!-- Sidebar -->
+            <div class="w-64 bg-white shadow-lg">
+                <!-- Logo -->
+                <div class="flex items-center justify-center h-16 border-b border-gray-200">
+                    <Link :href="route('admin.dashboard')" class="flex items-center">
+                    <span class="text-xl font-semibold text-gray-800">Admin Panel</span>
+                    </Link>
+                </div>
 
-                            <!-- Navigation Links -->
-                            <div class="hidden space-x-8 sm:-my-px sm:ml-10 sm:flex">
-                                <!-- <NavLink :href="route('admin.dashboard')" :active="route().current('admin.dashboard')">
-                                    Dashboard
-                                    <HomeIcon class="inline-block w-5 h-5 ml-2" />
-                                </NavLink> -->
-                                <NavLink :href="route('admin.users.index')" :active="route().current('admin.users.*')">
-                                    Usuarios
-                                    <UsersIcon class="inline-block w-5 h-5 ml-2" />
-                                </NavLink>
-                                <NavLink :href="route('admin.products.index')"
-                                    :active="route().current('admin.products.*')">
-                                    Productos
-                                    <CubeIcon class="inline-block w-5 h-5 ml-2" />
-                                </NavLink>
-                                <NavLink :href="route('admin.product-types.index')" :active="route().current('admin.product-types.*')">
-                                    Tipos de Producto
-                                    <TagIcon class="inline-block w-5 h-5 ml-2" />
-                                </NavLink>
-                                <NavLink :href="route('admin.configurable-option-groups.index')"
-                                    :active="route().current('admin.configurable-option-groups.*')">
-                                    Grupos Opciones
-                                    <CogIcon class="inline-block w-5 h-5 ml-2" />
-                                </NavLink>
-                                <NavLink :href="route('admin.client-services.index')"
-                                    :active="route().current('admin.client-services.*')">
-                                    Servicios Clientes
-                                    <BriefcaseIcon class="inline-block w-5 h-5 ml-2" />
-                                </NavLink>
-                                <!-- Ordenes NavLink Removed -->
-                                    <NavLink :href="route('admin.invoices.index')" :active="route().current('admin.invoices.*')">
-                                        Facturas
-                                        <CurrencyDollarIcon class="inline-block w-5 h-5 ml-2" />
-                                    </NavLink>
-                                    <NavLink :href="route('admin.payment-methods.index')" :active="route().current('admin.payment-methods.*')">
-                                        Métodos de Pago
-                                        <CreditCardIcon class="inline-block w-5 h-5 ml-2" />
-                                    </NavLink>
-                                </div>
+                <!-- Navigation Links -->
+                <nav class="mt-8">
+                    <div class="px-4 space-y-2">
+                        <!-- Dashboard -->
+                        <Link :href="route('admin.dashboard')" :class="[
+                            'flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors duration-200',
+                            route().current('admin.dashboard')
+                                ? 'bg-blue-100 text-blue-700 border-r-4 border-blue-700'
+                                : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
+                        ]">
+                        <HomeIcon class="w-5 h-5 mr-3" />
+                        Dashboard
+                        </Link>
+
+                        <!-- Usuarios -->
+                        <Link :href="route('admin.users.index')" :class="[
+                            'flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors duration-200',
+                            route().current('admin.users.*')
+                                ? 'bg-blue-100 text-blue-700 border-r-4 border-blue-700'
+                                : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
+                        ]">
+                        <UsersIcon class="w-5 h-5 mr-3" />
+                        Usuarios
+                        </Link>
+
+                        <!-- Productos -->
+                        <Link :href="route('admin.products.index')" :class="[
+                            'flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors duration-200',
+                            route().current('admin.products.*')
+                                ? 'bg-blue-100 text-blue-700 border-r-4 border-blue-700'
+                                : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
+                        ]">
+                        <CubeIcon class="w-5 h-5 mr-3" />
+                        Productos
+                        </Link>
+
+                        <!-- Tipos de Producto -->
+                        <Link :href="route('admin.product-types.index')" :class="[
+                            'flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors duration-200',
+                            route().current('admin.product-types.*')
+                                ? 'bg-blue-100 text-blue-700 border-r-4 border-blue-700'
+                                : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
+                        ]">
+                        <TagIcon class="w-5 h-5 mr-3" />
+                        Tipos de Producto
+                        </Link>
+
+                        <!-- Grupos Opciones -->
+                        <Link :href="route('admin.configurable-option-groups.index')" :class="[
+                            'flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors duration-200',
+                            route().current('admin.configurable-option-groups.*')
+                                ? 'bg-blue-100 text-blue-700 border-r-4 border-blue-700'
+                                : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
+                        ]">
+                        <CogIcon class="w-5 h-5 mr-3" />
+                        Grupos Opciones
+                        </Link>
+
+                        <!-- Servicios Clientes -->
+                        <Link :href="route('admin.client-services.index')" :class="[
+                            'flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors duration-200',
+                            route().current('admin.client-services.*')
+                                ? 'bg-blue-100 text-blue-700 border-r-4 border-blue-700'
+                                : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
+                        ]">
+                        <BriefcaseIcon class="w-5 h-5 mr-3" />
+                        Servicios Clientes
+                        </Link>
+
+                        <!-- Facturas -->
+                        <Link :href="route('admin.invoices.index')" :class="[
+                            'flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors duration-200',
+                            route().current('admin.invoices.*')
+                                ? 'bg-blue-100 text-blue-700 border-r-4 border-blue-700'
+                                : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
+                        ]">
+                        <CurrencyDollarIcon class="w-5 h-5 mr-3" />
+                        Facturas
+                        </Link>
+
+                        <!-- Métodos de Pago -->
+                        <Link :href="route('admin.payment-methods.index')" :class="[
+                            'flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors duration-200',
+                            route().current('admin.payment-methods.*')
+                                ? 'bg-blue-100 text-blue-700 border-r-4 border-blue-700'
+                                : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
+                        ]">
+                        <CreditCardIcon class="w-5 h-5 mr-3" />
+                        Métodos de Pago
+                        </Link>
+                    </div>
+                </nav>
+            </div>
+
+            <!-- Main Content Area -->
+            <div class="flex-1 flex flex-col">
+                <!-- Top Header -->
+                <header class="bg-white shadow-sm border-b border-gray-200">
+                    <div class="flex items-center justify-between px-6 py-4">
+                        <div>
+                            <h1 class="text-2xl font-semibold text-gray-900" v-if="$slots.header">
+                                <slot name="header" />
+                            </h1>
                         </div>
 
-                        <div class="hidden sm:flex sm:items-center sm:ms-6">
-                            <!-- Settings Dropdown -->
-                            <div class="relative ms-3">
+                        <!-- User Dropdown -->
+                        <div class="flex items-center space-x-4">
+                            <div class="relative">
                                 <Dropdown align="right" width="48" v-if="$page.props.auth.user">
                                     <template #trigger>
                                         <span class="inline-flex rounded-md">
@@ -113,91 +173,17 @@ const showingNavigationDropdown = ref(false);
                                 </Dropdown>
                             </div>
                         </div>
-
-                        <!-- Hamburger -->
-                        <div class="flex items-center -me-2 sm:hidden">
-                            <button @click="showingNavigationDropdown = !showingNavigationDropdown"
-                                class="inline-flex items-center justify-center p-2 text-gray-400 transition duration-150 ease-in-out rounded-md hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:bg-gray-100 focus:text-gray-500">
-                                <svg class="w-6 h-6" stroke="currentColor" fill="none" viewBox="0 0 24 24">
-                                    <path :class="{
-                                            hidden: showingNavigationDropdown,
-                                            'inline-flex': !showingNavigationDropdown,
-                                        }" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M4 6h16M4 12h16M4 18h16" />
-                                    <path :class="{
-                                            hidden: !showingNavigationDropdown,
-                                            'inline-flex': showingNavigationDropdown,
-                                        }" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                            </button>
-                        </div>
                     </div>
-                </div>
+                </header>
 
-                <!-- Responsive Navigation Menu -->
-                <div :class="{ block: showingNavigationDropdown, hidden: !showingNavigationDropdown }"
-                    class="sm:hidden">
-                    <div class="pt-2 pb-3 space-y-1">
-                        <!-- <ResponsiveNavLink :href="route('admin.dashboard')"
-                            :active="route().current('admin.dashboard')">
-                            Dashboard
-                        </ResponsiveNavLink> -->
-                        <ResponsiveNavLink :href="route('admin.users.index')"
-                            :active="route().current('admin.users.*')">
-                            Usuarios
-                        </ResponsiveNavLink>
-                        <ResponsiveNavLink :href="route('admin.products.index')"
-                            :active="route().current('admin.products.*')">
-                            Productos
-                        </ResponsiveNavLink>
-                        <ResponsiveNavLink :href="route('admin.product-types.index')" :active="route().current('admin.product-types.*')">
-                            Tipos de Producto
-                        </ResponsiveNavLink>
-                        <ResponsiveNavLink :href="route('admin.client-services.index')"
-                            :active="route().current('admin.client-services.*')">
-                            Servicios Clientes
-                        </ResponsiveNavLink>
-                        <ResponsiveNavLink :href="route('admin.invoices.index')"
-                            :active="route().current('admin.invoices.*')">
-                            Facturas
-                        </ResponsiveNavLink>
-                        <ResponsiveNavLink :href="route('admin.payment-methods.index')"
-                            :active="route().current('admin.payment-methods.*')">
-                            Métodos de Pago
-                        </ResponsiveNavLink>
+                <!-- Main Content -->
+                <main class="flex-1 overflow-y-auto bg-gray-50">
+                    <div class="p-6">
+                        <slot />
                     </div>
-
-                    <!-- Responsive Settings Options -->
-                    <div class="pt-4 pb-1 border-t border-gray-200" v-if="$page.props.auth.user">
-                        <div class="px-4">
-                            <div class="text-base font-medium text-gray-800">
-                                {{ $page.props.auth.user.name }}
-                            </div>
-                            <div class="text-sm font-medium text-gray-500">{{ $page.props.auth.user.email }}</div>
-                        </div>
-
-                        <div class="mt-3 space-y-1">
-                            <ResponsiveNavLink :href="route('profile.edit')"> Perfil </ResponsiveNavLink>
-                            <ResponsiveNavLink :href="route('logout')" method="post" as="button">
-                                Cerrar Sesión
-                            </ResponsiveNavLink>
-                        </div>
-                    </div>
-                </div>
-            </nav>
-
-            <!-- Page Heading -->
-            <header class="bg-white shadow" v-if="$slots.header">
-                <div class="px-4 py-6 mx-auto max-w-7xl sm:px-6 lg:px-8">
-                    <slot name="header" />
-                </div>
-            </header>
-
-            <!-- Page Content -->
-            <main>
-                <slot />
-            </main>
+                </main>
+            </div>
         </div>
     </div>
+
 </template>
