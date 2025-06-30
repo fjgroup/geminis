@@ -74,7 +74,9 @@ class CartOperationRequest extends FormRequest
                         }),
                     ],
                     'configurable_options'   => 'nullable|array|max:20',
-                    'configurable_options.*' => 'nullable', // Permitir diferentes tipos de valores
+                    'configurable_options.*' => 'nullable',                                  // Permitir diferentes tipos de valores
+                    'calculated_price'       => 'nullable|numeric|min:0|max:999999.99',      // Precio calculado dinámicamente
+                    'billing_cycle_id'       => 'nullable|integer|exists:billing_cycles,id', // ID del ciclo de facturación
                 ];
 
             case 'removeDomainFromAccount':

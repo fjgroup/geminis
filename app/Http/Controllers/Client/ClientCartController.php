@@ -71,10 +71,43 @@ class ClientCartController extends Controller
 
                 if ($product && $pricing && $pricing->product_id == $product->id) {
                     $account['primary_service']['product_name']  = $product->name;
-                    $basePrice                                   = (float) $pricing->price;
-                    $optionsPriceAdjustment                      = 0.0;
                     $account['primary_service']['currency_code'] = $pricing->currency_code;
 
+                    // Agregar información del ciclo de facturación
+                    if ($pricing->billingCycle) {
+                        $account['primary_service']['billing_cycle_name'] = $pricing->billingCycle->name;
+                    }
+
+                    // Usar el precio calculado dinámicamente si está disponible
+                    if (isset($account['primary_service']['calculated_price']) && is_numeric($account['primary_service']['calculated_price'])) {
+                        $account['primary_service']['price'] = (float) $account['primary_service']['calculated_price'];
+                        Log::info('ClientCartController@getCartData: Usando precio calculado dinámicamente.', [
+                            'product_id'       => $product->id,
+                            'calculated_price' => $account['primary_service']['calculated_price'],
+                        ]);
+                    } else {
+                        // Fallback: calcular precio usando método tradicional
+                        $basePrice              = (float) $pricing->price;
+                        $optionsPriceAdjustment = 0.0;
+
+                        if (isset($account['primary_service']['configurable_options']) && is_array($account['primary_service']['configurable_options'])) {
+                            foreach ($account['primary_service']['configurable_options'] as $groupId => $optionId) {
+                                $optionPricing = ConfigurableOptionPricing::where('configurable_option_id', $optionId)
+                                    ->where('billing_cycle_id', $pricing->billing_cycle_id)->first();
+                                if ($optionPricing) {$optionsPriceAdjustment += (float) $optionPricing->price;}
+                            }
+                        }
+                        $account['primary_service']['price'] = $basePrice + $optionsPriceAdjustment;
+
+                        Log::info('ClientCartController@getCartData: Usando cálculo tradicional de precio.', [
+                            'product_id'         => $product->id,
+                            'base_price'         => $basePrice,
+                            'options_adjustment' => $optionsPriceAdjustment,
+                            'final_price'        => $account['primary_service']['price'],
+                        ]);
+                    }
+
+                    // Enriquecer detalles de opciones configurables para mostrar en el resumen
                     if (isset($account['primary_service']['configurable_options']) && is_array($account['primary_service']['configurable_options'])) {
                         $enrichedOptions = [];
                         foreach ($account['primary_service']['configurable_options'] as $groupId => $optionId) {
@@ -82,16 +115,12 @@ class ClientCartController extends Controller
                             $option = ConfigurableOption::find($optionId);
                             if ($group && $option && $option->group_id == $group->id) {
                                 $enrichedOptions[] = ['group_id' => $group->id, 'group_name' => $group->name, 'option_id' => $option->id, 'option_name' => $option->name];
-                                $optionPricing     = ConfigurableOptionPricing::where('configurable_option_id', $option->id)
-                                    ->where('billing_cycle_id', $pricing->billing_cycle_id)->first();
-                                if ($optionPricing) {$optionsPriceAdjustment += (float) $optionPricing->price;}
                             } else {
                                 $enrichedOptions[] = ['group_id' => $groupId, 'group_name' => "ID Grupo: {$groupId}", 'option_id' => $optionId, 'option_name' => "ID Opción: {$optionId}"];
                             }
                         }
                         $account['primary_service']['configurable_options_details'] = $enrichedOptions;
                     }
-                    $account['primary_service']['price'] = $basePrice + $optionsPriceAdjustment;
                 } else {
                     $account['primary_service']['product_name']  = 'Servicio primario no disponible';
                     $account['primary_service']['price']         = 0.00;
@@ -171,8 +200,7 @@ class ClientCartController extends Controller
         return $foundIndex;
     }
 
-    private function findItemInAccount( ? array &$account, string $cartItemId): ?array
-    { /* ... sin cambios ... */}
+    // Método findItemInAccount se implementará cuando sea necesario para operaciones específicas de items
 
     public function setDomainForAccount(CartOperationRequest $request): RedirectResponse
     {
@@ -300,9 +328,11 @@ class ClientCartController extends Controller
         if (! in_array($product->product_type_id, $allowedPrimaryServiceTypes)) {return back()->withInput()->withErrors(['product_id' => 'Este tipo de producto no puede ser un servicio principal.']);}
 
         $primaryServiceData = [
-            'cart_item_id' => (string) Str::uuid(),
-            'product_id'   => $product->id,
-            'pricing_id'   => $pricing->id,
+            'cart_item_id'     => (string) Str::uuid(),
+            'product_id'       => $product->id,
+            'pricing_id'       => $pricing->id,
+            'calculated_price' => $validatedData['calculated_price'] ?? null,
+            'billing_cycle_id' => $validatedData['billing_cycle_id'] ?? null,
         ];
         if (! empty($validatedData['configurable_options'])) {
             $validConfigOptions  = [];
@@ -413,6 +443,16 @@ class ClientCartController extends Controller
         }
 
         $account['primary_service'] = $primaryServiceData;
+
+        // Log del precio calculado para verificación
+        Log::info('ClientCartController@setPrimaryServiceForAccount: Servicio guardado con precio calculado.', [
+            'product_id'           => $product->id,
+            'pricing_id'           => $pricing->id,
+            'calculated_price'     => $validatedData['calculated_price'] ?? 'No enviado',
+            'billing_cycle_id'     => $validatedData['billing_cycle_id'] ?? 'No enviado',
+            'primary_service_data' => $primaryServiceData,
+        ]);
+
         $request->session()->put('cart', $cart);
         return back()->with('success', 'Servicio principal añadido al carrito.');
     }
@@ -499,14 +539,5 @@ class ClientCartController extends Controller
         return back()->with('success', 'Servicio principal eliminado del carrito.');
     }
 
-    public function addItem(Request $request): RedirectResponse
-    { /* ... con return back() ... */}
-    public function updateItem(Request $request): RedirectResponse
-    { /* ... con return back() ... */}
-    public function removeItem(Request $request): RedirectResponse
-    { /* ... con return back() ... */}
-    public function clearCart(Request $request): RedirectResponse
-    { /* ... con return back() ... */}
-    public function setActiveAccount(Request $request): RedirectResponse
-    { /* ... con return back() ... */}
+    // Métodos adicionales del carrito se implementarán según necesidades futuras
 }
