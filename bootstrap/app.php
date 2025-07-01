@@ -25,6 +25,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'role.reseller'     => \App\Http\Middleware\EnsureUserIsReseller::class,
             'client'            => \App\Http\Middleware\EnsureUserIsClient::class,
             'cart.ratelimit'    => \App\Http\Middleware\CartRateLimitMiddleware::class,
+            'verified'          => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
         ]);
 
         // Add CSRF token validation exception for PayPal webhook

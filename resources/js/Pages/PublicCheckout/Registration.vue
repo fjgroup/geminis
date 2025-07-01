@@ -7,21 +7,28 @@
                     <h1 class="text-2xl font-bold text-gray-900">Fj Group CA</h1>
                     <div class="flex items-center space-x-4">
                         <div class="flex items-center space-x-2">
-                            <div class="w-8 h-8 bg-green-600 text-white rounded-full flex items-center justify-center text-sm">
+                            <div
+                                class="w-8 h-8 bg-green-600 text-white rounded-full flex items-center justify-center text-sm">
                                 <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                                    <path fill-rule="evenodd"
+                                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                        clip-rule="evenodd"></path>
                                 </svg>
                             </div>
                             <span class="text-green-600 font-medium">Dominio</span>
                         </div>
                         <div class="w-8 border-t border-gray-300"></div>
                         <div class="flex items-center space-x-2">
-                            <div class="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-semibold">2</div>
+                            <div
+                                class="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-semibold">
+                                2</div>
                             <span class="text-blue-600 font-medium">Registro</span>
                         </div>
                         <div class="w-8 border-t border-gray-300"></div>
                         <div class="flex items-center space-x-2">
-                            <div class="w-8 h-8 bg-gray-200 text-gray-500 rounded-full flex items-center justify-center text-sm">3</div>
+                            <div
+                                class="w-8 h-8 bg-gray-200 text-gray-500 rounded-full flex items-center justify-center text-sm">
+                                3</div>
                             <span class="text-gray-500">Pago</span>
                         </div>
                     </div>
@@ -34,13 +41,16 @@
             <div class="bg-white rounded-2xl shadow-xl p-8">
                 <!-- Progress Context -->
                 <div class="text-center mb-8">
-                    <div class="inline-flex items-center px-4 py-2 bg-green-100 text-green-800 rounded-full text-sm font-medium mb-4">
+                    <div
+                        class="inline-flex items-center px-4 py-2 bg-green-100 text-green-800 rounded-full text-sm font-medium mb-4">
                         <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                            <path fill-rule="evenodd"
+                                d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                clip-rule="evenodd"></path>
                         </svg>
                         Dominio {{ purchaseContext.domain }} verificado
                     </div>
-                    
+
                     <h2 class="text-3xl font-bold text-gray-900 mb-2">
                         {{ getCurrentMessage('register_title') }}
                     </h2>
@@ -57,14 +67,9 @@
                             <label class="block text-sm font-medium text-gray-700 mb-2">
                                 Nombre completo *
                             </label>
-                            <input
-                                v-model="form.name"
-                                type="text"
-                                required
+                            <input v-model="form.name" type="text" required
                                 class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                :class="{ 'border-red-500': errors.name }"
-                                placeholder="Tu nombre completo"
-                            />
+                                :class="{ 'border-red-500': errors.name }" placeholder="Tu nombre completo" />
                             <p v-if="errors.name" class="mt-1 text-sm text-red-600">{{ errors.name }}</p>
                         </div>
 
@@ -73,14 +78,9 @@
                             <label class="block text-sm font-medium text-gray-700 mb-2">
                                 Correo electrónico *
                             </label>
-                            <input
-                                v-model="form.email"
-                                type="email"
-                                required
+                            <input v-model="form.email" type="email" required
                                 class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                :class="{ 'border-red-500': errors.email }"
-                                placeholder="tu@email.com"
-                            />
+                                :class="{ 'border-red-500': errors.email }" placeholder="tu@email.com" />
                             <p v-if="errors.email" class="mt-1 text-sm text-red-600">{{ errors.email }}</p>
                         </div>
 
@@ -89,14 +89,49 @@
                             <label class="block text-sm font-medium text-gray-700 mb-2">
                                 Contraseña *
                             </label>
-                            <input
-                                v-model="form.password"
-                                type="password"
-                                required
+                            <input v-model="form.password" type="password" required @input="validatePassword"
                                 class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                :class="{ 'border-red-500': errors.password }"
-                                placeholder="Mínimo 8 caracteres"
-                            />
+                                :class="{ 'border-red-500': errors.password || !isPasswordValid }"
+                                placeholder="Mínimo 9 caracteres con números y mayúsculas" />
+
+                            <!-- Password strength indicator -->
+                            <div v-if="form.password" class="mt-2 space-y-1">
+                                <div class="flex items-center space-x-2">
+                                    <div class="flex space-x-1">
+                                        <div v-for="i in 4" :key="i"
+                                            :class="passwordStrength >= i ? 'bg-green-500' : 'bg-gray-300'"
+                                            class="w-6 h-1 rounded"></div>
+                                    </div>
+                                    <span class="text-xs text-gray-600">
+                                        {{ passwordStrengthText }}
+                                    </span>
+                                </div>
+
+                                <!-- Requirements checklist -->
+                                <div class="text-xs space-y-1">
+                                    <div :class="passwordRequirements.length ? 'text-green-600' : 'text-red-600'"
+                                        class="flex items-center">
+                                        <span class="mr-1">{{ passwordRequirements.length ? '✓' : '✗' }}</span>
+                                        Mínimo 9 caracteres
+                                    </div>
+                                    <div :class="passwordRequirements.uppercase ? 'text-green-600' : 'text-red-600'"
+                                        class="flex items-center">
+                                        <span class="mr-1">{{ passwordRequirements.uppercase ? '✓' : '✗' }}</span>
+                                        Al menos una mayúscula
+                                    </div>
+                                    <div :class="passwordRequirements.number ? 'text-green-600' : 'text-red-600'"
+                                        class="flex items-center">
+                                        <span class="mr-1">{{ passwordRequirements.number ? '✓' : '✗' }}</span>
+                                        Al menos un número
+                                    </div>
+                                    <div :class="passwordRequirements.special ? 'text-green-600' : 'text-red-600'"
+                                        class="flex items-center">
+                                        <span class="mr-1">{{ passwordRequirements.special ? '✓' : '✗' }}</span>
+                                        Al menos un carácter especial (!@#$%^&*)
+                                    </div>
+                                </div>
+                            </div>
+
                             <p v-if="errors.password" class="mt-1 text-sm text-red-600">{{ errors.password }}</p>
                         </div>
 
@@ -105,13 +140,9 @@
                             <label class="block text-sm font-medium text-gray-700 mb-2">
                                 Confirmar contraseña *
                             </label>
-                            <input
-                                v-model="form.password_confirmation"
-                                type="password"
-                                required
+                            <input v-model="form.password_confirmation" type="password" required
                                 class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                placeholder="Repite tu contraseña"
-                            />
+                                placeholder="Repite tu contraseña" />
                         </div>
 
                         <!-- Company Name -->
@@ -119,12 +150,9 @@
                             <label class="block text-sm font-medium text-gray-700 mb-2">
                                 Empresa/Organización
                             </label>
-                            <input
-                                v-model="form.company_name"
-                                type="text"
+                            <input v-model="form.company_name" type="text"
                                 class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                :placeholder="getCompanyPlaceholder()"
-                            />
+                                :placeholder="getCompanyPlaceholder()" />
                         </div>
 
                         <!-- Phone -->
@@ -132,12 +160,9 @@
                             <label class="block text-sm font-medium text-gray-700 mb-2">
                                 Teléfono
                             </label>
-                            <input
-                                v-model="form.phone"
-                                type="tel"
+                            <input v-model="form.phone" type="tel"
                                 class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                placeholder="+58 412 1234567"
-                            />
+                                placeholder="+58 412 1234567" />
                         </div>
                     </div>
 
@@ -146,12 +171,9 @@
                         <label class="block text-sm font-medium text-gray-700 mb-2">
                             País *
                         </label>
-                        <select
-                            v-model="form.country"
-                            required
+                        <select v-model="form.country" required
                             class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            :class="{ 'border-red-500': errors.country }"
-                        >
+                            :class="{ 'border-red-500': errors.country }">
                             <option value="">Selecciona tu país</option>
                             <option value="VE">Venezuela</option>
                             <option value="CO">Colombia</option>
@@ -170,17 +192,15 @@
                     <!-- Terms and Privacy -->
                     <div class="bg-gray-50 rounded-lg p-4">
                         <label class="flex items-start">
-                            <input
-                                v-model="acceptTerms"
-                                type="checkbox"
-                                required
-                                class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 mt-1"
-                            />
+                            <input v-model="acceptTerms" type="checkbox" required
+                                class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 mt-1" />
                             <span class="ml-3 text-sm text-gray-700">
-                                Acepto los 
-                                <a href="#" class="text-blue-600 hover:text-blue-800 underline">términos y condiciones</a>
-                                y la 
-                                <a href="#" class="text-blue-600 hover:text-blue-800 underline">política de privacidad</a>
+                                Acepto los
+                                <a href="#" class="text-blue-600 hover:text-blue-800 underline">términos y
+                                    condiciones</a>
+                                y la
+                                <a href="#" class="text-blue-600 hover:text-blue-800 underline">política de
+                                    privacidad</a>
                             </span>
                         </label>
                     </div>
@@ -193,7 +213,9 @@
                         <ul class="text-sm text-blue-800 space-y-1">
                             <li v-for="benefit in getBenefits()" :key="benefit" class="flex items-center">
                                 <svg class="w-4 h-4 text-blue-600 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                                    <path fill-rule="evenodd"
+                                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                        clip-rule="evenodd"></path>
                                 </svg>
                                 {{ benefit }}
                             </li>
@@ -202,16 +224,13 @@
 
                     <!-- Submit Button -->
                     <div class="flex justify-between items-center pt-6">
-                        <Link :href="route('public.checkout.domain')" 
-                              class="text-gray-600 hover:text-gray-800 font-medium">
-                            ← Cambiar dominio
+                        <Link :href="route('public.checkout.domain')"
+                            class="text-gray-600 hover:text-gray-800 font-medium">
+                        ← Cambiar dominio
                         </Link>
-                        
-                        <button
-                            type="submit"
-                            :disabled="processing || !acceptTerms"
-                            class="bg-blue-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                        >
+
+                        <button type="submit" :disabled="processing || !acceptTerms"
+                            class="bg-blue-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
                             <span v-if="processing">Creando cuenta...</span>
                             <span v-else>Crear mi cuenta →</span>
                         </button>
@@ -241,6 +260,42 @@ const form = useForm({
     phone: '',
     country: 'VE'
 })
+
+// Password validation
+const passwordRequirements = ref({
+    length: false,
+    uppercase: false,
+    number: false,
+    special: false
+})
+
+const passwordStrength = ref(0)
+const passwordStrengthText = ref('')
+const isPasswordValid = ref(false)
+
+const validatePassword = () => {
+    const password = form.password
+
+    // Check requirements
+    passwordRequirements.value = {
+        length: password.length >= 9,
+        uppercase: /[A-Z]/.test(password),
+        number: /[0-9]/.test(password),
+        special: /[!@#$%^&*(),.?":{}|<>]/.test(password)
+    }
+
+    // Calculate strength
+    const requirements = Object.values(passwordRequirements.value)
+    const metRequirements = requirements.filter(Boolean).length
+    passwordStrength.value = metRequirements
+
+    // Set strength text
+    const strengthTexts = ['Muy débil', 'Débil', 'Regular', 'Buena', 'Excelente']
+    passwordStrengthText.value = strengthTexts[metRequirements] || 'Muy débil'
+
+    // Check if password is valid
+    isPasswordValid.value = requirements.every(Boolean)
+}
 
 const acceptTerms = ref(false)
 const processing = ref(false)
@@ -302,7 +357,7 @@ const getBenefits = () => {
 
 const submitRegistration = () => {
     processing.value = true
-    
+
     form.post(route('public.checkout.register.process'), {
         onFinish: () => {
             processing.value = false

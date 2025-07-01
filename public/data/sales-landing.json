@@ -227,65 +227,82 @@
         "text": "Es un hosting muy estable, siempre cuenta con las actualizaciones de certificados de seguridad. También cuenta con una atención personalizada. Muy buena elección.",
         "date": "Abril 2024",
         "business_type": "Desarrollador Web"
+      },
+      {
+        "name": "María Elena Rodríguez",
+        "country": "Colombia",
+        "rating": 5,
+        "text": "Migré mi tienda online desde otro proveedor y el proceso fue súper fácil. Ahora mi sitio carga mucho más rápido y las ventas han aumentado. ¡Excelente servicio!",
+        "date": "Junio 2024",
+        "business_type": "Tienda Online"
       }
     ]
   },
   "pricing": {
-    "title": "Planes Simples, Resultados Extraordinarios",
-    "subtitle": "Elige el plan perfecto para tu proyecto. Puedes cambiar cuando quieras.",
+    "title": "Planes Diseñados para Tu Éxito",
+    "subtitle": "Elige la potencia que tu proyecto necesita hoy. Podrás crecer y cambiar de plan cuando quieras.",
     "plans": [
       {
         "id": "starter",
         "name": "Emprendedor",
-        "description": "Perfecto para comenzar tu presencia online",
+        "description": "La plataforma de lanzamiento perfecta para tu idea. Todo lo esencial para empezar con fuerza en el mundo digital.",
         "price": 10,
         "period": "mes",
         "popular": false,
         "features": [
-          "Sitio web profesional incluido",
-          "Dominio gratis el primer año",
-          "Email profesional (tu@tunegocio.com)",
-          "Certificado de seguridad SSL",
-          "Soporte por WhatsApp"
+          "✅ <strong>5GB de espacio</strong> - Perfecto para empezar",
+          "✅ <strong>Todo ilimitado</strong> - Emails, subdominios, bases de datos",
+          "✅ <strong>WordPress instalado automáticamente</strong>",
+          "✅ <strong>Certificado SSL gratis</strong> - Tu sitio será seguro",
+          "✅ <strong>Respaldos automáticos diarios</strong> - Nunca pierdas tu trabajo",
+          "✅ <strong>+400 aplicaciones con 1-clic</strong> - Tienda online, blog, etc.",
+          "✅ <strong>Protección contra hackers incluida</strong>",
+          "💰 <strong>98,40 US$ el año, ahorra un 18%</strong>"
         ],
-        "ctaText": "Comenzar Ahora",
-        "targetUseCase": ["small-business", "professionals"]
+        "ctaText": "Lanzar mi Proyecto",
+        "targetUseCase": ["new-business", "professionals", "bloggers"]
       },
       {
         "id": "professional",
-        "name": "Profesional",
-        "description": "Para negocios que quieren crecer en serio",
+        "name": "Crecimiento",
+        "description": "Más potencia y herramientas avanzadas para atraer más clientes, vender online y acelerar tu expansión.",
         "price": 16,
         "period": "mes",
         "popular": true,
         "features": [
-          "Todo lo del plan Emprendedor",
-          "Tienda online básica incluida",
-          "Hasta 5 páginas personalizadas",
-          "Integración con redes sociales",
-          "Estadísticas de visitantes",
-          "Respaldos automáticos diarios"
+          "🚀 <strong>DOBLE POTENCIA (2 CPU + 2GB RAM)</strong> - Más rápido que la competencia",
+          "🛒 <strong>Tienda online completa incluida</strong> - Vende desde el día 1",
+          "🛡️ <strong>Escáner anti-malware automático</strong> - Protección 24/7",
+          "⚡ <strong>Velocidad superior con caché avanzado</strong>",
+          "✅ <strong>5GB + Todo ilimitado</strong> - Emails, subdominios, bases de datos",
+          "🔒 <strong>Certificado SSL gratis</strong> - Confianza para tus clientes",
+          "🌍 <strong>CDN global</strong> - Tu sitio rápido en todo el mundo",
+          "📸 <strong>Optimización automática de imágenes</strong>",
+          "💰 <strong>157,44 US$ el año, ahorra un 18%</strong>"
         ],
-        "ctaText": "Elegir Profesional",
-        "targetUseCase": ["entrepreneurs", "small-business"]
+        "ctaText": "Acelerar mi Crecimiento",
+        "targetUseCase": ["small-business", "e-commerce", "freelancers"]
       },
       {
         "id": "business",
-        "name": "Negocio",
-        "description": "Para empresas que buscan resultados serios",
+        "name": "Impacto",
+        "description": "El máximo rendimiento para proyectos ambiciosos, alto tráfico y una experiencia de cliente inigualable.",
         "price": 22,
         "period": "mes",
         "popular": false,
         "features": [
-          "Todo lo del plan Profesional",
-          "Tienda online avanzada",
-          "Academia virtual incluida",
-          "Páginas ilimitadas",
-          "Chat en vivo con clientes",
-          "Soporte prioritario por teléfono"
+          "🔥 <strong>MÁXIMA POTENCIA (3 CPU + 3GB RAM)</strong> - Para proyectos ambiciosos",
+          "⚡ <strong>Recursos dedicados</strong> - Velocidad constante garantizada",
+          "🏆 <strong>Ideal para tiendas avanzadas y academias online</strong>",
+          "🛡️ <strong>Protección DDoS Premium</strong> - Blindaje total contra ataques",
+          "✅ <strong>5GB + Todo ilimitado</strong> - Sin límites para crecer",
+          "📸 <strong>Optimización automática de imágenes</strong>",
+          "🔒 <strong>Certificado SSL gratis</strong>",
+          "🌍 <strong>CDN global</strong> - Velocidad mundial",
+          "💰 <strong>212,79 US$ el año, ahorra un 18%</strong>"
         ],
-        "ctaText": "Impulsar Mi Negocio",
-        "targetUseCase": ["educators", "entrepreneurs"]
+        "ctaText": "Dominar el Mercado",
+        "targetUseCase": ["established-business", "e-commerce-pro", "agencies"]
       }
     ]
   },

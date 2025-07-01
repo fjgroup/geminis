@@ -49,6 +49,7 @@ use App\Http\Controllers\LandingPageController;                                 
 use App\Http\Controllers\ProfileController;                                                 // Import the new ProductTypeController
 use App\Http\Controllers\Reseller\ResellerClientController;                                 // Import the new LandingPageController
 use App\Http\Controllers\Reseller\ResellerDashboardController;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route; // Import ApiProductController
 use Inertia\Inertia;
 
@@ -580,5 +581,37 @@ Route::get('/logout-quick', function () {
 
     return redirect()->route('login')->with('message', 'Sesión cerrada exitosamente');
 })->name('logout.quick');
+
+// Test route for purchase context transfer
+Route::get('/test-transfer', function () {
+    // Simular purchase_context
+    session([
+        'purchase_context' => [
+            'use_case'     => 'entrepreneurs',
+            'plan'         => 'business',
+            'product_slug' => 'hosting-web-pro',
+            'source'       => 'test',
+            'messages'     => ['test' => 'test'],
+        ],
+    ]);
+
+    // Crear usuario de prueba si no existe
+    $user = \App\Models\User::firstOrCreate(
+        ['email' => 'test@test.com'],
+        [
+            'name'              => 'Test User',
+            'password'          => bcrypt('password'),
+            'email_verified_at' => now(),
+            'role'              => 'client',
+            'status'            => 'active',
+        ]
+    );
+
+    // Hacer login
+    Auth::login($user);
+
+    // Redirigir a selectDomain
+    return redirect()->route('client.checkout.selectDomain');
+})->name('test.transfer');
 
 require __DIR__ . '/auth.php';

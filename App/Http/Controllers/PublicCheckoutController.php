@@ -28,7 +28,19 @@ class PublicCheckoutController extends Controller
     {
         $purchaseContext = session('purchase_context');
 
+        // 🔍 DEBUG: Log al entrar a showDomainVerification
+        Log::info('🔍 ENTRADA A showDomainVerification', [
+            'has_purchase_context' => ! ! $purchaseContext,
+            'purchase_context'     => $purchaseContext,
+            'session_id'           => session()->getId(),
+            'url'                  => $request->fullUrl(),
+        ]);
+
         if (! $purchaseContext) {
+            Log::warning('⚠️ PURCHASE_CONTEXT PERDIDO en showDomainVerification', [
+                'session_id'       => session()->getId(),
+                'all_session_data' => session()->all(),
+            ]);
             return redirect()->route('sales.home')
                 ->with('error', 'Sesión expirada. Por favor, selecciona tu plan nuevamente.');
         }
@@ -110,7 +122,21 @@ class PublicCheckoutController extends Controller
         ]);
 
         $purchaseContext = session('purchase_context');
+
+        // 🔍 DEBUG: Log al inicio del proceso de registro
+        Log::info('🔍 INICIO processRegistration', [
+            'has_purchase_context' => ! ! $purchaseContext,
+            'purchase_context'     => $purchaseContext,
+            'session_id'           => session()->getId(),
+            'user_email'           => $validated['email'],
+        ]);
+
         if (! $purchaseContext) {
+            Log::warning('⚠️ PURCHASE_CONTEXT PERDIDO en processRegistration', [
+                'session_id'       => session()->getId(),
+                'user_email'       => $validated['email'],
+                'all_session_data' => session()->all(),
+            ]);
             return redirect()->route('sales.home')
                 ->with('error', 'Sesión expirada.');
         }
@@ -132,16 +158,31 @@ class PublicCheckoutController extends Controller
                 'email_verified_at' => null, // No auto-verificar, enviar email
             ]);
 
-            // Send email verification
-            $user->sendEmailVerificationNotification();
+            // Send custom email verification for purchase flow
+            Log::info('📧 ENVIANDO NOTIFICACIÓN DE COMPRA', [
+                'user_id'            => $user->id,
+                'user_email'         => $user->email,
+                'notification_class' => \App\Notifications\PurchaseEmailVerification::class,
+            ]);
+
+            $user->notify(new \App\Notifications\PurchaseEmailVerification());
 
             // Store user info in session for later login after verification
-            session([
-                'pending_user' => [
-                    'id'               => $user->id,
-                    'email'            => $user->email,
-                    'purchase_context' => $purchaseContext,
-                ],
+            $pendingUserData = [
+                'id'               => $user->id,
+                'email'            => $user->email,
+                'purchase_context' => $purchaseContext,
+            ];
+
+            session(['pending_user' => $pendingUserData]);
+
+            // 🔍 DEBUG: Log después de crear usuario y guardar pending_user
+            Log::info('✅ USUARIO CREADO - pending_user guardado', [
+                'user_id'                    => $user->id,
+                'user_email'                 => $user->email,
+                'pending_user_data'          => $pendingUserData,
+                'session_id'                 => session()->getId(),
+                'purchase_context_preserved' => ! ! $purchaseContext,
             ]);
 
             // Redirect to verification notice page
@@ -180,7 +221,7 @@ class PublicCheckoutController extends Controller
         }
 
         // Get monthly pricing for now (can be enhanced later)
-        $pricing = $product->pricings->where('billingCycle.slug', 'mensual')->first();
+        $pricing = $product->pricings->where('billingCycle.slug', 'monthly')->first();
 
         if (! $pricing) {
             return redirect()->route('sales.home')
@@ -200,6 +241,105 @@ class PublicCheckoutController extends Controller
             'total'           => $total,
             'useCaseMessages' => $this->getUseCaseMessages(),
         ]);
+    }
+
+    /**
+     * Process payment and create invoice
+     */
+    public function processPayment(Request $request): \Illuminate\Http\RedirectResponse
+    {
+        Log::info('ProcessPayment called', ['user_id' => Auth::id()]);
+
+        $purchaseContext = session('purchase_context');
+
+        if (! $purchaseContext || ! Auth::check()) {
+            Log::warning('ProcessPayment failed - missing context or auth', [
+                'has_context'      => ! ! $purchaseContext,
+                'is_authenticated' => Auth::check(),
+            ]);
+            return redirect()->route('public.checkout.domain')
+                ->with('error', 'Por favor, completa los pasos anteriores.');
+        }
+
+        $validated = $request->validate([
+            'payment_method' => 'required|string|in:paypal,stripe,bank_transfer',
+        ]);
+
+        $user = Auth::user();
+
+        // Get product and pricing
+        $product = Product::with(['pricings.billingCycle'])
+            ->where('slug', $purchaseContext['product_slug'])
+            ->first();
+
+        if (! $product) {
+            return redirect()->route('sales.home')
+                ->with('error', 'Producto no encontrado.');
+        }
+
+        $pricing = $product->pricings->where('billingCycle.slug', 'monthly')->first();
+
+        if (! $pricing) {
+            return redirect()->route('sales.home')
+                ->with('error', 'Precio no encontrado para este producto.');
+        }
+
+        // Calculate totals
+        $subtotal    = $pricing->price;
+        $domainPrice = $purchaseContext['domain_price'] ?? 0;
+        $total       = $subtotal + $domainPrice;
+
+        // Create invoice
+        Log::info('Creating invoice', [
+            'user_id'          => $user->id,
+            'subtotal'         => $subtotal,
+            'total'            => $total,
+            'purchase_context' => $purchaseContext,
+        ]);
+
+        $invoice = \App\Models\Invoice::create([
+            'client_id'      => $user->id,
+            'invoice_number' => 'INV-' . date('Y') . '-' . str_pad(\App\Models\Invoice::count() + 1, 6, '0', STR_PAD_LEFT),
+            'issue_date'     => now(),
+            'due_date'       => now()->addDays(30),
+            'subtotal'       => $subtotal,
+            'tax_amount'     => 0,
+            'total_amount'   => $total,
+            'status'         => 'unpaid',
+            'currency_code'  => 'USD',
+            'notes'          => 'Compra desde landing page - Plan: ' . ($purchaseContext['plan'] ?? 'N/A') .
+            ' - Dominio: ' . ($purchaseContext['domain'] ?? 'N/A') .
+            ' - Caso de uso: ' . ($purchaseContext['use_case'] ?? 'N/A'),
+        ]);
+
+        Log::info('Invoice created successfully', ['invoice_id' => $invoice->id]);
+
+        // Create invoice items
+        \App\Models\InvoiceItem::create([
+            'invoice_id'  => $invoice->id,
+            'description' => $product->name . ' - Plan ' . ucfirst($purchaseContext['plan'] ?? 'professional'),
+            'quantity'    => 1,
+            'unit_price'  => $subtotal,
+            'total_price' => $subtotal,
+        ]);
+
+        // Add domain item if applicable
+        if ($domainPrice > 0) {
+            \App\Models\InvoiceItem::create([
+                'invoice_id'  => $invoice->id,
+                'description' => 'Registro de dominio: ' . $purchaseContext['domain'],
+                'quantity'    => 1,
+                'unit_price'  => $domainPrice,
+                'total_price' => $domainPrice,
+            ]);
+        }
+
+        // Clear purchase context
+        session()->forget(['purchase_context', 'pending_user']);
+
+        // Redirect to invoice payment page
+        return redirect()->route('client.invoices.show', $invoice->id)
+            ->with('success', '¡Factura creada exitosamente! Procede con el pago.');
     }
 
     /**
@@ -312,5 +452,187 @@ class PublicCheckoutController extends Controller
         ];
 
         return $useCase ? ($messages[$useCase] ?? []) : $messages;
+    }
+
+    /**
+     * Verify email for purchase flow (without requiring authentication)
+     */
+    public function verifyPurchaseEmail(Request $request, $id, $hash): RedirectResponse
+    {
+        // 🔍 DEBUG: Log al entrar a verifyPurchaseEmail
+        Log::info('🔍 ENTRADA A verifyPurchaseEmail', [
+            'user_id'    => $id,
+            'hash'       => $hash,
+            'url'        => $request->fullUrl(),
+            'session_id' => session()->getId(),
+        ]);
+
+        // Find the user
+        $user = User::findOrFail($id);
+
+        // Verify the hash
+        $expectedHash = sha1($user->getEmailForVerification());
+        $hashMatches  = hash_equals((string) $hash, $expectedHash);
+
+        Log::info('🔍 VERIFICACIÓN DE HASH', [
+            'user_id'                => $user->id,
+            'user_email'             => $user->email,
+            'provided_hash'          => $hash,
+            'expected_hash'          => $expectedHash,
+            'hash_matches'           => $hashMatches,
+            'email_already_verified' => $user->hasVerifiedEmail(),
+        ]);
+
+        if (! $hashMatches) {
+            Log::warning('⚠️ HASH INVÁLIDO en verifyPurchaseEmail', [
+                'user_id'       => $user->id,
+                'provided_hash' => $hash,
+                'expected_hash' => $expectedHash,
+            ]);
+            return redirect()->route('sales.home')
+                ->with('error', 'El enlace de verificación no es válido.');
+        }
+
+        // Check if email is already verified
+        if ($user->hasVerifiedEmail()) {
+            // Log the user in
+            Auth::login($user);
+
+            // Check if user has pending purchase context
+            $pendingUser = session('pending_user');
+
+            Log::info('🔍 EMAIL YA VERIFICADO - verificando pending_user', [
+                'user_id'           => $user->id,
+                'has_pending_user'  => ! ! $pendingUser,
+                'pending_user_data' => $pendingUser,
+                'session_id'        => session()->getId(),
+            ]);
+
+            if ($pendingUser && $pendingUser['id'] == $user->id) {
+                // Crear factura automáticamente con el purchase_context
+                $invoice = $this->createInvoiceFromPurchaseContext($user, $pendingUser['purchase_context']);
+                session()->forget('pending_user');
+
+                Log::info('✅ FACTURA CREADA después de verificación (email ya verificado)', [
+                    'user_id'    => $user->id,
+                    'invoice_id' => $invoice->id,
+                    'session_id' => session()->getId(),
+                ]);
+
+                return redirect()->route('client.dashboard')
+                    ->with('success', '¡Email verificado! Tu factura está lista para pagar.');
+            }
+
+            Log::info('🔍 EMAIL VERIFICADO pero sin pending_user - redirigiendo a dashboard', [
+                'user_id'    => $user->id,
+                'session_id' => session()->getId(),
+            ]);
+
+            return redirect()->route('client.dashboard')
+                ->with('success', '¡Email ya verificado!');
+        }
+
+        // Mark email as verified
+        if ($user->markEmailAsVerified()) {
+            event(new \Illuminate\Auth\Events\Verified($user));
+        }
+
+        // Log the user in
+        Auth::login($user);
+
+        // Check if user has pending purchase context
+        $pendingUser = session('pending_user');
+        if ($pendingUser && $pendingUser['id'] == $user->id) {
+            // Crear factura automáticamente con el purchase_context
+            $invoice = $this->createInvoiceFromPurchaseContext($user, $pendingUser['purchase_context']);
+            session()->forget('pending_user');
+
+            Log::info('✅ FACTURA CREADA después de verificación (email recién verificado)', [
+                'user_id'    => $user->id,
+                'invoice_id' => $invoice->id,
+                'session_id' => session()->getId(),
+            ]);
+
+            return redirect()->route('client.dashboard')
+                ->with('success', '¡Email verificado! Tu factura está lista para pagar.');
+        }
+
+        // If no purchase context, redirect to login page
+        return redirect()->route('login')
+            ->with('success', '¡Email verificado exitosamente! Ahora puedes iniciar sesión.');
+    }
+
+    /**
+     * Create invoice from purchase context
+     */
+    private function createInvoiceFromPurchaseContext(User $user, array $purchaseContext): \App\Models\Invoice
+    {
+        // Get product and pricing
+        $product = Product::with(['pricings.billingCycle'])
+            ->where('slug', $purchaseContext['product_slug'])
+            ->first();
+
+        if (! $product) {
+            throw new \Exception('Producto no encontrado: ' . $purchaseContext['product_slug']);
+        }
+
+        // Get monthly pricing for now (can be enhanced later)
+        $pricing = $product->pricings->where('billingCycle.slug', 'monthly')->first();
+
+        if (! $pricing) {
+            throw new \Exception('Precio no encontrado para el producto: ' . $product->name);
+        }
+
+        // Calculate totals
+        $subtotal    = $pricing->price;
+        $domainPrice = $purchaseContext['domain_price'] ?? 0;
+        $total       = $subtotal + $domainPrice;
+
+        // Create invoice
+        $invoice = \App\Models\Invoice::create([
+            'client_id'      => $user->id,
+            'invoice_number' => 'INV-' . date('Y') . '-' . str_pad(\App\Models\Invoice::count() + 1, 6, '0', STR_PAD_LEFT),
+            'issue_date'     => now(),
+            'due_date'       => now()->addDays(30),
+            'subtotal'       => $subtotal,
+            'tax_amount'     => 0,
+            'total_amount'   => $total,
+            'status'         => 'unpaid',
+            'currency_code'  => 'USD',
+            'notes'          => 'Compra desde landing page - Plan: ' . ($purchaseContext['plan'] ?? 'N/A') .
+            ' - Dominio: ' . ($purchaseContext['domain'] ?? 'N/A') .
+            ' - Caso de uso: ' . ($purchaseContext['use_case'] ?? 'N/A'),
+        ]);
+
+        // Create invoice items
+        \App\Models\InvoiceItem::create([
+            'invoice_id'  => $invoice->id,
+            'description' => $product->name . ' - Plan ' . ucfirst($purchaseContext['plan'] ?? 'professional'),
+            'quantity'    => 1,
+            'unit_price'  => $subtotal,
+            'total_price' => $subtotal,
+        ]);
+
+        // Add domain item if applicable
+        if ($domainPrice > 0) {
+            \App\Models\InvoiceItem::create([
+                'invoice_id'  => $invoice->id,
+                'description' => 'Registro de dominio: ' . $purchaseContext['domain'],
+                'quantity'    => 1,
+                'unit_price'  => $domainPrice,
+                'total_price' => $domainPrice,
+            ]);
+        }
+
+        Log::info('📄 FACTURA CREADA desde purchase_context', [
+            'user_id'    => $user->id,
+            'invoice_id' => $invoice->id,
+            'product'    => $product->name,
+            'plan'       => $purchaseContext['plan'],
+            'domain'     => $purchaseContext['domain'] ?? 'N/A',
+            'total'      => $total,
+        ]);
+
+        return $invoice;
     }
 }

@@ -39,8 +39,23 @@ class ClientCartController extends Controller
     public function getCartData(Request $request): array
     {
         $cart = $request->session()->get('cart', $this->initializeCart());
+
+        // 🔍 DEBUG: Log acceso al carrito
+        Log::info('🛒 ACCESO AL CARRITO', [
+            'user_id'      => Auth::id(),
+            'has_cart'     => ! ! $cart,
+            'cart_summary' => $cart ? [
+                'accounts_count'    => count($cart['accounts'] ?? []),
+                'active_account_id' => $cart['active_account_id'] ?? null,
+            ] : null,
+            'session_id'   => session()->getId(),
+        ]);
+
         if (! isset($cart['accounts']) || ! isset($cart['active_account_id'])) {
             $cart = $this->initializeCart();
+            Log::info('🔄 CARRITO INICIALIZADO (estaba vacío o malformado)', [
+                'user_id' => Auth::id(),
+            ]);
         }
 
         foreach ($cart['accounts'] as &$account) {

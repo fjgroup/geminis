@@ -70,6 +70,44 @@ class ClientCheckoutController extends Controller
 
     public function showSelectDomainPage(Request $request): InertiaResponse
     {
+        // 🔍 DEBUG: Log al entrar a selectDomain - verificar purchase_context
+        $purchaseContext = session('purchase_context');
+        $cart            = session('cart');
+
+        Log::info('🔍 ENTRADA A selectDomain - verificando contextos', [
+            'user_id'              => Auth::id(),
+            'has_purchase_context' => ! ! $purchaseContext,
+            'purchase_context'     => $purchaseContext,
+            'has_cart'             => ! ! $cart,
+            'cart_summary'         => $cart ? [
+                'accounts_count'    => count($cart['accounts'] ?? []),
+                'active_account_id' => $cart['active_account_id'] ?? null,
+            ] : null,
+            'session_id'           => session()->getId(),
+        ]);
+
+        // 🔧 TRANSFERIR purchase_context al carrito si existe
+        if ($purchaseContext && (! $cart || empty($cart['accounts']))) {
+            Log::info('🔄 TRANSFIRIENDO purchase_context al carrito', [
+                'user_id'          => Auth::id(),
+                'purchase_context' => $purchaseContext,
+            ]);
+
+            $cart = $this->transferPurchaseContextToCart($purchaseContext);
+            session(['cart' => $cart]);
+
+            Log::info('✅ PURCHASE_CONTEXT transferido al carrito', [
+                'user_id'          => Auth::id(),
+                'new_cart_summary' => [
+                    'accounts_count'    => count($cart['accounts'] ?? []),
+                    'active_account_id' => $cart['active_account_id'] ?? null,
+                ],
+            ]);
+
+            // Limpiar purchase_context ya que se transfirió al carrito
+            session()->forget('purchase_context');
+        }
+
         $genericDomainProductId = 1;
         $genericDomainPricingId = 1; // Ambos IDs son 1
 
@@ -385,5 +423,74 @@ class ClientCheckoutController extends Controller
             }
         }
         return false;
+    }
+
+    /**
+     * Transfer purchase_context to cart structure
+     */
+    private function transferPurchaseContextToCart(array $purchaseContext): array
+    {
+        // Buscar el producto basado en el product_slug del purchase_context
+        $product = Product::where('slug', $purchaseContext['product_slug'])->first();
+
+        if (! $product) {
+            Log::error('Producto no encontrado para purchase_context', [
+                'product_slug'     => $purchaseContext['product_slug'],
+                'purchase_context' => $purchaseContext,
+            ]);
+            // Retornar carrito vacío si no se encuentra el producto
+            return [
+                'accounts'          => [],
+                'active_account_id' => null,
+            ];
+        }
+
+        // Buscar el primer pricing disponible para el producto
+        $pricing = $product->pricings()->first();
+
+        if (! $pricing) {
+            Log::error('No se encontró pricing para el producto', [
+                'product_id'   => $product->id,
+                'product_slug' => $product->slug,
+            ]);
+            // Retornar carrito vacío si no hay pricing
+            return [
+                'accounts'          => [],
+                'active_account_id' => null,
+            ];
+        }
+
+        // Generar UUID para la cuenta
+        $accountId = (string) \Illuminate\Support\Str::uuid();
+
+        // Crear estructura del carrito con el producto del purchase_context
+        $cart = [
+            'accounts'          => [
+                [
+                    'account_id'          => $accountId,
+                    'domain_info'         => null, // Se configurará en selectDomain
+                    'primary_service'     => [
+                        'cart_item_id'         => (string) \Illuminate\Support\Str::uuid(),
+                        'product_id'           => $product->id,
+                        'pricing_id'           => $pricing->id,
+                        'calculated_price'     => null,
+                        'billing_cycle_id'     => $pricing->billing_cycle_id,
+                        'service_notes'        => 'Servicio seleccionado desde landing page',
+                        'configurable_options' => [],
+                    ],
+                    'additional_services' => [],
+                ],
+            ],
+            'active_account_id' => $accountId,
+        ];
+
+        Log::info('Carrito creado desde purchase_context', [
+            'product_id'   => $product->id,
+            'product_name' => $product->name,
+            'pricing_id'   => $pricing->id,
+            'account_id'   => $accountId,
+        ]);
+
+        return $cart;
     }
 }

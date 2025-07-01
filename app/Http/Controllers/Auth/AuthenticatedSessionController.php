@@ -39,6 +39,16 @@ class AuthenticatedSessionController extends Controller
         } elseif ($user->role === 'client') {
             // Verificar si el email está verificado
             if (! is_null($user->email_verified_at)) {
+                // Check if user has pending purchase context
+                $pendingUser = session('pending_user');
+                if ($pendingUser && $pendingUser['id'] == $user->id) {
+                    // Restore purchase context and redirect to payment
+                    session(['purchase_context' => $pendingUser['purchase_context']]);
+                    session()->forget('pending_user');
+                    return redirect()->route('public.checkout.payment')
+                        ->with('success', '¡Bienvenido de vuelta! Continuando con tu compra.');
+                }
+
                 return redirect(route('client.dashboard', absolute: false));
             } else {
                 // Redirigir a verificación de email

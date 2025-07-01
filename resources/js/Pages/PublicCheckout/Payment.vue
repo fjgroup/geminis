@@ -7,23 +7,31 @@
                     <h1 class="text-2xl font-bold text-gray-900">Fj Group CA</h1>
                     <div class="flex items-center space-x-4">
                         <div class="flex items-center space-x-2">
-                            <div class="w-8 h-8 bg-green-600 text-white rounded-full flex items-center justify-center text-sm">
+                            <div
+                                class="w-8 h-8 bg-green-600 text-white rounded-full flex items-center justify-center text-sm">
                                 <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                                    <path fill-rule="evenodd"
+                                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                        clip-rule="evenodd"></path>
                                 </svg>
                             </div>
                             <span class="text-sm text-gray-600">Dominio</span>
                         </div>
                         <div class="flex items-center space-x-2">
-                            <div class="w-8 h-8 bg-green-600 text-white rounded-full flex items-center justify-center text-sm">
+                            <div
+                                class="w-8 h-8 bg-green-600 text-white rounded-full flex items-center justify-center text-sm">
                                 <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                                    <path fill-rule="evenodd"
+                                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                        clip-rule="evenodd"></path>
                                 </svg>
                             </div>
                             <span class="text-sm text-gray-600">Registro</span>
                         </div>
                         <div class="flex items-center space-x-2">
-                            <div class="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm">3</div>
+                            <div
+                                class="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm">
+                                3</div>
                             <span class="text-sm font-medium text-blue-600">Pago</span>
                         </div>
                     </div>
@@ -37,7 +45,7 @@
                 <!-- Payment Form -->
                 <div class="bg-white rounded-2xl shadow-xl p-8">
                     <h2 class="text-2xl font-bold text-gray-900 mb-6">Finalizar Compra</h2>
-                    
+
                     <!-- Order Summary -->
                     <div class="bg-gray-50 rounded-lg p-6 mb-6">
                         <h3 class="font-semibold text-gray-900 mb-4">Resumen del Pedido</h3>
@@ -60,10 +68,11 @@
                     <!-- Payment Methods -->
                     <div class="space-y-4">
                         <h3 class="font-semibold text-gray-900">Método de Pago</h3>
-                        
+
                         <div class="space-y-3">
                             <label class="flex items-center p-4 border rounded-lg cursor-pointer hover:bg-gray-50">
-                                <input type="radio" name="payment_method" value="paypal" v-model="selectedPaymentMethod" class="mr-3">
+                                <input type="radio" name="payment_method" value="paypal" v-model="selectedPaymentMethod"
+                                    class="mr-3">
                                 <div class="flex items-center">
                                     <div class="w-8 h-8 bg-blue-600 rounded flex items-center justify-center mr-3">
                                         <span class="text-white text-xs font-bold">PP</span>
@@ -71,9 +80,10 @@
                                     <span class="font-medium">PayPal</span>
                                 </div>
                             </label>
-                            
+
                             <label class="flex items-center p-4 border rounded-lg cursor-pointer hover:bg-gray-50">
-                                <input type="radio" name="payment_method" value="stripe" v-model="selectedPaymentMethod" class="mr-3">
+                                <input type="radio" name="payment_method" value="stripe" v-model="selectedPaymentMethod"
+                                    class="mr-3">
                                 <div class="flex items-center">
                                     <div class="w-8 h-8 bg-purple-600 rounded flex items-center justify-center mr-3">
                                         <span class="text-white text-xs font-bold">💳</span>
@@ -86,16 +96,13 @@
 
                     <!-- Action Buttons -->
                     <div class="flex justify-between items-center pt-6 mt-6 border-t">
-                        <Link :href="route('public.checkout.register')" 
-                              class="text-gray-600 hover:text-gray-800 font-medium">
-                            ← Volver
+                        <Link :href="route('public.checkout.register')"
+                            class="text-gray-600 hover:text-gray-800 font-medium">
+                        ← Volver
                         </Link>
-                        
-                        <button
-                            @click="processPayment"
-                            :disabled="!selectedPaymentMethod || processing"
-                            class="bg-blue-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                        >
+
+                        <button @click="processPayment" :disabled="!selectedPaymentMethod || processing"
+                            class="bg-blue-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
                             <span v-if="processing">Procesando...</span>
                             <span v-else>Pagar ${{ total.toFixed(2) }}</span>
                         </button>
@@ -105,21 +112,22 @@
                 <!-- Order Details -->
                 <div class="bg-white rounded-2xl shadow-xl p-8">
                     <h3 class="text-xl font-bold text-gray-900 mb-6">Detalles del Servicio</h3>
-                    
+
                     <div class="space-y-4">
                         <div>
                             <h4 class="font-semibold text-gray-900">Plan Seleccionado</h4>
                             <p class="text-gray-600">{{ product.name }}</p>
                         </div>
-                        
+
                         <div>
                             <h4 class="font-semibold text-gray-900">Dominio</h4>
                             <p class="text-gray-600">{{ purchaseContext.domain }}</p>
                             <p class="text-sm text-gray-500">
-                                {{ purchaseContext.domain_action === 'register' ? 'Nuevo registro' : 'Dominio existente' }}
+                                {{ purchaseContext.domain_action === 'register' ? 'Nuevo registro' : 'Dominio existente'
+                                }}
                             </p>
                         </div>
-                        
+
                         <div>
                             <h4 class="font-semibold text-gray-900">Caso de Uso</h4>
                             <p class="text-gray-600">{{ getUseCaseLabel(purchaseContext.use_case) }}</p>
@@ -168,16 +176,23 @@ const getUseCaseLabel = (useCase) => {
     return labels[useCase] || useCase
 }
 
+const form = useForm({
+    payment_method: ''
+})
+
 const processPayment = () => {
     if (!selectedPaymentMethod.value) return
-    
+
     processing.value = true
-    
-    // Aquí se procesaría el pago según el método seleccionado
-    // Por ahora, simulamos el proceso
-    setTimeout(() => {
-        alert('¡Pago procesado exitosamente! (Simulación)')
-        processing.value = false
-    }, 2000)
+    form.payment_method = selectedPaymentMethod.value
+
+    form.post(route('public.checkout.payment.process'), {
+        onSuccess: () => {
+            processing.value = false
+        },
+        onError: () => {
+            processing.value = false
+        }
+    })
 }
 </script>
