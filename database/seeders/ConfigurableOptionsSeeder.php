@@ -6,6 +6,7 @@ use App\Models\ConfigurableOption;
 use App\Models\ConfigurableOptionGroup;
 use App\Models\ConfigurableOptionPricing;
 use App\Models\Product;
+use App\Models\ProductPricing;
 use Illuminate\Database\Seeder;
 
 class ConfigurableOptionsSeeder extends Seeder
@@ -28,12 +29,12 @@ class ConfigurableOptionsSeeder extends Seeder
         $bienal     = BillingCycle::where('slug', 'biennially')->first();
         $trienal    = BillingCycle::where('slug', 'triennially')->first();
 
-        // 1. Grupo: Espacio en Disco
+        // 1. Grupo: Espacio para Crecer
         $espacioGroup = ConfigurableOptionGroup::updateOrCreate(
             ['slug' => 'espacio-disco'],
             [
-                'name'          => 'Espacio en Disco',
-                'description'   => 'Espacio adicional en disco para hosting',
+                'name'          => '🚀 Espacio para Crecer',
+                'description'   => 'Más espacio para que tu negocio crezca sin límites. Sube todas las fotos, videos y archivos que necesites.',
                 'display_order' => 1,
                 'is_active'     => true,
                 'is_required'   => false,
@@ -45,9 +46,9 @@ class ConfigurableOptionsSeeder extends Seeder
             ['slug' => 'espacio-adicional'],
             [
                 'group_id'      => $espacioGroup->id,
-                'name'          => 'Espacio Adicional',
+                'name'          => '📁 Espacio Extra',
                 'value'         => 'espacio_gb',
-                'description'   => 'Espacio adicional en GB',
+                'description'   => 'Cada GB extra te permite subir más contenido, fotos de productos, videos promocionales y archivos importantes para hacer crecer tu negocio.',
                 'option_type'   => 'quantity',
                 'is_required'   => false,
                 'is_active'     => true,
@@ -58,19 +59,19 @@ class ConfigurableOptionsSeeder extends Seeder
         );
 
         // Precios para espacio - Solo mensual activo (según requerimiento)
-        $this->createOptionPricing($espacioOption, $mensual, 0.50, true);
-        $this->createOptionPricing($espacioOption, $trimestral, 1.50, false); // Desactivado
-        $this->createOptionPricing($espacioOption, $semestral, 3.00, false);  // Desactivado
-        $this->createOptionPricing($espacioOption, $anual, 6.00, false);     // Desactivado
-        $this->createOptionPricing($espacioOption, $bienal, 12.00, false);    // Desactivado
-        $this->createOptionPricing($espacioOption, $trienal, 18.00, false);   // Desactivado
+        $this->createOptionPricing($espacioOption, $hostingEco, $mensual, 0.50, true);
+        $this->createOptionPricing($espacioOption, $hostingEco, $trimestral, 1.50, false); // Desactivado
+        $this->createOptionPricing($espacioOption, $hostingEco, $semestral, 3.00, false);  // Desactivado
+        $this->createOptionPricing($espacioOption, $hostingEco, $anual, 6.00, false);      // Desactivado
+        $this->createOptionPricing($espacioOption, $hostingEco, $bienal, 12.00, false);    // Desactivado
+        $this->createOptionPricing($espacioOption, $hostingEco, $trienal, 18.00, false);   // Desactivado
 
-        // 2. Grupo: vCPU
+        // 2. Grupo: Potencia Turbo
         $vcpuGroup = ConfigurableOptionGroup::updateOrCreate(
             ['slug' => 'vcpu'],
             [
-                'name'          => 'vCPU',
-                'description'   => 'Núcleos de CPU virtuales adicionales',
+                'name'          => '⚡ Potencia Turbo',
+                'description'   => 'Más velocidad para que tu sitio web cargue súper rápido y tus clientes no se vayan. ¡Convierte más visitas en ventas!',
                 'display_order' => 2,
                 'is_active'     => true,
                 'is_required'   => false,
@@ -82,9 +83,9 @@ class ConfigurableOptionsSeeder extends Seeder
             ['slug' => 'vcpu-adicional'],
             [
                 'group_id'      => $vcpuGroup->id,
-                'name'          => 'vCPU Adicional',
+                'name'          => '🔥 Núcleo Extra',
                 'value'         => 'vcpu_cores',
-                'description'   => 'Núcleos de CPU adicionales',
+                'description'   => 'Cada núcleo extra hace que tu sitio responda más rápido. Ideal para tiendas online, blogs con muchas visitas o sitios con videos.',
                 'option_type'   => 'quantity',
                 'is_required'   => false,
                 'is_active'     => true,
@@ -95,19 +96,19 @@ class ConfigurableOptionsSeeder extends Seeder
         );
 
         // Precios para vCPU - Solo mensual activo
-        $this->createOptionPricing($vcpuOption, $mensual, 5.00, true);
-        $this->createOptionPricing($vcpuOption, $trimestral, 15.00, false); // Desactivado
-        $this->createOptionPricing($vcpuOption, $semestral, 30.00, false);  // Desactivado
-        $this->createOptionPricing($vcpuOption, $anual, 60.00, false);     // Desactivado
-        $this->createOptionPricing($vcpuOption, $bienal, 120.00, false);    // Desactivado
-        $this->createOptionPricing($vcpuOption, $trienal, 180.00, false);   // Desactivado
+        $this->createOptionPricing($vcpuOption, $hostingEco, $mensual, 5.00, true);
+        $this->createOptionPricing($vcpuOption, $hostingEco, $trimestral, 15.00, false); // Desactivado
+        $this->createOptionPricing($vcpuOption, $hostingEco, $semestral, 30.00, false);  // Desactivado
+        $this->createOptionPricing($vcpuOption, $hostingEco, $anual, 60.00, false);      // Desactivado
+        $this->createOptionPricing($vcpuOption, $hostingEco, $bienal, 120.00, false);    // Desactivado
+        $this->createOptionPricing($vcpuOption, $hostingEco, $trienal, 180.00, false);   // Desactivado
 
-        // 3. Grupo: vRAM (Memoria RAM)
+        // 3. Grupo: Memoria Inteligente
         $vramGroup = ConfigurableOptionGroup::updateOrCreate(
             ['slug' => 'vram'],
             [
-                'name'          => 'vRam',
-                'description'   => 'Memoria Ram',
+                'name'          => '🧠 Memoria Inteligente',
+                'description'   => 'Más memoria para que tu sitio maneje múltiples visitantes al mismo tiempo sin problemas. Perfecto para días de alta demanda.',
                 'display_order' => 3,
                 'is_active'     => true,
                 'is_required'   => false,
@@ -119,9 +120,9 @@ class ConfigurableOptionsSeeder extends Seeder
             ['slug' => 'vram-adicional'],
             [
                 'group_id'      => $vramGroup->id,
-                'name'          => 'vRAM Adicional',
+                'name'          => '💾 GB de Memoria',
                 'value'         => 'vram_gb',
-                'description'   => 'Memoria RAM adicional en GB',
+                'description'   => 'Cada GB extra permite que tu sitio funcione sin interrupciones, incluso cuando tienes muchos visitantes comprando al mismo tiempo.',
                 'option_type'   => 'quantity',
                 'is_required'   => false,
                 'is_active'     => true,
@@ -131,13 +132,13 @@ class ConfigurableOptionsSeeder extends Seeder
             ]
         );
 
-                                                                           // Precios para vRAM - Solo mensual activo
-        $this->createOptionPricing($vramOption, $mensual, 1.00, true);     // $0.75 por GB
-        $this->createOptionPricing($vramOption, $trimestral, 3.00, false); // Desactivado
-        $this->createOptionPricing($vramOption, $semestral, 6.00, false);  // Desactivado
-        $this->createOptionPricing($vramOption, $anual, 12.00, false);      // Desactivado
-        $this->createOptionPricing($vramOption, $bienal, 24.00, false);    // Desactivado
-        $this->createOptionPricing($vramOption, $trienal, 36.00, false);   // Desactivado
+                                                                                        // Precios para vRAM - Solo mensual activo
+        $this->createOptionPricing($vramOption, $hostingEco, $mensual, 1.00, true);     // $0.75 por GB
+        $this->createOptionPricing($vramOption, $hostingEco, $trimestral, 3.00, false); // Desactivado
+        $this->createOptionPricing($vramOption, $hostingEco, $semestral, 6.00, false);  // Desactivado
+        $this->createOptionPricing($vramOption, $hostingEco, $anual, 12.00, false);     // Desactivado
+        $this->createOptionPricing($vramOption, $hostingEco, $bienal, 24.00, false);    // Desactivado
+        $this->createOptionPricing($vramOption, $hostingEco, $trienal, 36.00, false);   // Desactivado
 
         // 4. Grupo: Seguridad Email
         $spamGroup = ConfigurableOptionGroup::updateOrCreate(
@@ -167,12 +168,12 @@ class ConfigurableOptionsSeeder extends Seeder
         );
 
         // Precios para SpamExperts - Solo mensual activo, desmarcado por defecto
-        $this->createOptionPricing($spamOption, $mensual, 3.00, true);
-        $this->createOptionPricing($spamOption, $trimestral, 9.00, false); // Desactivado
-        $this->createOptionPricing($spamOption, $semestral, 18.00, false);  // Desactivado
-        $this->createOptionPricing($spamOption, $anual, 36.00, false);     // Desactivado
-        $this->createOptionPricing($spamOption, $bienal, 72.00, false);    // Desactivado
-        $this->createOptionPricing($spamOption, $trienal, 108.00, false);   // Desactivado
+        $this->createOptionPricing($spamOption, $hostingEco, $mensual, 3.00, true);
+        $this->createOptionPricing($spamOption, $hostingEco, $trimestral, 9.00, false); // Desactivado
+        $this->createOptionPricing($spamOption, $hostingEco, $semestral, 18.00, false); // Desactivado
+        $this->createOptionPricing($spamOption, $hostingEco, $anual, 36.00, false);     // Desactivado
+        $this->createOptionPricing($spamOption, $hostingEco, $bienal, 72.00, false);    // Desactivado
+        $this->createOptionPricing($spamOption, $hostingEco, $trienal, 108.00, false);  // Desactivado
 
         // Asociar grupos con productos de hosting
         if ($hostingEco) {
@@ -208,16 +209,26 @@ class ConfigurableOptionsSeeder extends Seeder
     /**
      * Crear pricing para una opción en un ciclo específico
      */
-    private function createOptionPricing($option, $billingCycle, $price, $isActive = true)
+    private function createOptionPricing($option, $product, $billingCycle, $price, $isActive = true)
     {
-        if (! $billingCycle) {
+        if (! $billingCycle || ! $product) {
+            return;
+        }
+
+        // Buscar el ProductPricing específico para este producto y ciclo
+        $productPricing = ProductPricing::where('product_id', $product->id)
+            ->where('billing_cycle_id', $billingCycle->id)
+            ->first();
+
+        if (! $productPricing) {
+            $this->command->warn("⚠️ No se encontró ProductPricing para el producto {$product->name} y el ciclo {$billingCycle->name}");
             return;
         }
 
         ConfigurableOptionPricing::updateOrCreate(
             [
                 'configurable_option_id' => $option->id,
-                'billing_cycle_id'       => $billingCycle->id,
+                'billing_cycle_id'       => $productPricing->billing_cycle_id,
             ],
             [
                 'price'         => $price,

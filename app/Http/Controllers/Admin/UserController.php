@@ -8,7 +8,9 @@ use App\Models\ResellerProfile;
 use App\Models\User;
 use App\Traits\AuditLogging;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 
 class UserController extends Controller
@@ -21,22 +23,46 @@ class UserController extends Controller
     {
         $this->authorize('viewAny', User::class);
 
-        $users = User::latest()
-        // ->with('reseller') // Opcional: si necesitas mostrar el nombre del revendedor
-            ->paginate(10)
+        $currentUser = Auth::user();
+
+        // Build query based on user role
+        $query = User::latest();
+
+        if ($currentUser->role === 'admin') {
+            // Admins can see all users
+            $query->with('reseller');
+        } elseif ($currentUser->role === 'reseller') {
+            // Resellers can only see their own clients (not other resellers or admins)
+            $query->where('reseller_id', $currentUser->id)
+                ->where('role', 'client') // Solo clientes, no otros resellers o admins
+                ->with('reseller');
+
+            Log::info('Reseller accessing users list', [
+                'reseller_id'    => $currentUser->id,
+                'reseller_email' => $currentUser->email,
+                'filter_applied' => 'reseller_id = ' . $currentUser->id . ' AND role = client',
+            ]);
+        }
+
+        $users = $query->paginate(10)
             ->through(fn($user) => [ // Mapea solo los campos que necesitas
                 'id'                   => $user->id,
                 'name'                 => $user->name,
                 'email'                => $user->email,
                 'role'                 => $user->role,
                 'status'               => $user->status,
-                // 'company_name' => $user->company_name, // Añadir si se va a mostrar
-                // 'reseller_name' => $user->reseller_id && $user->reseller ? $user->reseller->name : 'N/A', // Ejemplo
+                'company_name'         => $user->company_name,
+                'reseller_name'        => $user->reseller_id && $user->reseller ? $user->reseller->name : 'N/A',
                 'created_at_formatted' => $user->created_at ? $user->created_at->format('d/m/Y H:i') : null,
             ]);
 
         return Inertia::render('Admin/Users/Index', [
-            'users' => $users,
+            'users'       => $users,
+            'userContext' => [
+                'role'       => $currentUser->role,
+                'isReseller' => $currentUser->role === 'reseller',
+                'isAdmin'    => $currentUser->role === 'admin',
+            ],
             // 'filters' => request()->all('search', 'role', 'status'), // Si tienes filtros
         ]);
     }

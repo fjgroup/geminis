@@ -16,9 +16,22 @@ class ProfileController extends Controller
 {
     /**
      * Display the user's profile form.
+     * Redirect admin/reseller to their specific profile pages.
      */
-    public function edit(Request $request): Response
+    public function edit(Request $request): Response | RedirectResponse
     {
+        $user = $request->user();
+
+        // Redirect admin and reseller to their specific profile pages
+        if ($user->role === 'admin') {
+            return Redirect::route('admin.profile.edit');
+        }
+
+        if ($user->role === 'reseller') {
+            return Redirect::route('reseller.profile.edit');
+        }
+
+        // For regular clients, show the normal profile page
         return Inertia::render('Profile/Edit', [
             'mustVerifyEmail' => $request->user() instanceof MustVerifyEmail,
             'status'          => session('status'),
@@ -27,9 +40,20 @@ class ProfileController extends Controller
 
     /**
      * Update the user's profile information.
+     * Redirect admin/reseller to their specific profile pages.
      */
     public function update(ProfileUpdateRequest $request): RedirectResponse
     {
+        $user = $request->user();
+
+        // Redirect admin and reseller to their specific profile pages
+        if ($user->role === 'admin') {
+            return Redirect::route('admin.profile.edit');
+        }
+
+        if ($user->role === 'reseller') {
+            return Redirect::route('reseller.profile.edit');
+        }
         $user      = $request->user();
         $validated = $request->validated();
 
@@ -68,9 +92,20 @@ class ProfileController extends Controller
 
     /**
      * Delete the user's account.
+     * Redirect admin/reseller to their specific profile pages.
      */
     public function destroy(Request $request): RedirectResponse
     {
+        $user = $request->user();
+
+        // Redirect admin and reseller to their specific profile pages
+        if ($user->role === 'admin') {
+            return Redirect::route('admin.profile.edit');
+        }
+
+        if ($user->role === 'reseller') {
+            return Redirect::route('reseller.profile.edit');
+        }
         $request->validate([
             'password' => ['required', 'current_password'],
         ]);

@@ -91,10 +91,11 @@ const isActiveDashboard = computed(() => {
                                         :active="route().current('admin.products.index') || route().current('admin.products.show')">
                                         Manage Products
                                     </NavLink>
-                                    <NavLink :href="route('admin.orders.index')"
+                                    <!-- TODO: Implementar rutas de órdenes -->
+                                    <!-- <NavLink :href="route('admin.orders.index')"
                                         :active="route().current('admin.orders.index') || route().current('admin.orders.show')">
                                         Manage Orders
-                                    </NavLink>
+                                    </NavLink> -->
                                     <NavLink :href="route('admin.invoices.index')"
                                         :active="route().current('admin.invoices.index') || route().current('admin.invoices.show')">
                                         Manage Invoices
@@ -223,10 +224,11 @@ const isActiveDashboard = computed(() => {
                                 :active="route().current('admin.products.index') || route().current('admin.products.show')">
                                 Manage Products
                             </ResponsiveNavLink>
-                            <ResponsiveNavLink :href="route('admin.orders.index')"
+                            <!-- TODO: Implementar rutas de órdenes -->
+                            <!-- <ResponsiveNavLink :href="route('admin.orders.index')"
                                 :active="route().current('admin.orders.index') || route().current('admin.orders.show')">
                                 Manage Orders
-                            </ResponsiveNavLink>
+                            </ResponsiveNavLink> -->
                             <ResponsiveNavLink :href="route('admin.invoices.index')"
                                 :active="route().current('admin.invoices.index') || route().current('admin.invoices.show')">
                                 Manage Invoices

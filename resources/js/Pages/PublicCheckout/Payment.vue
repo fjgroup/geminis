@@ -82,13 +82,13 @@
                             </label>
 
                             <label class="flex items-center p-4 border rounded-lg cursor-pointer hover:bg-gray-50">
-                                <input type="radio" name="payment_method" value="stripe" v-model="selectedPaymentMethod"
+                                <input type="radio" name="payment_method" value="other_methods" v-model="selectedPaymentMethod"
                                     class="mr-3">
                                 <div class="flex items-center">
-                                    <div class="w-8 h-8 bg-purple-600 rounded flex items-center justify-center mr-3">
-                                        <span class="text-white text-xs font-bold">💳</span>
+                                    <div class="w-8 h-8 bg-gray-600 rounded flex items-center justify-center mr-3">
+                                        <span class="text-white text-xs font-bold">💰</span>
                                     </div>
-                                    <span class="font-medium">Tarjeta de Crédito/Débito</span>
+                                    <span class="font-medium">Otros Medios</span>
                                 </div>
                             </label>
                         </div>

@@ -96,6 +96,47 @@ class PricingController extends Controller
     }
 
     /**
+     * Calcular precio para usuarios públicos (no logueados)
+     */
+    public function calculatePublicPrice(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'product_id'             => 'required|integer|exists:products,id',
+            'billing_cycle_id'       => 'required|integer|exists:billing_cycles,id',
+            'configurable_options'   => 'nullable|array',
+            'configurable_options.*' => 'integer|min:0',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Datos inválidos',
+                'errors'  => $validator->errors(),
+            ], 422);
+        }
+
+        try {
+            $calculation = $this->pricingCalculator->calculateProductPrice(
+                $request->product_id,
+                $request->billing_cycle_id,
+                $request->configurable_options ?? []
+            );
+
+            return response()->json([
+                'success' => true,
+                'data'    => $calculation,
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al calcular el precio',
+                'error'   => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
      * Obtener precio mensual simple de un producto para el admin
      */
     public function getAdminProductPrice(Request $request): JsonResponse

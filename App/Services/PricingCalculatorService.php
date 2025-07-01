@@ -270,6 +270,56 @@ class PricingCalculatorService
     }
 
     /**
+     * Calcular precio para usuarios no logueados (incluye recursos base del plan)
+     * Usa precio base + recursos base configurados por el admin, sin opciones adicionales
+     */
+    public function calculateSimpleProductPrice(int $productId, int $billingCycleId): array
+    {
+        Log::info('PricingCalculatorService: Calculando precio para usuario no logueado', [
+            'product_id'       => $productId,
+            'billing_cycle_id' => $billingCycleId,
+        ]);
+
+        // 1. Obtener precio base del producto (cPanel)
+        $basePrice = $this->getBasePrice($productId, $billingCycleId);
+
+        if (! $basePrice) {
+            throw new \Exception('Precio base no encontrado para el producto');
+        }
+
+        // 2. Calcular precio de recursos base incluidos (RAM, CPU, espacio)
+        $baseResourcesPrice = $this->calculateBaseResourcesPrice($productId, $billingCycleId);
+
+        // 3. Calcular subtotal (precio base + recursos base)
+        $subtotal = $basePrice['price'] + $baseResourcesPrice['total'];
+
+        // 4. Aplicar descuento si existe
+        $discount       = $this->getDiscount($productId, $billingCycleId);
+        $discountAmount = $subtotal * ($discount['percentage'] / 100);
+        $total          = $subtotal - $discountAmount;
+
+        $result = [
+            'product_id'        => $productId,
+            'billing_cycle_id'  => $billingCycleId,
+            'base_price'        => $basePrice,
+            'base_resources'    => $baseResourcesPrice,
+            'subtotal'          => round($subtotal, 2),
+            'discount'          => $discount,
+            'discount_amount'   => round($discountAmount, 2),
+            'total'             => round($total, 2),
+            'currency_code'     => $basePrice['currency_code'],
+            'is_simple_pricing' => true, // Indicador de que es precio simplificado
+        ];
+
+        Log::info('PricingCalculatorService: Precio calculado para usuario no logueado', [
+            'result'                 => $result,
+            'base_resources_details' => $baseResourcesPrice['details'] ?? [],
+        ]);
+
+        return $result;
+    }
+
+    /**
      * Obtener información de recursos base de un producto
      */
     public function getProductBaseResources(int $productId): array
@@ -319,15 +369,32 @@ class PricingCalculatorService
     }
 
     /**
-     * Formatear la visualización de un recurso
+     * Formatear la visualización de un recurso con mensajes de marketing
      */
     private function formatResourceDisplay(string $resourceName, float $quantity): string
     {
-        $unit = $this->getResourceUnit($resourceName);
-
         // Formatear cantidad (sin decimales si es entero)
         $formattedQuantity = $quantity == (int) $quantity ? (int) $quantity : $quantity;
 
+        // Mensajes de marketing atractivos
+        $marketingDisplays = [
+            'Espacio en Disco'      => "{$formattedQuantity} GB de Espacio para Crecer 🚀",
+            '🚀 Espacio para Crecer' => "{$formattedQuantity} GB de Espacio para Crecer 🚀",
+            'vCPU'                  => "{$formattedQuantity} Núcleos de Potencia Turbo ⚡",
+            '⚡ Potencia Turbo'      => "{$formattedQuantity} Núcleos de Potencia Turbo ⚡",
+            'vRam'                  => "{$formattedQuantity} GB de Memoria Inteligente 🧠",
+            '🧠 Memoria Inteligente' => "{$formattedQuantity} GB de Memoria Inteligente 🧠",
+            'Memoria RAM'           => "{$formattedQuantity} GB de Memoria Inteligente 🧠",
+            'Transferencia'         => "{$formattedQuantity} GB de Transferencia Ilimitada 🌐",
+        ];
+
+        // Si hay un mensaje de marketing específico, usarlo
+        if (isset($marketingDisplays[$resourceName])) {
+            return $marketingDisplays[$resourceName];
+        }
+
+        // Fallback al formato original
+        $unit = $this->getResourceUnit($resourceName);
         return "{$formattedQuantity} {$unit} de {$resourceName}";
     }
 }

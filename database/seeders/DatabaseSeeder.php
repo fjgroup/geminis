@@ -1,10 +1,8 @@
 <?php
+
 namespace Database\Seeders;
 
-// use Illuminate\Database\Console\Seeds\WithoutModelEvents;
-use App\Models\User;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\Hash;
 
 class DatabaseSeeder extends Seeder
 {
@@ -13,34 +11,25 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // Crear usuario admin
-        User::factory()->create([
-            'name'              => 'Admin User',
-            'email'             => 'admin@geminis.test',
-            'email_verified_at' => now(),
-            'password'          => Hash::make('password'),
-            'role'              => 'admin',
-        ]);
+        // \App\Models\User::factory(10)->create();
 
-        // Crear usuario cliente
-        User::factory()->create([
-            'name'              => 'Cliente Test',
-            'email'             => 'cliente@geminis.test',
+        \App\Models\User::factory()->create([
+            'name'              => 'Test User',
+            'email'             => 'test@example.com',
+            'role'              => 'admin',
+            'status'            => 'active',
             'email_verified_at' => now(),
-            'password'          => Hash::make('password'),
-            'role'              => 'client',
-            'company_name'      => 'Empresa Test',
+            'company_name'      => 'Test Company',
             'phone'             => '+1234567890',
-            'address'           => '123 Test Street',
+            'address'           => 'Test Address',
             'city'              => 'Test City',
+            'state'             => 'Test State',
+            'postal_code'       => '12345',
             'country'           => 'Test Country',
         ]);
 
         $this->call([
-            // Primero los descuentos (necesarios para billing cycles)
-            DiscountPercentageSeeder::class,
-
-            // Luego los ciclos de facturación (con descuentos)
+            // Primero los ciclos de facturación
             BillingCycleSeeder::class,
 
             // Tipos de productos
@@ -49,17 +38,16 @@ class DatabaseSeeder extends Seeder
             // Métodos de pago
             PaymentMethodSeeder::class,
 
-            // Producto de dominio genérico
+            // Productos (primero todos los productos)
             GenericDomainProductSeeder::class,
-
-            // Opciones configurables (después de productos)
-            ConfigurableOptionsSeeder::class,
-
-            // Productos de hosting (después de opciones configurables)
             HostingProductsSeeder::class,
+            //ResellerProductSeeder::class,
 
-            // Producto reseller temporal
-            ResellerProductSeeder::class,
+            // Descuentos (después de que existan los productos)
+            DiscountPercentageSeeder::class,
+
+            // Opciones configurables (después de que TODOS los productos existan)
+            ConfigurableOptionsSeeder::class,
         ]);
     }
 }

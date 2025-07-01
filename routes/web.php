@@ -23,11 +23,12 @@
 use App\Http\Controllers\Admin\AdminClientServiceController;
 use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Admin\AdminInvoiceController;
-
-// Importaciones de controladores
 use App\Http\Controllers\Admin\AdminPaymentMethodController;
 use App\Http\Controllers\Admin\AdminProductController;
 use App\Http\Controllers\Admin\AdminProductTypeController;
+
+// Importaciones de controladores
+use App\Http\Controllers\Admin\AdminProfileController;
 use App\Http\Controllers\Admin\AdminTransactionController;
 use App\Http\Controllers\Admin\ConfigurableOptionController;
 use App\Http\Controllers\Admin\ConfigurableOptionGroupController;
@@ -48,9 +49,7 @@ use App\Http\Controllers\Client\PayPalPaymentController;                        
 use App\Http\Controllers\LandingPageController;                                             // Import the new PayPalPaymentController
 use App\Http\Controllers\ProfileController;                                                 // Import the new ProductTypeController
 use App\Http\Controllers\Reseller\ResellerClientController;                                 // Import the new LandingPageController
-use App\Http\Controllers\Reseller\ResellerDashboardController;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Route; // Import ApiProductController
+use Illuminate\Support\Facades\Route;                                                       // Import ApiProductController
 use Inertia\Inertia;
 
 // Import DomainApiController
@@ -59,6 +58,11 @@ use Inertia\Inertia;
 // Aplicamos múltiples capas de seguridad para proteger estas rutas
 Route::prefix('admin')->name('admin.')->middleware(['auth', 'verified', 'admin', 'admin.security', 'input.sanitize', 'inject.context'])->group(function () {
     Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
+
+    // Admin Profile Routes
+    Route::get('/profile', [AdminProfileController::class, 'edit'])->name('profile.edit');
+    Route::patch('/profile', [AdminProfileController::class, 'update'])->name('profile.update');
+    Route::delete('/profile', [AdminProfileController::class, 'destroy'])->name('profile.destroy');
 
     Route::resource('users', AdminUserController::class);
     Route::resource('products', ProductController::class);
@@ -142,17 +146,17 @@ Route::post('/admin/stop-impersonation', [AdminClientServiceController::class, '
     ->middleware(['auth', 'verified'])
     ->name('admin.stop-impersonation');
 
-// Rutas para el Panel de Revendedor
-Route::middleware(['auth', 'verified', 'role.reseller'])->prefix('reseller-panel')->name('reseller.')->group(function () {
-    // Dashboard del revendedor
-    Route::get('/dashboard', [ResellerDashboardController::class, 'index'])->name('dashboard');
-
-    // CRUD de Clientes para el revendedor
-    Route::get('/clients', [ResellerClientController::class, 'index'])->name('clients.index');
-    Route::get('/clients/create', [ResellerClientController::class, 'create'])->name('clients.create');
-    Route::post('/clients', [ResellerClientController::class, 'store'])->name('clients.store');
-    // Aquí añadirías las rutas para edit, update, show, destroy de clientes por el revendedor
-});
+// Rutas para el Panel de Revendedor (DEPRECATED - usando panel compartido con admin)
+// Route::middleware(['auth', 'verified', 'role.reseller'])->prefix('reseller-panel')->name('reseller.')->group(function () {
+//     // Dashboard del revendedor
+//     Route::get('/dashboard', [ResellerDashboardController::class, 'index'])->name('dashboard');
+//
+//     // CRUD de Clientes para el revendedor
+//     Route::get('/clients', [ResellerClientController::class, 'index'])->name('clients.index');
+//     Route::get('/clients/create', [ResellerClientController::class, 'create'])->name('clients.create');
+//     Route::post('/clients', [ResellerClientController::class, 'store'])->name('clients.store');
+//     // Aquí añadirías las rutas para edit, update, show, destroy de clientes por el revendedor
+// });
 
 // Rutas para el área de cliente
 Route::prefix('client')->name('client.')->middleware(['auth', 'verified'])->group(function () { // Restored security middleware
@@ -346,8 +350,15 @@ Route::get('/verify-purchase-email/{id}/{hash}', [App\Http\Controllers\PublicChe
     ->name('verification.verify.purchase');
 
 // Reseller Panel Routes (uses same admin panel but with reseller context)
-Route::prefix('reseller')->name('reseller.')->middleware(['auth', 'verified', 'admin.or.reseller', 'inject.context'])->group(function () {
+Route::prefix('reseller')->name('reseller.')->middleware(['auth', 'verified', 'admin.or.reseller', 'reseller.security', 'inject.context', 'input.sanitize'])->group(function () {
     Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
+
+    // Reseller Profile Routes
+    Route::get('/profile', [AdminProfileController::class, 'edit'])->name('profile.edit');
+    Route::patch('/profile', [AdminProfileController::class, 'update'])->name('profile.update');
+    Route::delete('/profile', [AdminProfileController::class, 'destroy'])->name('profile.destroy');
+
+    // User management (scoped to reseller's clients)
     Route::resource('users', AdminUserController::class)->names([
         'index'   => 'users.index',
         'create'  => 'users.create',
@@ -357,6 +368,11 @@ Route::prefix('reseller')->name('reseller.')->middleware(['auth', 'verified', 'a
         'update'  => 'users.update',
         'destroy' => 'users.destroy',
     ]);
+
+    // Product management (same as admin for now)
+    Route::resource('products', ProductController::class);
+    Route::post('products/{product}/calculate-pricing', [ProductController::class, 'calculatePricing'])
+        ->name('products.calculate-pricing');
     Route::resource('products', ProductController::class)->names([
         'index'   => 'products.index',
         'create'  => 'products.create',
@@ -392,10 +408,19 @@ Route::prefix('api/domain')->name('api.domain.')->group(function () {
     Route::get('/tld-pricing', [DomainApiController::class, 'getTldPricingInfo'])->name('tldPricingInfo');
 });
 
-Route::middleware('auth')->group(function () {
+// Profile routes for regular users (clients) - mantener ambas rutas para compatibilidad
+Route::middleware(['auth', 'verified'])->group(function () {
+    // Ruta principal para clientes
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
+    // Rutas alternativas con prefijo client
+    Route::prefix('client')->name('client.')->group(function () {
+        Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+        Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+        Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    });
 });
 
 // Ruta temporal para actualizar servicios
@@ -451,167 +476,5 @@ Route::get('/update-services', function () {
         'results'        => $results,
     ]);
 })->middleware(['auth', 'admin']);
-
-// Ruta temporal para crear usuarios (ELIMINAR EN PRODUCCIÓN)
-Route::get('/create-test-users', function () {
-    try {
-        // Crear usuario administrador
-        $admin = \App\Models\User::updateOrCreate(
-            ['email' => 'admin@fjgroupca.com'],
-            [
-                'name'              => 'Administrador',
-                'email'             => 'admin@fjgroupca.com',
-                'password'          => \Illuminate\Support\Facades\Hash::make('admin123'),
-                'role'              => 'admin',
-                'company_name'      => 'Fj Group CA',
-                'phone'             => '+58 412 8172337',
-                'country'           => 'VE',
-                'reseller_id'       => null,
-                'status'            => 'active',
-                'language_code'     => 'es',
-                'currency_code'     => 'USD',
-                'email_verified_at' => now(),
-            ]
-        );
-
-        // Crear usuario cliente de prueba
-        $client = \App\Models\User::updateOrCreate(
-            ['email' => 'cliente@test.com'],
-            [
-                'name'              => 'Cliente Prueba',
-                'email'             => 'cliente@test.com',
-                'password'          => \Illuminate\Support\Facades\Hash::make('cliente123'),
-                'role'              => 'client',
-                'company_name'      => 'Empresa Test',
-                'phone'             => '+58 412 1234567',
-                'country'           => 'VE',
-                'reseller_id'       => null,
-                'status'            => 'active',
-                'language_code'     => 'es',
-                'currency_code'     => 'USD',
-                'email_verified_at' => now(),
-            ]
-        );
-
-        // Crear usuario reseller de prueba
-        $reseller = \App\Models\User::updateOrCreate(
-            ['email' => 'reseller@test.com'],
-            [
-                'name'              => 'Reseller Prueba',
-                'email'             => 'reseller@test.com',
-                'password'          => \Illuminate\Support\Facades\Hash::make('reseller123'),
-                'role'              => 'reseller',
-                'company_name'      => 'Reseller Company',
-                'phone'             => '+58 412 7654321',
-                'country'           => 'VE',
-                'reseller_id'       => null,
-                'status'            => 'active',
-                'language_code'     => 'es',
-                'currency_code'     => 'USD',
-                'email_verified_at' => now(),
-            ]
-        );
-
-        return response()->json([
-            'success'   => true,
-            'message'   => '✅ Usuarios creados exitosamente!',
-            'users'     => [
-                'admin'    => 'admin@fjgroupca.com / admin123',
-                'client'   => 'cliente@test.com / cliente123',
-                'reseller' => 'reseller@test.com / reseller123',
-            ],
-            'login_url' => route('login'),
-        ]);
-
-    } catch (Exception $e) {
-        return response()->json([
-            'success' => false,
-            'error'   => $e->getMessage(),
-        ], 500);
-    }
-});
-
-// Ruta temporal para verificar estado del usuario (ELIMINAR EN PRODUCCIÓN)
-Route::get('/check-user-status', function () {
-    if (! \Illuminate\Support\Facades\Auth::check()) {
-        return response()->json([
-            'authenticated' => false,
-            'message'       => 'Usuario no autenticado',
-        ]);
-    }
-
-    $user = \Illuminate\Support\Facades\Auth::user();
-    return response()->json([
-        'authenticated'               => true,
-        'user'                        => [
-            'id'                => $user->id,
-            'name'              => $user->name,
-            'email'             => $user->email,
-            'role'              => $user->role,
-            'email_verified_at' => $user->email_verified_at,
-            'created_at'        => $user->created_at,
-        ],
-        'can_access_client_dashboard' => ! is_null($user->email_verified_at),
-        'dashboard_url'               => route('client.dashboard'),
-    ]);
-});
-
-// Ruta temporal para dashboard de cliente sin verificación (ELIMINAR EN PRODUCCIÓN)
-Route::get('/client-dashboard-temp', function () {
-    if (! \Illuminate\Support\Facades\Auth::check()) {
-        return redirect()->route('login');
-    }
-
-    $user = \Illuminate\Support\Facades\Auth::user();
-    if ($user->role !== 'client') {
-        return redirect()->route('login');
-    }
-
-    return \Inertia\Inertia::render('Client/Dashboard', [
-        'user'    => $user,
-        'message' => 'Dashboard temporal - Email verificado: ' . ($user->email_verified_at ? 'Sí' : 'No'),
-    ]);
-})->name('client.dashboard.temp');
-
-// Ruta temporal para logout rápido (ELIMINAR EN PRODUCCIÓN)
-Route::get('/logout-quick', function () {
-    \Illuminate\Support\Facades\Auth::logout();
-    request()->session()->invalidate();
-    request()->session()->regenerateToken();
-
-    return redirect()->route('login')->with('message', 'Sesión cerrada exitosamente');
-})->name('logout.quick');
-
-// Test route for purchase context transfer
-Route::get('/test-transfer', function () {
-    // Simular purchase_context
-    session([
-        'purchase_context' => [
-            'use_case'     => 'entrepreneurs',
-            'plan'         => 'business',
-            'product_slug' => 'hosting-web-pro',
-            'source'       => 'test',
-            'messages'     => ['test' => 'test'],
-        ],
-    ]);
-
-    // Crear usuario de prueba si no existe
-    $user = \App\Models\User::firstOrCreate(
-        ['email' => 'test@test.com'],
-        [
-            'name'              => 'Test User',
-            'password'          => bcrypt('password'),
-            'email_verified_at' => now(),
-            'role'              => 'client',
-            'status'            => 'active',
-        ]
-    );
-
-    // Hacer login
-    Auth::login($user);
-
-    // Redirigir a selectDomain
-    return redirect()->route('client.checkout.selectDomain');
-})->name('test.transfer');
 
 require __DIR__ . '/auth.php';

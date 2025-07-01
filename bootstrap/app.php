@@ -23,6 +23,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'inject.context'    => \App\Http\Middleware\InjectResellerContext::class,
             'input.sanitize'    => \App\Http\Middleware\InputSanitizationMiddleware::class,
             'role.reseller'     => \App\Http\Middleware\EnsureUserIsReseller::class,
+            'reseller.security' => \App\Http\Middleware\ResellerSecurityMiddleware::class,
             'client'            => \App\Http\Middleware\EnsureUserIsClient::class,
             'cart.ratelimit'    => \App\Http\Middleware\CartRateLimitMiddleware::class,
             'verified'          => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
