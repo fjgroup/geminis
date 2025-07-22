@@ -5,7 +5,7 @@ use App\Http\Controllers\Controller;
 use App\Models\BillingCycle;
 use App\Models\ConfigurableOption;
 use App\Models\ConfigurableOptionGroup;
-use App\Models\Product;
+use App\Domains\Products\Models\Product;
 use App\Models\ProductPricing;
 use App\Models\ProductType;
 use Illuminate\Http\Request;

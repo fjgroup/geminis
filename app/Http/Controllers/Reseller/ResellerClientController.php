@@ -3,15 +3,20 @@
 namespace App\Http\Controllers\Reseller;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Reseller\StoreClientByResellerRequest; // Asegúrate que el namespace sea correcto
-use App\Models\User;
-use Illuminate\Support\Facades\Hash;
+use App\Http\Requests\Reseller\StoreClientByResellerRequest;
+use App\Domains\Users\Models\User;
+use App\Domains\Users\Services\UserCreator;
+use App\Domains\Users\DataTransferObjects\CreateUserDTO;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
-use Inertia\Inertia; // Si vas a usar Inertia para las vistas del revendedor
+use Illuminate\Support\Facades\Log;
+use Inertia\Inertia;
 
 class ResellerClientController extends Controller
 {
+    public function __construct(
+        private UserCreator $userCreator
+    ) {}
     /**
      * Display a listing of the clients for the reseller.
      */
@@ -52,32 +57,47 @@ class ResellerClientController extends Controller
      */
     public function store(StoreClientByResellerRequest $request): RedirectResponse
     {
-        $validatedData = $request->validated();
+        try {
+            $validatedData = $request->validated();
 
-        $client = User::create([
-            'name' => $validatedData['name'],
-            'email' => $validatedData['email'],
-            'password' => Hash::make($validatedData['password']),
-            'role' => 'client', // Los revendedores solo crean clientes
-            'reseller_id' => Auth::id(), // ID del revendedor autenticado
-            'company_name' => $validatedData['company_name'] ?? null,
-            'phone_number' => $validatedData['phone_number'] ?? null,
-            'address_line1' => $validatedData['address_line1'] ?? null,
-            'address_line2' => $validatedData['address_line2'] ?? null,
-            'city' => $validatedData['city'] ?? null,
-            'state_province' => $validatedData['state_province'] ?? null,
-            'postal_code' => $validatedData['postal_code'] ?? null,
-            'country' => $validatedData['country'] ?? null,
-            'status' => $validatedData['status'] ?? 'active', // Valor por defecto si no se envía
-            'language_code' => $validatedData['language_code'] ?? Auth::user()->language_code ?? 'es', // Heredar del revendedor o default
-            'currency_code' => $validatedData['currency_code'] ?? Auth::user()->currency_code ?? 'USD', // Heredar del revendedor o default
-        ]);
+            // Crear DTO para el nuevo cliente
+            $dto = CreateUserDTO::fromResellerClientRequest($validatedData, Auth::id());
 
-        // Lógica adicional si es necesaria, como enviar una notificación.
+            // Crear cliente usando el servicio especializado
+            $result = $this->userCreator->createResellerClient($dto, Auth::id());
 
-        // Ajusta la ruta según cómo tengas nombradas las rutas del panel de revendedor
-        // return redirect()->route('reseller.clients.index')->with('success', 'Cliente creado exitosamente.');
-        return back()->with('success', 'Cliente creado exitosamente.'); // O redirigir atrás
+            if (!$result['success']) {
+                Log::warning('Error al crear cliente por reseller', [
+                    'reseller_id' => Auth::id(),
+                    'errors' => $result['errors'],
+                    'message' => $result['message']
+                ]);
+
+                return redirect()->back()
+                                ->withErrors($result['errors'])
+                                ->withInput()
+                                ->with('error', $result['message']);
+            }
+
+            Log::info('Cliente creado exitosamente por reseller', [
+                'reseller_id' => Auth::id(),
+                'client_id' => $result['data']->id,
+                'client_email' => $result['data']->email
+            ]);
+
+            return back()->with('success', 'Cliente creado exitosamente.');
+
+        } catch (\Exception $e) {
+            Log::error('Error inesperado al crear cliente por reseller', [
+                'reseller_id' => Auth::id(),
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return redirect()->back()
+                           ->withInput()
+                           ->with('error', 'Error interno al crear el cliente. Inténtelo de nuevo.');
+        }
     }
 
     // Aquí podrías añadir métodos para edit, update, show, destroy para los clientes del revendedor

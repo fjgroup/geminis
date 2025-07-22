@@ -2,15 +2,14 @@
 
 namespace Database\Factories;
 
-use App\Models\Client; // Assuming Client model alias for User
-use App\Models\User;   // Or directly User model
-use App\Models\Invoice;
+use App\Domains\Users\Models\User;
+use App\Domains\Invoices\Models\Invoice;
 // use App\Models\Order; // Removed
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Invoice>
+ * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Domains\Invoices\Models\Invoice>
  */
 class InvoiceFactory extends Factory
 {

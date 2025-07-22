@@ -1,4 +1,20 @@
 <?php
+
+/**
+ * ⚠️ DEPRECATED - MARCADO PARA ELIMINACIÓN
+ *
+ * Este controlador monolítico (978 líneas) ha sido refactorizado y reemplazado por:
+ * - PublicCheckoutControllerRefactored (manejo HTTP limpio)
+ * - CheckoutService (lógica de checkout)
+ * - UserService (gestión de usuarios)
+ * - InvoiceService (gestión de facturas)
+ * - PricingCalculatorService (cálculos de precios)
+ *
+ * TODO: Eliminar este archivo después de migrar completamente las rutas
+ * Fecha de refactorización: 2025-01-22
+ * Reemplazado por: PublicCheckoutControllerRefactored + Servicios
+ */
+
 namespace App\Http\Controllers;
 
 use App\Models\Product;
@@ -429,7 +445,7 @@ class PublicCheckoutController extends Controller
         Log::info('Invoice created successfully', ['invoice_id' => $invoice->id]);
 
         // Create invoice items
-        \App\Models\InvoiceItem::create([
+        \App\Domains\Invoices\Models\InvoiceItem::create([
             'invoice_id'  => $invoice->id,
             'description' => $product->name . ' - Plan ' . ucfirst($purchaseContext['plan'] ?? 'professional'),
             'quantity'    => 1,
@@ -439,7 +455,7 @@ class PublicCheckoutController extends Controller
 
         // Add domain item if applicable
         if ($domainPrice > 0) {
-            \App\Models\InvoiceItem::create([
+            \App\Domains\Invoices\Models\InvoiceItem::create([
                 'invoice_id'  => $invoice->id,
                 'description' => 'Registro de dominio: ' . $purchaseContext['domain'],
                 'quantity'    => 1,
@@ -792,9 +808,9 @@ class PublicCheckoutController extends Controller
         $total            = $subtotal + $domainPrice;
 
         // Create invoice
-        $invoice = \App\Models\Invoice::create([
+        $invoice = \App\Domains\Invoices\Models\Invoice::create([
             'client_id'      => $user->id,
-            'invoice_number' => 'INV-' . date('Y') . '-' . str_pad(\App\Models\Invoice::count() + 1, 6, '0', STR_PAD_LEFT),
+            'invoice_number' => 'INV-' . date('Y') . '-' . str_pad(\App\Domains\Invoices\Models\Invoice::count() + 1, 6, '0', STR_PAD_LEFT),
             'issue_date'     => now(),
             'due_date'       => now()->addDays(30),
             'subtotal'       => $subtotal,
@@ -808,7 +824,7 @@ class PublicCheckoutController extends Controller
         ]);
 
         // Create invoice items
-        \App\Models\InvoiceItem::create([
+        \App\Domains\Invoices\Models\InvoiceItem::create([
             'invoice_id'  => $invoice->id,
             'description' => $product->name . ' - Plan ' . ucfirst($purchaseContext['plan'] ?? 'professional'),
             'quantity'    => 1,
@@ -818,7 +834,7 @@ class PublicCheckoutController extends Controller
 
         // Add domain item if applicable
         if ($domainPrice > 0) {
-            \App\Models\InvoiceItem::create([
+            \App\Domains\Invoices\Models\InvoiceItem::create([
                 'invoice_id'  => $invoice->id,
                 'description' => 'Registro de dominio: ' . $purchaseContext['domain'],
                 'quantity'    => 1,

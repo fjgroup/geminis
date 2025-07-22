@@ -1,4 +1,18 @@
 <?php
+
+/**
+ * ⚠️ DEPRECATED - MARCADO PARA ELIMINACIÓN
+ *
+ * Este controlador ha sido refactorizado y reemplazado por:
+ * - AdminProductControllerRefactored (manejo HTTP)
+ * - ProductManagementService (lógica de negocio)
+ * - PricingCalculatorService (cálculos de precios)
+ *
+ * TODO: Eliminar este archivo después de migrar completamente las rutas
+ * Fecha de refactorización: 2025-01-22
+ * Reemplazado por: AdminProductControllerRefactored + ProductManagementService
+ */
+
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
@@ -8,7 +22,7 @@ use App\Http\Requests\Admin\UpdateProductPricingRequest; // ¡IMPORTANTE! Añadi
 use App\Http\Requests\Admin\UpdateProductRequest;        // ¡IMPORTANTE! Añadir esta importación
 use App\Models\BillingCycle;
 use App\Models\ConfigurableOptionGroup;
-use App\Models\Product;
+use App\Domains\Products\Models\Product;
 use App\Models\ProductPricing;        // Asegúrate que el namespace y nombre de clase son correctos
 use App\Models\ProductType;           // Añadir
 use App\Models\User;                  // Para cargar revendedores si es necesario

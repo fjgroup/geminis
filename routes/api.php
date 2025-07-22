@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\Api\DomainApiController;
+use App\Http\Controllers\Api\ProductController as ApiProductController;
 use App\Http\Controllers\Webhook\PayPalWebhookController;
 // use App\Http\Controllers\Client\PayPalController; // Old controller
 use Illuminate\Http\Request;
@@ -30,4 +32,20 @@ Route::prefix('pricing')->group(function () {
     Route::get('/admin-price/{product_id}', [\App\Http\Controllers\Api\PricingController::class, 'getAdminProductPrice'])->name('api.pricing.admin-price');
     Route::get('/base-resources/{product_id}', [\App\Http\Controllers\Api\PricingController::class, 'getProductBaseResources'])->name('api.pricing.base-resources');
     Route::post('/bulk-pricing', [\App\Http\Controllers\Api\PricingController::class, 'getBulkPricing'])->name('api.pricing.bulk');
+});
+
+// Product API Routes (moved from web.php)
+Route::prefix('products')->name('api.products.')->group(function () {
+    Route::get('/main-services', [ApiProductController::class, 'getMainServices'])->name('mainServices');
+    Route::get('/ssl-certificates', [ApiProductController::class, 'getSslCertificates'])->name('sslCertificates');
+    Route::get('/software-licenses', [ApiProductController::class, 'getSoftwareLicenses'])->name('softwareLicenses');
+    Route::get('/domain-registration', [ApiProductController::class, 'getDomainRegistrationProducts'])->name('domainRegistration');
+    // Example for generic by type:
+    // Route::get('/by-type/{typeIdentifier}', [ApiProductController::class, 'getProductsByType'])->name('byType');
+});
+
+// Domain API Routes (moved from web.php)
+Route::prefix('domain')->name('api.domain.')->group(function () {
+    Route::get('/check-availability', [DomainApiController::class, 'checkAvailability'])->name('checkAvailability');
+    Route::get('/tld-pricing', [DomainApiController::class, 'getTldPricingInfo'])->name('tldPricingInfo');
 });

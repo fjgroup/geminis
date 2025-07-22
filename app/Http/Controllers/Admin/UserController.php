@@ -1,4 +1,18 @@
 <?php
+
+/**
+ * ⚠️ DEPRECATED - MARCADO PARA ELIMINACIÓN
+ *
+ * Este controlador ha sido refactorizado y reemplazado por:
+ * - AdminUserControllerRefactored (manejo HTTP)
+ * - UserManagementService (lógica de gestión administrativa)
+ * - UserService (lógica de negocio de usuarios)
+ *
+ * TODO: Eliminar este archivo después de migrar completamente las rutas
+ * Fecha de refactorización: 2025-01-22
+ * Reemplazado por: AdminUserControllerRefactored + UserManagementService
+ */
+
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;

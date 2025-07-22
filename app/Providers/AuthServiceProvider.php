@@ -5,15 +5,15 @@ namespace App\Providers;
 // use Illuminate\Support\Facades\Gate; // Descomentar si usas Gates directamente
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 // use App\Models\Order; // Removed
-use App\Models\User;
+use App\Domains\Users\Models\User;
 // use App\Policies\OrderPolicy; // Removed
 use App\Policies\UserPolicy;
-use App\Models\Product;
+use App\Domains\Products\Models\Product;
 use App\Policies\ProductPolicy;
 use App\Models\ProductPricing;
 use App\Policies\ProductPricingPolicy;
 
-use App\Models\Invoice;
+use App\Domains\Invoices\Models\Invoice;
 use App\Policies\InvoicePolicy;
 use App\Models\Transaction; // Added Transaction model import
 use App\Policies\TransactionPolicy; // Added TransactionPolicy import
@@ -32,7 +32,7 @@ class AuthServiceProvider extends ServiceProvider
         // Order::class => OrderPolicy::class, // Removed
         Invoice::class => InvoicePolicy::class,
         Transaction::class => TransactionPolicy::class, // Added TransactionPolicy
-        \App\Models\ClientService::class => \App\Policies\ClientServicePolicy::class,
+        \App\Domains\ClientServices\Models\ClientService::class => \App\Policies\ClientServicePolicy::class,
     ];
 
     /**

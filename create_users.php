@@ -2,7 +2,7 @@
 
 require_once __DIR__ . '/vendor/autoload.php';
 
-use App\Models\User;
+use App\Domains\Users\Models\User;
 use Illuminate\Support\Facades\Hash;
 
 // Cargar la aplicación Laravel

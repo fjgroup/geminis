@@ -2,26 +2,16 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-
-class ResellerProfile extends Model
+/**
+ * Modelo de compatibilidad para ResellerProfile
+ * 
+ * @deprecated Use App\Domains\Users\Models\ResellerProfile instead
+ * 
+ * Este modelo existe solo para mantener compatibilidad con código existente.
+ * Todas las nuevas implementaciones deben usar el modelo del dominio Users.
+ */
+class ResellerProfile extends \App\Domains\Users\Models\ResellerProfile
 {
-    use HasFactory;
-
-    protected $fillable = [
-        'user_id',
-        'brand_name',
-        'custom_domain',
-        'logo_url',
-        'support_email',
-        'terms_url',
-        'allow_custom_products',
-    ];
-
-    public function user(): BelongsTo
-    {
-        return $this->belongsTo(User::class);
-    }
+    // Este modelo extiende del modelo del dominio para mantener compatibilidad
+    // No agregar lógica aquí - usar el modelo del dominio directamente
 }

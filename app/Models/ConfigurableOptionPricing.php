@@ -1,60 +1,17 @@
 <?php
+
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-
-class ConfigurableOptionPricing extends Model
+/**
+ * Modelo de compatibilidad para ConfigurableOptionPricing
+ * 
+ * @deprecated Use App\Domains\Products\Models\ConfigurableOptionPricing instead
+ * 
+ * Este modelo existe solo para mantener compatibilidad con código existente.
+ * Todas las nuevas implementaciones deben usar el modelo del dominio Products.
+ */
+class ConfigurableOptionPricing extends \App\Domains\Products\Models\ConfigurableOptionPricing
 {
-    use HasFactory;
-
-    protected $fillable = [
-        'configurable_option_id',
-        'billing_cycle_id',
-        'price',
-        'setup_fee',
-        'currency_code',
-        'is_active',
-        'metadata',
-    ];
-
-    protected $casts = [
-        'price'     => 'decimal:2',
-        'setup_fee' => 'decimal:2',
-        'is_active' => 'boolean',
-        'metadata'  => 'array',
-    ];
-
-    /**
-     * Get the configurable option that this pricing belongs to.
-     */
-    public function option(): BelongsTo
-    {
-        return $this->belongsTo(ConfigurableOption::class, 'configurable_option_id');
-    }
-
-    /**
-     * Get the billing cycle that this option pricing is linked to.
-     */
-    public function billingCycle(): BelongsTo
-    {
-        return $this->belongsTo(BillingCycle::class, 'billing_cycle_id');
-    }
-
-    /**
-     * Scope for active pricings
-     */
-    public function scopeActive($query)
-    {
-        return $query->where('is_active', true);
-    }
-
-    /**
-     * Scope for specific currency
-     */
-    public function scopeCurrency($query, $currency)
-    {
-        return $query->where('currency_code', $currency);
-    }
+    // Este modelo extiende del modelo del dominio para mantener compatibilidad
+    // No agregar lógica aquí - usar el modelo del dominio directamente
 }

@@ -1,17 +1,18 @@
 <?php
-
 namespace App\Providers;
 
-use Illuminate\Support\Facades\Vite;
-use Illuminate\Support\ServiceProvider;
-use App\Models\Invoice;
-use App\Observers\InvoiceObserver;
 // use App\Models\Order; // Removed
 // use App\Observers\OrderObserver; // Removed
 // use App\Models\ClientService; // Removed
 // use App\Observers\ClientServiceObserver; // Removed
+
+// Nuevas dependencias para la refactorización
 use App\Interfaces\PaymentGatewayInterface;
+use App\Models\Invoice;
+use App\Observers\InvoiceObserver;
 use App\Services\PaypalGatewayService;
+use Illuminate\Support\Facades\Vite;
+use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -20,7 +21,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        // Binding existente
         $this->app->bind(PaymentGatewayInterface::class, PaypalGatewayService::class);
+
+        // Nota: Los servicios de negocio ahora se registran en ServicesServiceProvider
     }
 
     /**

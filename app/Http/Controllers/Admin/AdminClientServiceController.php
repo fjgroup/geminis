@@ -1,4 +1,18 @@
 <?php
+
+/**
+ * ⚠️ DEPRECATED - MARCADO PARA ELIMINACIÓN
+ *
+ * Este controlador ha sido refactorizado y reemplazado por:
+ * - AdminClientServiceControllerRefactored (manejo HTTP)
+ * - ClientServiceManagementService (lógica de negocio)
+ * - ImpersonationService (impersonación)
+ *
+ * TODO: Eliminar este archivo después de migrar completamente las rutas
+ * Fecha de refactorización: 2025-01-22
+ * Reemplazado por: AdminClientServiceControllerRefactored
+ */
+
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;                    // Asegúrate que Controller está importado
