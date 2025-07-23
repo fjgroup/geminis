@@ -5,6 +5,7 @@ namespace App\Domains\ClientServices\Services;
 use App\Domains\ClientServices\Models\ClientService;
 use App\Domains\ClientServices\DataTransferObjects\CreateClientServiceDTO;
 use App\Domains\Users\Models\User;
+use App\D;
 use App\Domains\Products\Models\Product;
 use App\Models\ProductPricing;
 use App\Models\BillingCycle;
@@ -15,7 +16,7 @@ use Illuminate\Support\Str;
 
 /**
  * Class ClientServiceCreator
- * 
+ *
  * Servicio especializado para la creación de servicios de cliente
  * Aplica el principio de Single Responsibility (SRP)
  * Maneja toda la lógica de negocio para crear servicios
@@ -24,7 +25,7 @@ class ClientServiceCreator
 {
     /**
      * Crear un nuevo servicio de cliente
-     * 
+     *
      * @param CreateClientServiceDTO $dto
      * @return array
      */
@@ -90,7 +91,7 @@ class ClientServiceCreator
 
     /**
      * Crear servicio automáticamente desde item de factura
-     * 
+     *
      * @param int $clientId
      * @param array $invoiceItemData
      * @return array
@@ -99,11 +100,11 @@ class ClientServiceCreator
     {
         try {
             $dto = CreateClientServiceDTO::fromInvoiceItem($clientId, $invoiceItemData);
-            
+
             // Generar credenciales automáticamente si es necesario
             if ($this->shouldGenerateCredentials($invoiceItemData['product_id'])) {
                 $credentials = $this->generateServiceCredentials($invoiceItemData['domain_name'] ?? null);
-                
+
                 $dto = new CreateClientServiceDTO(
                     client_id: $dto->client_id,
                     reseller_id: $dto->reseller_id,
@@ -142,7 +143,7 @@ class ClientServiceCreator
 
     /**
      * Crear servicio de prueba
-     * 
+     *
      * @param int $clientId
      * @param int $productId
      * @param array $trialData
@@ -152,11 +153,11 @@ class ClientServiceCreator
     {
         try {
             $dto = CreateClientServiceDTO::forTrial($clientId, $productId, $trialData);
-            
+
             // Generar credenciales para el trial
             if ($this->shouldGenerateCredentials($productId)) {
                 $credentials = $this->generateServiceCredentials($trialData['domain_name'] ?? null);
-                
+
                 $dto = new CreateClientServiceDTO(
                     client_id: $dto->client_id,
                     reseller_id: $dto->reseller_id,
@@ -195,7 +196,7 @@ class ClientServiceCreator
 
     /**
      * Crear el registro del servicio en la base de datos
-     * 
+     *
      * @param CreateClientServiceDTO $dto
      * @return ClientService
      */
@@ -212,7 +213,7 @@ class ClientServiceCreator
             // Calcular próxima fecha basada en el ciclo de facturación
             $billingCycle = BillingCycle::find($dto->billing_cycle_id);
             $registrationDate = \Carbon\Carbon::parse($serviceData['registration_date']);
-            
+
             if ($billingCycle) {
                 $serviceData['next_due_date'] = $registrationDate->addDays($billingCycle->days)->format('Y-m-d');
             } else {
@@ -225,7 +226,7 @@ class ClientServiceCreator
 
     /**
      * Validar dependencias del servicio
-     * 
+     *
      * @param CreateClientServiceDTO $dto
      * @return array
      */
@@ -279,27 +280,27 @@ class ClientServiceCreator
 
     /**
      * Verificar si se deben generar credenciales automáticamente
-     * 
+     *
      * @param int $productId
      * @return bool
      */
     private function shouldGenerateCredentials(int $productId): bool
     {
         $product = Product::find($productId);
-        
+
         if (!$product) {
             return false;
         }
 
         // Generar credenciales para productos que requieren acceso
         $productsRequiringCredentials = ['web-hosting', 'vps', 'dedicated-server', 'email-hosting'];
-        
+
         return in_array($product->type, $productsRequiringCredentials);
     }
 
     /**
      * Generar credenciales de servicio
-     * 
+     *
      * @param string|null $domainName
      * @return array
      */
@@ -314,7 +315,7 @@ class ClientServiceCreator
 
         // Generar contraseña segura
         $password = Str::random(12);
-        
+
         return [
             'username' => strtolower($username),
             'password_encrypted' => Hash::make($password),

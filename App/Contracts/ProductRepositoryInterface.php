@@ -2,7 +2,7 @@
 
 namespace App\Contracts;
 
-use App\Domains\Products\Models\Product;
+use App\Domains\Products\Infrastructure\Persistence\Models\Product;
 use Illuminate\Support\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 

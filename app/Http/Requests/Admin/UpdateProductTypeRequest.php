@@ -2,27 +2,13 @@
 
 namespace App\Http\Requests\Admin;
 
-use Illuminate\Foundation\Http\FormRequest;
-
-class UpdateProductTypeRequest extends FormRequest
+/**
+ * Alias para mantener compatibilidad con código existente
+ * 
+ * @deprecated Use App\Domains\Products\Infrastructure\Http\Requests\UpdateProductTypeRequest instead
+ */
+class UpdateProductTypeRequest extends \App\Domains\Products\Infrastructure\Http\Requests\UpdateProductTypeRequest
 {
-    /**
-     * Determine if the user is authorized to make this request.
-     */
-    public function authorize(): bool
-    {
-        return false;
-    }
-
-    /**
-     * Get the validation rules that apply to the request.
-     *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
-     */
-    public function rules(): array
-    {
-        return [
-            //
-        ];
-    }
+    // Esta clase extiende la nueva ubicación hexagonal
+    // Mantiene compatibilidad mientras se migra el código existente
 }

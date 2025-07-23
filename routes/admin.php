@@ -8,6 +8,7 @@ use App\Domains\Products\Infrastructure\Http\Controllers\Admin\ConfigurableOptio
 use App\Domains\Products\Infrastructure\Http\Controllers\Admin\DiscountPercentageController;
 
 use App\Domains\Users\Infrastructure\Http\Controllers\Admin\AdminUserController;
+use App\Domains\Users\Infrastructure\Http\Controllers\Admin\AdminProfileController;
 
 use App\Domains\Invoices\Infrastructure\Http\Controllers\Admin\AdminInvoiceController;
 
@@ -15,10 +16,11 @@ use App\Domains\BillingAndPayments\Infrastructure\Http\Controllers\Admin\AdminTr
 
 use App\Domains\ClientServices\Infrastructure\Http\Controllers\Admin\AdminClientServiceController;
 
+use App\Domains\Orders\Infrastructure\Http\Controllers\Admin\AdminOrderController;
+
 // ⚠️ PENDIENTES DE MIGRAR - Aún en estructura Laravel tradicional
 use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Admin\AdminPaymentMethodControllerRefactored;
-use App\Http\Controllers\Admin\AdminProfileController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -78,6 +80,10 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'verified', 'admin',
     // Protegida por middleware admin con excepción de seguridad para impersonation
     Route::post('/stop-impersonation', [AdminClientServiceController::class, 'stopImpersonation'])
         ->name('stop-impersonation');
+
+    // Orders Routes (HEXAGONAL)
+    Route::resource('orders', AdminOrderController::class);
+    Route::get('/orders-stats', [AdminOrderController::class, 'getOrderStats'])->name('orders.stats');
 
     // Rutas para Facturas de Administración (HEXAGONAL)
     Route::resource('invoices', AdminInvoiceController::class);

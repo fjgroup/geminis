@@ -2,7 +2,7 @@
 namespace App\Domains\Products\Infrastructure\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Domains\Products\Models\DiscountPercentage;
+use App\Models\DiscountPercentage;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;

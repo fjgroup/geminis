@@ -1,56 +1,49 @@
 <?php
-
 namespace App\Domains\Products\Infrastructure\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Admin\StoreProductRequest;
-use App\Http\Requests\Admin\UpdateProductRequest;
-use App\Domains\Products\Models\Product;
-use App\Domains\Products\Services\ProductManagementService;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
-use Inertia\Inertia;
+use App\Domains\Products\Infrastructure\Http\Requests\StoreProductPricingRequest;
+use App\Domains\Products\Infrastructure\Http\Requests\StoreProductRequest;
+use App\Domains\Products\Infrastructure\Http\Requests\UpdateProductPricingRequest;
+use App\Domains\Products\Infrastructure\Http\Requests\UpdateProductRequest;
+use App\Domains\Products\Infrastructure\Persistence\Models\BillingCycle;
+use App\Domains\Products\Infrastructure\Persistence\Models\ConfigurableOptionGroup;
+use App\Domains\Products\Infrastructure\Persistence\Models\Product;
+use App\Domains\Products\Infrastructure\Persistence\Models\ProductPricing;
+use App\Domains\Products\Infrastructure\Persistence\Models\ProductType;
+use App\Domains\Users\Infrastructure\Persistence\Models\User;
+use Illuminate\Http\RedirectResponse; // Added for ProductType
+
+use Illuminate\Support\Facades\Log; // Añadir importación para BillingCycle
+use Illuminate\Support\Str;
+use Inertia\Inertia; // Para el slug
 use Inertia\Response;
 
-/**
- * Class AdminProductController
- *
- * Controlador de productos para administradores en arquitectura hexagonal
- * Solo maneja HTTP requests/responses, delega lógica de negocio a ProductManagementService
- * Ubicado en Infrastructure layer como Input Adapter
- */
+// Añadir importación para Log
+
 class AdminProductController extends Controller
 {
-    public function __construct(
-        private ProductManagementService $productManagementService
-    ) {}
-
     /**
      * Display a listing of the resource.
      */
-    public function index(Request $request): Response
+    public function index(): Response
     {
-        // TODO: Implementar autorización
-        // $this->authorize('viewAny', Product::class);
+        $this->authorize('viewAny', Product::class);
 
-        $filters = $request->only(['search', 'status', 'product_type_id', 'owner_id']);
-        $result = $this->productManagementService->getProducts($filters, 15);
-
-        if (!$result['success']) {
-            Log::error('Error obteniendo productos', [
-                'filters' => $filters,
-                'error' => $result['message']
+        $products = Product::latest()
+            ->with('owner') // Carga la relación 'owner' si la tienes definida en el modelo Product
+            ->paginate(10)
+            ->through(fn($product) => [
+                'id'         => $product->id,
+                'name'       => $product->name,
+                'slug'       => $product->slug,
+                'type'       => $product->type,
+                'owner_name' => $product->owner_id ? ($product->owner ? $product->owner->name : 'Revendedor (ID: ' . $product->owner_id . ')') : 'Plataforma',
+                'status'     => $product->status,
             ]);
 
-            // En caso de error, mostrar página vacía
-            $result['data'] = collect()->paginate(15);
-        }
-
         return Inertia::render('Admin/Products/Index', [
-            'products' => $result['data'],
-            'filters' => $filters,
+            'products' => $products,
         ]);
     }
 
@@ -59,12 +52,15 @@ class AdminProductController extends Controller
      */
     public function create(): Response
     {
-        // TODO: Implementar autorización
-        // $this->authorize('create', Product::class);
-
-        $formData = $this->productManagementService->getFormData();
-
-        return Inertia::render('Admin/Products/Create', $formData);
+        $this->authorize('create', Product::class);
+        // Aquí podrías pasar datos adicionales si fueran necesarios (ej: tipos de producto, usuarios revendedores)
+        // $productTypes = [['value' => 'shared_hosting', 'label' => 'Shared Hosting'], ...];
+        // $resellers = User::where('role', 'reseller')->pluck('name', 'id');
+        $productTypes = ProductType::orderBy('name')->get(['id', 'name']);
+        return Inertia::render('Admin/Products/Create', [
+            'productTypes' => $productTypes->map(fn($pt) => ['value' => $pt->id, 'label' => $pt->name]),
+            // 'resellers' => $resellers,
+        ]);
     }
 
     /**
@@ -72,16 +68,21 @@ class AdminProductController extends Controller
      */
     public function store(StoreProductRequest $request): RedirectResponse
     {
-        $result = $this->productManagementService->createProduct($request->validated());
+        // La autorización y validación son manejadas por StoreProductRequest
+        $validatedData = $request->validated();
 
-        if ($result['success']) {
-            return redirect()->route('admin.products.index')
-                ->with('success', $result['message']);
+        // Si el slug no viene en $validatedData (porque es nullable y no se envió), lo generamos.
+        // Si se envía, se usará el valor validado.
+        if (empty($validatedData['slug']) && ! empty($validatedData['name'])) {
+            $validatedData['slug'] = Str::slug($validatedData['name']);
         }
-
-        return redirect()->back()
-            ->withErrors(['error' => $result['message']])
-            ->withInput();
+        // Remove old 'type' field if product_type_id is present, to avoid confusion
+        // The actual deprecation/removal of the 'type' column is a separate migration task.
+        if (isset($validatedData['product_type_id'])) {
+            unset($validatedData['type']);
+        }
+        Product::create($validatedData);
+        return redirect()->route('admin.products.index')->with('success', 'Producto creado exitosamente.');
     }
 
     /**
@@ -89,80 +90,102 @@ class AdminProductController extends Controller
      */
     public function show(Product $product): Response
     {
-        $product->load([
-            'productType',
-            'pricings.billingCycle',
-            'configurableOptionGroups.options',
-            'owner',
-            'clientServices' => function ($query) {
-                $query->with('client')->latest()->limit(10);
-            }
-        ]);
-
-        return Inertia::render('Admin/Products/Show', [
-            'product' => [
-                'id' => $product->id,
-                'name' => $product->name,
-                'slug' => $product->slug,
-                'description' => $product->description,
-                'status' => $product->status,
-                'product_type' => $product->productType,
-                'pricings' => $product->pricings,
-                'configurable_groups' => $product->configurableOptionGroups,
-                'owner' => $product->owner,
-                'recent_services' => $product->clientServices,
-                'created_at' => $product->created_at,
-                'updated_at' => $product->updated_at,
-            ],
-        ]);
+        $this->authorize('view', $product);
+        // Cargar relaciones si es necesario para la vista de detalle
+        // $product->load('owner', 'pricings');
+        return Inertia::render('Admin/Products/Show', ['product' => $product]);
     }
 
     /**
      * Show the form for editing the specified resource.
      */
+    // ... en AdminProductController@edit ...
     public function edit(Product $product): Response
     {
-        // TODO: Implementar autorización
-        // $this->authorize('update', $product);
+        $this->authorize('update', $product);
+        // Cargar product.pricings con la relación billingCycle, productType
+        $product->load('pricings.billingCycle', 'configurableOptionGroups', 'productType');
 
-        $product->load([
-            'productType',
-            'pricings.billingCycle',
-            'configurableOptionGroups',
-            'owner'
-        ]);
+        // Obtener todos los ciclos de facturación
+        $billingCyclesFromDB = BillingCycle::orderBy('name')->get(['id', 'name']);
 
-        $formData = $this->productManagementService->getFormData();
+        $resellers = User::where('role', 'reseller')->orderBy('name')->get(['id', 'name', 'company_name']);
+        // Obtener todos los grupos de opciones configurables
+        $allOptionGroups = ConfigurableOptionGroup::orderBy('name')->get(['id', 'name']);
+        $productTypes    = ProductType::orderBy('name')->get(['id', 'name']);
+
+        // Obtener grupos configurables con sus opciones para recursos base dinámicos
+        $availableResourceGroups = ConfigurableOptionGroup::with(['options' => function ($query) {
+            $query->where('is_active', true)->orderBy('display_order');
+        }])
+            ->active()
+            ->ordered()
+            ->get()
+            ->map(function ($group) {
+                return [
+                    'id'      => $group->id,
+                    'name'    => $group->name,
+                    'slug'    => \Illuminate\Support\Str::slug($group->name),
+                    'options' => $group->options->map(function ($option) {
+                        return [
+                            'id'          => $option->id,
+                            'name'        => $option->name,
+                            'option_type' => $option->option_type,
+                            'value'       => $option->value,
+                        ];
+                    }),
+                ];
+            });
+
+        $allOptionGroupsData = $allOptionGroups->map(fn($group) => [
+            'id'   => $group->id,
+            'name' => $group->name,
+        ])->toArray();
+
+        // Calcular precio automático usando el servicio
+        $pricingCalculator = app(\App\Services\PricingCalculatorService::class);
+        $calculatedPrice   = 0;
+
+        try {
+            $calculation     = $pricingCalculator->calculateProductPrice($product->id, 1, []); // Ciclo mensual
+            $calculatedPrice = $calculation['total'];
+
+            // Debug: Log para verificar el cálculo
+            \Illuminate\Support\Facades\Log::info('AdminProductController - Precio calculado para producto ' . $product->id . ': ' . $calculatedPrice, [
+                'product_id'  => $product->id,
+                'calculation' => $calculation,
+            ]);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('AdminProductController - Error calculando precio: ' . $e->getMessage(), [
+                'product_id' => $product->id,
+                'exception'  => $e,
+            ]);
+            $calculatedPrice = 0;
+        }
 
         return Inertia::render('Admin/Products/Edit', [
-            'product' => [
-                'id' => $product->id,
-                'name' => $product->name,
-                'slug' => $product->slug,
-                'description' => $product->description,
-                'status' => $product->status,
-                'product_type_id' => $product->product_type_id,
-                'owner_id' => $product->owner_id,
-                'pricings' => $product->pricings->map(function ($pricing) {
-                    return [
-                        'id' => $pricing->id,
-                        'billing_cycle_id' => $pricing->billing_cycle_id,
-                        'price' => $pricing->price,
-                        'setup_fee' => $pricing->setup_fee,
-                        'currency_code' => $pricing->currency_code,
-                        'billing_cycle' => $pricing->billingCycle,
-                    ];
-                }),
-                'configurable_groups' => $product->configurableOptionGroups->map(function ($group) {
-                    return [
-                        'id' => $group->id,
-                        'name' => $group->name,
+            'product'                 => $product->toArray() + [
+                // pricings ya está en $product->toArray() si la relación está cargada
+                // 'productType' ya está cargado y se incluirá en toArray()
+                'configurable_groups' => $product->configurableOptionGroups->mapWithKeys(function ($group) {
+                    return [$group->id => [
                         'display_order' => $group->pivot->display_order ?? 0,
                         'base_quantity' => $group->pivot->base_quantity ?? 0,
-                    ];
-                }),
+                    ]];
+                })->toArray(),
             ],
-            ...$formData
+            'resellers'               => $resellers->map(fn($reseller) => [
+                'id'    => $reseller->id,
+                'label' => $reseller->name . ($reseller->company_name ? " ({$reseller->company_name})" : ""),
+            ])->toArray(),
+            'all_option_groups'       => $allOptionGroupsData, // Usar la variable depurada
+            'productTypes'            => $productTypes->map(fn($pt) => ['value' => $pt->id, 'label' => $pt->name]),
+            'billingCycles'           => $billingCyclesFromDB->map(fn($cycle) => [
+                'value' => $cycle->id,
+                'label' => $cycle->name,
+            ]), // Pasar los ciclos de facturación formateados para SelectInput
+            'availableResourceGroups' => $availableResourceGroups,
+            'calculatedPrice'         => $calculatedPrice,
         ]);
     }
 
@@ -171,16 +194,43 @@ class AdminProductController extends Controller
      */
     public function update(UpdateProductRequest $request, Product $product): RedirectResponse
     {
-        $result = $this->productManagementService->updateProduct($product, $request->validated());
 
-        if ($result['success']) {
-            return redirect()->route('admin.products.index')
-                ->with('success', $result['message']);
+        // La autorización y validación son manejadas por UpdateProductRequest
+        $validatedData = $request->validated();
+        // Excluir configurable_option_groups y el antiguo campo 'type' de $validatedData para el update del producto principal
+        $productData = collect($validatedData)->except(['configurable_option_groups', 'type'])->toArray();
+
+        // Si el nombre cambia, actualiza el slug
+        // Si el slug fue enviado explícitamente y es diferente al generado por el nuevo nombre,
+        // se podría dar prioridad al slug enviado (si esa es la lógica deseada y el form lo permite).
+        // Por ahora, si el nombre cambia, el slug se regenera basado en el nuevo nombre.
+        if (isset($productData['name']) && (! isset($productData['slug']) || empty($productData['slug']) || $productData['name'] !== $product->name)) {
+            $productData['slug'] = Str::slug($productData['name']);
         }
+        // The old 'type' field is now excluded by the except() method above.
+        // The following block can be removed or kept as an additional safeguard, though it becomes redundant.
+        // if (isset($productData['product_type_id'])) {
+        //    unset($productData['type']); // This would attempt to unset 'type' again if it somehow passed the except filter.
+        // }
 
-        return redirect()->back()
-            ->withErrors(['error' => $result['message']])
-            ->withInput();
+        $product->update($productData);
+
+        // Sincronizar grupos de opciones configurables
+        if ($request->has('configurable_option_groups')) {
+
+            $groupsToSync = [];
+            foreach ($request->input('configurable_option_groups', []) as $groupId => $pivotData) {
+                $groupsToSync[$groupId] = [
+                    'display_order' => isset($pivotData['display_order']) ? (int) $pivotData['display_order'] : 0,
+                    'base_quantity' => isset($pivotData['base_quantity']) ? (float) $pivotData['base_quantity'] : 0,
+                ];
+            }
+
+            $product->configurableOptionGroups()->sync($groupsToSync);
+        } else {
+            $product->configurableOptionGroups()->detach(); // Si no se envía nada, desasociar todos
+        }
+        return redirect()->route('admin.products.index')->with('success', 'Producto actualizado exitosamente.');
     }
 
     /**
@@ -188,156 +238,42 @@ class AdminProductController extends Controller
      */
     public function destroy(Product $product): RedirectResponse
     {
-        // TODO: Implementar autorización
-        // $this->authorize('delete', $product);
-
-        $result = $this->productManagementService->deleteProduct($product);
-
-        if ($result['success']) {
-            return redirect()->route('admin.products.index')
-                ->with('success', $result['message']);
-        }
-
-        return redirect()->back()
-            ->withErrors(['error' => $result['message']]);
+        $this->authorize('delete', $product);
+        $product->delete(); // Asumiendo SoftDeletes si lo tienes en el modelo Product
+        return redirect()->route('admin.products.index')->with('success', 'Producto eliminado exitosamente.');
     }
 
-    /**
-     * Get pricing options for a product (AJAX)
-     */
-    public function getPricingOptions(Product $product): JsonResponse
+    public function storePricing(StoreProductPricingRequest $request, Product $product): RedirectResponse
     {
-        try {
-            $product->load('pricings.billingCycle');
+        // Autorizar la creación de un precio para este producto
+        // Asumiendo que si puede crear el producto, puede añadirle precios, o usar ProductPricingPolicy directamente
+        // La autorización y validación ahora son manejadas por StoreProductPricingRequest
+        $validated = $request->validated();
+        Log::info('Datos validados en storePricing:', $validated); // Log para depuración
 
-            $pricings = $product->pricings->map(function ($pricing) {
-                return [
-                    'id' => $pricing->id,
-                    'billing_cycle_id' => $pricing->billing_cycle_id,
-                    'billing_cycle_name' => $pricing->billingCycle->name,
-                    'price' => $pricing->price,
-                    'setup_fee' => $pricing->setup_fee,
-                    'currency_code' => $pricing->currency_code,
-                ];
-            });
-
-            return response()->json([
-                'success' => true,
-                'data' => $pricings
-            ]);
-
-        } catch (\Exception $e) {
-            Log::error('Error obteniendo opciones de pricing', [
-                'product_id' => $product->id,
-                'error' => $e->getMessage()
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Error obteniendo opciones de pricing'
-            ], 500);
-        }
+        // Usar directamente los datos validados para la creación, incluyendo billing_cycle_id
+        $product->pricings()->create($validated);
+        Log::info('Datos usados para crear pricing:', $validated); // Log para depuración
+        return redirect()->back()->with('success', 'Precio añadido correctamente.');
     }
 
-    /**
-     * Recalculate product prices (AJAX)
-     */
-    public function recalculatePrices(Product $product): JsonResponse
+    public function updatePricing(UpdateProductPricingRequest $request, Product $product, ProductPricing $pricing): RedirectResponse
     {
-        try {
-            $result = $this->productManagementService->updateProduct($product, []);
+        // La autorización y validación ahora son manejadas por UpdateProductPricingRequest
+        // $this->authorize('update', $pricing); // Ya no es necesario aquí
+        $validated = $request->validated();
+        Log::info('Datos validados en updatePricing:', $validated); // Log para depuración
 
-            if ($result['success']) {
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Precios recalculados exitosamente'
-                ]);
-            }
-
-            return response()->json([
-                'success' => false,
-                'message' => $result['message']
-            ], 400);
-
-        } catch (\Exception $e) {
-            Log::error('Error recalculando precios', [
-                'product_id' => $product->id,
-                'error' => $e->getMessage()
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Error recalculando precios'
-            ], 500);
-        }
+        // Usar directamente los datos validados para la actualización
+        $pricing->update($validated);
+        Log::info('Datos usados para actualizar pricing:', $validated); // Log para depuración
+        return redirect()->back()->with('success', 'Precio actualizado correctamente.');
     }
 
-    /**
-     * Get product statistics (AJAX)
-     */
-    public function getStats(): JsonResponse
+    public function destroyPricing(Product $product, ProductPricing $pricing): RedirectResponse
     {
-        try {
-            $stats = [
-                'total_products' => Product::count(),
-                'active_products' => Product::where('status', 'active')->count(),
-                'inactive_products' => Product::where('status', 'inactive')->count(),
-                'draft_products' => Product::where('status', 'draft')->count(),
-                'products_with_services' => Product::whereHas('clientServices')->count(),
-            ];
-
-            return response()->json([
-                'success' => true,
-                'data' => $stats
-            ]);
-
-        } catch (\Exception $e) {
-            Log::error('Error obteniendo estadísticas de productos', [
-                'error' => $e->getMessage()
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Error obteniendo estadísticas'
-            ], 500);
-        }
-    }
-
-    /**
-     * Search products for autocomplete (AJAX)
-     */
-    public function search(Request $request): JsonResponse
-    {
-        $search = $request->input('search', '');
-
-        if (strlen($search) < 2) {
-            return response()->json([]);
-        }
-
-        try {
-            $products = Product::where('status', 'active')
-                ->where(function ($query) use ($search) {
-                    $query->where('name', 'LIKE', "%{$search}%")
-                          ->orWhere('slug', 'LIKE', "%{$search}%");
-                })
-                ->limit(10)
-                ->get(['id', 'name', 'slug'])
-                ->map(function ($product) {
-                    return [
-                        'value' => $product->id,
-                        'label' => $product->name . " ({$product->slug})"
-                    ];
-                });
-
-            return response()->json($products);
-
-        } catch (\Exception $e) {
-            Log::error('Error buscando productos', [
-                'error' => $e->getMessage(),
-                'search' => $search
-            ]);
-
-            return response()->json([]);
-        }
+        $this->authorize('delete', $pricing); // Usar la instancia de ProductPricing
+        $pricing->delete();
+        return redirect()->back()->with('success', 'Precio eliminado correctamente.');
     }
 }

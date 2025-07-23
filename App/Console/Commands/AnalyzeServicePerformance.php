@@ -2,7 +2,7 @@
 
 namespace App\Console\Commands;
 
-use App\Services\PerformanceOptimizationService;
+use App\Domains\Shared\Application\Services\PerformanceOptimizationService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Cache;
 
@@ -13,7 +13,7 @@ class AnalyzeServicePerformance extends Command
      *
      * @var string
      */
-    protected $signature = 'services:analyze-performance 
+    protected $signature = 'services:analyze-performance
                             {--service= : Analizar servicio específico}
                             {--hours=24 : Horas de datos a analizar}
                             {--export : Exportar resultados a archivo}';
@@ -37,32 +37,32 @@ class AnalyzeServicePerformance extends Command
     public function handle(): int
     {
         $this->info('🔍 Analizando performance de servicios...');
-        
+
         $hours = (int) $this->option('hours');
         $specificService = $this->option('service');
         $export = $this->option('export');
-        
+
         // Obtener métricas generales
         $this->info("\n📊 Métricas Generales:");
         $metrics = $this->performanceService->getServiceMetrics();
         $this->displayGeneralMetrics($metrics);
-        
+
         // Analizar métricas de requests
         $this->info("\n🌐 Análisis de Requests:");
         $requestMetrics = $this->analyzeRequestMetrics($hours);
         $this->displayRequestMetrics($requestMetrics);
-        
+
         // Obtener recomendaciones
         $this->info("\n💡 Recomendaciones de Optimización:");
         $optimization = $this->performanceService->optimizeServiceConfiguration();
         $this->displayRecommendations($optimization['recommendations']);
-        
+
         // Analizar servicio específico si se especifica
         if ($specificService) {
             $this->info("\n🎯 Análisis Específico: {$specificService}");
             $this->analyzeSpecificService($specificService);
         }
-        
+
         // Exportar resultados si se solicita
         if ($export) {
             $this->exportResults([
@@ -71,7 +71,7 @@ class AnalyzeServicePerformance extends Command
                 'recommendations' => $optimization['recommendations']
             ]);
         }
-        
+
         $this->info("\n✅ Análisis completado!");
         return Command::SUCCESS;
     }
@@ -88,7 +88,7 @@ class AnalyzeServicePerformance extends Command
                 ['Memoria Pico', $this->formatBytes($metrics['memory_usage']['peak'])],
             ]
         );
-        
+
         if (!empty($metrics['service_response_times'])) {
             $this->info("\n⏱️  Tiempos de Respuesta por Servicio:");
             $serviceData = [];
@@ -105,23 +105,23 @@ class AnalyzeServicePerformance extends Command
         $totalRequests = 0;
         $slowRequests = 0;
         $totalExecutionTime = 0;
-        
+
         // Analizar métricas de las últimas horas
         for ($i = 0; $i < $hours; $i++) {
             $hour = now()->subHours($i)->format('Y-m-d-H');
             $cacheKey = 'performance_metrics_' . $hour;
             $hourlyMetrics = Cache::get($cacheKey, []);
-            
+
             foreach ($hourlyMetrics as $metric) {
                 $totalRequests++;
                 $totalExecutionTime += $metric['execution_time_ms'];
-                
+
                 if ($metric['execution_time_ms'] > 1000) {
                     $slowRequests++;
                 }
             }
         }
-        
+
         return [
             'total_requests' => $totalRequests,
             'slow_requests' => $slowRequests,
@@ -149,7 +149,7 @@ class AnalyzeServicePerformance extends Command
             $this->info('✅ No se encontraron problemas de performance');
             return;
         }
-        
+
         foreach ($recommendations as $recommendation) {
             $icon = match($recommendation['type']) {
                 'memory' => '🧠',
@@ -157,7 +157,7 @@ class AnalyzeServicePerformance extends Command
                 'cache' => '⚡',
                 default => '💡'
             };
-            
+
             $this->warn("{$icon} {$recommendation['message']}");
             $this->line("   Sugerencia: {$recommendation['suggestion']}");
             $this->line('');
@@ -169,28 +169,28 @@ class AnalyzeServicePerformance extends Command
         try {
             // Intentar instanciar el servicio
             $serviceClass = "App\\Services\\{$serviceName}";
-            
+
             if (!class_exists($serviceClass)) {
                 $this->error("❌ Servicio {$serviceName} no encontrado");
                 return;
             }
-            
+
             $this->info("Analizando {$serviceName}...");
-            
+
             // Aquí podrías agregar análisis específicos del servicio
             // Por ejemplo, analizar métodos públicos, dependencias, etc.
-            
+
             $reflection = new \ReflectionClass($serviceClass);
             $methods = $reflection->getMethods(\ReflectionMethod::IS_PUBLIC);
-            
+
             $this->info("📋 Métodos públicos encontrados: " . count($methods));
-            
+
             foreach ($methods as $method) {
                 if (!$method->isConstructor() && $method->getDeclaringClass()->getName() === $serviceClass) {
                     $this->line("  • {$method->getName()}()");
                 }
             }
-            
+
         } catch (\Exception $e) {
             $this->error("❌ Error analizando servicio: " . $e->getMessage());
         }
@@ -200,14 +200,14 @@ class AnalyzeServicePerformance extends Command
     {
         $filename = 'performance_analysis_' . now()->format('Y-m-d_H-i-s') . '.json';
         $path = storage_path('app/performance/' . $filename);
-        
+
         // Crear directorio si no existe
         if (!is_dir(dirname($path))) {
             mkdir(dirname($path), 0755, true);
         }
-        
+
         file_put_contents($path, json_encode($results, JSON_PRETTY_PRINT));
-        
+
         $this->info("📄 Resultados exportados a: {$path}");
     }
 
@@ -217,9 +217,9 @@ class AnalyzeServicePerformance extends Command
         $bytes = max($bytes, 0);
         $pow = floor(($bytes ? log($bytes) : 0) / log(1024));
         $pow = min($pow, count($units) - 1);
-        
+
         $bytes /= pow(1024, $pow);
-        
+
         return round($bytes, 2) . ' ' . $units[$pow];
     }
 }

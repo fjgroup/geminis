@@ -5,8 +5,8 @@ namespace App\Domains\BillingAndPayments\Domain\Entities;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use App\Domains\Invoices\Models\Invoice;
-use App\Domains\Users\Models\User;
+use App\Domains\Invoices\Infrastructure\Persistence\Models\Invoice;
+use App\Domains\Users\Infrastructure\Persistence\Models\User;
 
 class Transaction extends Model
 {

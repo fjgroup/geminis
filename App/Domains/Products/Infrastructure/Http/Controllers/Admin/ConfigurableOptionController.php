@@ -2,11 +2,11 @@
 namespace App\Domains\Products\Infrastructure\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Admin\StoreConfigurableOptionRequest;
-use App\Http\Requests\Admin\UpdateConfigurableOptionRequest;
-use App\Domains\Products\Models\ConfigurableOption;
-use App\Domains\Products\Models\ConfigurableOptionGroup;
-use App\Domains\Products\Models\ConfigurableOptionPricing;
+use App\Domains\Products\Infrastructure\Http\Requests\StoreConfigurableOptionRequest;
+use App\Domains\Products\Infrastructure\Http\Requests\UpdateConfigurableOptionRequest;
+use App\Domains\Products\Infrastructure\Persistence\Models\ConfigurableOption;
+use App\Domains\Products\Infrastructure\Persistence\Models\ConfigurableOptionGroup;
+use App\Domains\Products\Infrastructure\Persistence\Models\ConfigurableOptionPricing;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 

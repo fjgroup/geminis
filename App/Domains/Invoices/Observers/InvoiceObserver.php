@@ -2,7 +2,7 @@
 
 namespace App\Domains\Invoices\Observers;
 
-use App\Domains\Invoices\Models\Invoice;
+use App\Domains\Invoices\Infrastructure\Persistence\Models\Invoice;
 // use App\Models\Order; // Removed
 // use App\Models\OrderActivity; // Removed
 use App\Jobs\ProvisionClientServiceJob;

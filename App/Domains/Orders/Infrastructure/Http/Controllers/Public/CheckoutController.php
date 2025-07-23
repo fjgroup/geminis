@@ -2,6 +2,7 @@
 
 namespace App\Domains\Orders\Infrastructure\Http\Controllers\Public;
 
+use App\Http\Controllers\Controller;
 use App\Http\Requests\DomainVerificationRequest;
 use App\Http\Requests\PublicRegistrationRequest;
 use App\Http\Requests\PublicPaymentRequest;

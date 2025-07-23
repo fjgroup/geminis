@@ -2,7 +2,7 @@
 namespace App\Domains\Products\Infrastructure\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Domains\Products\Models\ProductType;
+use App\Domains\Products\Infrastructure\Persistence\Models\ProductType;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;        // Added Log
 use Illuminate\Support\Facades\Log; // Added Rule

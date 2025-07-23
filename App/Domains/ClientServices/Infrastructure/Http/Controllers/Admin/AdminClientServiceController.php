@@ -3,10 +3,10 @@
 namespace App\Domains\ClientServices\Infrastructure\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Admin\StoreClientServiceRequest;
-use App\Http\Requests\Admin\UpdateClientServiceRequest;
-use App\Domains\ClientServices\Models\ClientService;
-use App\Domains\Products\Models\Product;
+use App\Domains\ClientServices\Infrastructure\Http\Requests\Admin\StoreClientServiceRequest;
+use App\Domains\ClientServices\Infrastructure\Http\Requests\Admin\UpdateClientServiceRequest;
+use App\Domains\ClientServices\Infrastructure\Persistence\Models\ClientService;
+use App\Domains\Products\Infrastructure\Persistence\Models\Product;
 use App\Domains\ClientServices\Services\ClientServiceManagementService;
 use App\Domains\Users\Services\ImpersonationService;
 use Illuminate\Http\JsonResponse;

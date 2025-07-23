@@ -3,7 +3,7 @@
 namespace App\Domains\BillingAndPayments\Interfaces;
 
 use App\Domains\BillingAndPayments\Domain\Entities\Transaction;
-use App\Domains\Users\Models\User;
+use App\Domains\Users\Infrastructure\Persistence\Models\User;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 

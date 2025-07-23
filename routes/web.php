@@ -20,8 +20,18 @@
 |
 */
 
-use App\Http\Controllers\ProfileController;
+use App\Domains\Users\Infrastructure\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
+
+// Ruta de prueba simple
+Route::get('/', function () {
+    return response()->json([
+        'status' => 'success',
+        'message' => 'FJGroup Application is running with Hexagonal Architecture!',
+        'timestamp' => now(),
+        'architecture' => 'DDD + Hexagonal + SOLID'
+    ]);
+});
 
 // Profile routes for regular users (clients) - mantener ambas rutas para compatibilidad
 Route::middleware(['auth', 'verified'])->group(function () {

@@ -1,14 +1,15 @@
 <?php
+
 namespace App\Domains\Products\Infrastructure\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Admin\StoreConfigurableOptionGroupRequest;
-use App\Http\Requests\Admin\UpdateConfigurableOptionGroupRequest;
-use App\Domains\Products\Models\BillingCycle;
-use App\Domains\Products\Models\ConfigurableOption;
-use App\Domains\Products\Models\ConfigurableOptionGroup;
-use App\Domains\Products\Models\ConfigurableOptionPricing;
-use App\Domains\Products\Models\Product;
+use App\Domains\Products\Infrastructure\Http\Requests\StoreConfigurableOptionGroupRequest;
+use App\Domains\Products\Infrastructure\Http\Requests\UpdateConfigurableOptionGroupRequest;
+use App\Domains\Products\Infrastructure\Persistence\Models\BillingCycle;
+use App\Domains\Products\Infrastructure\Persistence\Models\ConfigurableOption;
+use App\Domains\Products\Infrastructure\Persistence\Models\ConfigurableOptionGroup;
+use App\Domains\Products\Infrastructure\Persistence\Models\ConfigurableOptionPricing;
+use App\Domains\Products\Infrastructure\Persistence\Models\Product;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;

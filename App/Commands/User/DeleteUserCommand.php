@@ -4,7 +4,8 @@ namespace App\Commands\User;
 
 use App\Commands\CommandInterface;
 use App\Contracts\User\UserDeletionServiceInterface;
-use App\Models\User;
+use App\Domains\Users\Infrastructure\Persistence\Models\User;
+
 use Illuminate\Support\Facades\Log;
 
 /**
